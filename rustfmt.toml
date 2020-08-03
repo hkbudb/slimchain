@@ -1,0 +1,3 @@
+ignore = [
+    "rust-sgx-sdk",
+]
