@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "slimchain-common",
 ]
 exclude = [
     "rust-sgx-sdk",
