@@ -12,8 +12,8 @@ pub use code::*;
 pub mod state;
 pub use state::*;
 
-pub mod block_height;
-pub use block_height::*;
+pub mod block;
+pub use block::*;
 
 pub mod shard_id;
 pub use shard_id::*;
