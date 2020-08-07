@@ -12,6 +12,9 @@ pub use code::*;
 pub mod state;
 pub use state::*;
 
+pub mod account;
+pub use account::*;
+
 pub mod block;
 pub use block::*;
 
