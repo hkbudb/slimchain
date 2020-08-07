@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "slimchain-common",
+    "slimchain-merkle-trie",
 ]
 exclude = [
     "rust-sgx-sdk",

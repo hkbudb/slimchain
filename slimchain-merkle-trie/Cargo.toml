@@ -1,0 +1,25 @@
+[package]
+name = "slimchain-merkle-trie"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[features]
+default = [
+    "draw",
+    "std",
+    "partial_trie",
+    "write",
+]
+std = [
+    "slimchain-common/std",
+    "serde/std",
+]
+draw = []
+partial_trie = []
+write = []
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc", "rc"] }
+slimchain-common = { path = "../slimchain-common", default-features = false }
