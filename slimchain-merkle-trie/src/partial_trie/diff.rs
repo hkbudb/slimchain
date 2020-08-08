@@ -29,6 +29,13 @@ impl PartialTrieDiff {
         diff
     }
 
+    pub fn to_standalone_trie(&self) -> Result<PartialTrie> {
+        match self.0.get(&NibbleBuf::default()) {
+            Some(root) => Ok(PartialTrie::from_subtree(root.clone())),
+            None => bail!("PartialTrieDiff#to_standalone_trie: Invalid partial trie diff."),
+        }
+    }
+
     pub fn value_hash(&self, key: &impl Key) -> Option<H256> {
         let key = key.as_nibbles();
 
