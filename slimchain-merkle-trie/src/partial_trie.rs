@@ -50,6 +50,10 @@ impl PartialTrie {
         Self { root: Some(root) }
     }
 
+    pub fn from_root_hash(root_hash: H256) -> Self {
+        Self::from_subtree(Arc::new(SubTree::from_hash(root_hash)))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.root.is_none()
     }
