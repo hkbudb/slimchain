@@ -2,6 +2,7 @@
 members = [
     "slimchain-common",
     "slimchain-merkle-trie",
+    "slimchain-tx-state",
 ]
 exclude = [
     "rust-sgx-sdk",

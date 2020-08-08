@@ -1,0 +1,38 @@
+[package]
+name = "slimchain-tx-state"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[features]
+default = [
+    "partial_trie",
+    "read",
+    "std",
+    "write",
+]
+std = [
+    "serde/std",
+    "slimchain-common/std",
+    "slimchain-merkle-trie/std",
+]
+partial_trie = [
+    "im",
+    "read",
+    "slimchain-merkle-trie/partial_trie",
+    "std",
+    "write",
+]
+read = [
+    "slimchain-merkle-trie/read",
+]
+write = [
+    "slimchain-merkle-trie/write",
+]
+
+[dependencies]
+im = { version = "15.0", optional = true }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+slimchain-common = { path = "../slimchain-common", default-features = false }
+slimchain-merkle-trie = { path = "../slimchain-merkle-trie", default-features = false }
