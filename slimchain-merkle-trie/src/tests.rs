@@ -51,20 +51,14 @@ struct TestTrie {
 }
 
 impl NodeLoader<Value> for TestTrie {
-    fn load_node(&self, id: H256) -> Result<Cow<TrieNode<Value>>> {
-        self.nodes
-            .get(&id)
-            .map(Cow::Borrowed)
-            .context("Unknown node")
+    fn load_node(&self, id: H256) -> Result<TrieNode<Value>> {
+        self.nodes.get(&id).cloned().context("Unknown node")
     }
 }
 
 impl NodeLoader<Value> for &'_ TestTrie {
-    fn load_node(&self, id: H256) -> Result<Cow<TrieNode<Value>>> {
-        self.nodes
-            .get(&id)
-            .map(Cow::Borrowed)
-            .context("Unknown node")
+    fn load_node(&self, id: H256) -> Result<TrieNode<Value>> {
+        self.nodes.get(&id).cloned().context("Unknown node")
     }
 }
 

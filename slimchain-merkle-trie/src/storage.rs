@@ -1,5 +1,5 @@
 use crate::{hash::*, nibbles::NibbleBuf, traits::Value, u4::U4};
-use alloc::{borrow::Cow, boxed::Box};
+use alloc::boxed::Box;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible, error::Result};
 
@@ -102,9 +102,9 @@ impl<V: Value> From<LeafNode<V>> for TrieNode<V> {
 }
 
 pub trait NodeLoader<V: Value> {
-    fn load_node(&self, address: H256) -> Result<Cow<TrieNode<V>>>;
+    fn load_node(&self, address: H256) -> Result<TrieNode<V>>;
 
-    fn check_address_and_load_node(&self, address: H256) -> Result<Option<Cow<TrieNode<V>>>> {
+    fn check_address_and_load_node(&self, address: H256) -> Result<Option<TrieNode<V>>> {
         if address.is_zero() {
             Ok(None)
         } else {

@@ -221,7 +221,10 @@ impl<K: Key, V: Value, L: NodeLoader<V>> WriteTrieContext<K, V, L> {
     fn get_node(&self, address: H256) -> Result<Option<Cow<TrieNode<V>>>> {
         Ok(match self.apply.nodes.get(&address) {
             Some(n) => Some(Cow::Borrowed(n)),
-            None => self.trie_node_loader.check_address_and_load_node(address)?,
+            None => self
+                .trie_node_loader
+                .check_address_and_load_node(address)?
+                .map(Cow::Owned),
         })
     }
 }

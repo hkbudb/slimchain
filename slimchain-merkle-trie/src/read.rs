@@ -13,7 +13,7 @@ use slimchain_common::{
 
 fn inner_read_trie<V: Value>(
     trie_node_loader: &impl NodeLoader<V>,
-    root_node: Cow<TrieNode<V>>,
+    root_node: TrieNode<V>,
     key: Nibbles<'_>,
 ) -> Result<(Option<V>, SubProof)> {
     use proof::{BranchNode, ExtensionNode, LeafNode};
@@ -26,7 +26,7 @@ fn inner_read_trie<V: Value>(
     let mut cur_proof = &mut read_proof as *mut _;
 
     loop {
-        match cur_node.as_ref() {
+        match &cur_node {
             crate::TrieNode::Extension(n) => {
                 if let Some(remaining) = cur_key.strip_prefix(&n.nibbles) {
                     if let Some(sub_node) = trie_node_loader.check_address_and_load_node(n.child)? {

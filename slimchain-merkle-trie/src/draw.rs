@@ -82,7 +82,7 @@ pub fn trie_to_draw<V: Value + fmt::Display>(
             draw.add_edge(parent_id, cur_id, edge_label);
         }
 
-        match node.as_ref() {
+        match &node {
             TrieNode::Extension(n) => {
                 draw.add_vertex(
                     cur_id,
