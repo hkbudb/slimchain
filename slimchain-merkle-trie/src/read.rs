@@ -130,7 +130,7 @@ impl<K: Key, V: Value, L: NodeLoader<V>> ReadTrieContext<K, V, L> {
             trie_node_loader,
             root_address,
             cache: HashMap::new(),
-            proof: Proof::new(),
+            proof: Proof::from_root_hash(root_address),
         }
     }
 

@@ -25,6 +25,14 @@ impl Proof {
         Self { root: Some(root) }
     }
 
+    pub fn from_root_hash(root_hash: H256) -> Self {
+        if root_hash.is_zero() {
+            Self::default()
+        } else {
+            Self::from_subproof(SubProof::from_hash(root_hash))
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.root.is_none()
     }
