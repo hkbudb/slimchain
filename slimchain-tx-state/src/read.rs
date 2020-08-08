@@ -71,11 +71,10 @@ impl TxStateReadContext {
                     let acc_proof = AccountReadProof {
                         nonce: acc_data.nonce,
                         code_hash: acc_data.code.to_digest(),
-                        state_read_proof: self
-                            .values_read_ctx
-                            .get(acc_address)
-                            .map(|ctx| ctx.get_proof().clone())
-                            .unwrap_or_default(),
+                        state_read_proof: self.values_read_ctx.get(acc_address).map_or_else(
+                            || Proof::from_root_hash(acc_data.acc_state_root),
+                            |ctx| ctx.get_proof().clone(),
+                        ),
                     };
                     acc_proofs.insert(*acc_address, acc_proof);
                 }

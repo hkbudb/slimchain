@@ -146,4 +146,14 @@ fn test_read_write() {
     );
     let read_proof2 = read_ctx.generate_proof().unwrap();
     assert!(read_proof2.verify(&read2, state.state_root()).is_ok());
+
+    let read3 = create_tx_read_data! {
+        "0000000000000000000000000000000000000010" => {
+            nonce: 2,
+        },
+    };
+    let mut read_ctx = TxStateReadContext::new(state.state_view(), state.state_root());
+    assert_eq!(read_ctx.get_nonce(acc_addr2).unwrap(), 2.into());
+    let read_proof3 = read_ctx.generate_proof().unwrap();
+    assert!(read_proof3.verify(&read3, state.state_root()).is_ok());
 }
