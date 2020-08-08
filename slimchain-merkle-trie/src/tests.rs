@@ -198,9 +198,9 @@ fn test_trie_read() {
 fn test_trie_read_ctx() {
     let empty_trie = TestTrie::default();
     let mut ctx1: ReadTrieContext<Key, _, _> = ReadTrieContext::new(&empty_trie, H256::zero());
-    assert_eq!(None, ctx1.read(&key!("12345678")).unwrap().into_owned());
-    assert_eq!(None, ctx1.read(&key!("12345678")).unwrap().into_owned());
-    assert_eq!(None, ctx1.read(&key!("00000000")).unwrap().into_owned());
+    assert_eq!(None, ctx1.read(&key!("12345678")).unwrap());
+    assert_eq!(None, ctx1.read(&key!("12345678")).unwrap());
+    assert_eq!(None, ctx1.read(&key!("00000000")).unwrap());
     let p = ctx1.into_proof();
     assert_eq!(H256::zero(), p.root_hash());
     assert!(p.value_hash(&key!("12345678")).unwrap().is_zero());
@@ -208,17 +208,11 @@ fn test_trie_read_ctx() {
 
     let trie = build_test_trie();
     let mut ctx2: ReadTrieContext<Key, _, _> = ReadTrieContext::new(&trie, trie.root);
-    assert_eq!(None, ctx2.read(&key!("12345678")).unwrap().into_owned());
-    assert_eq!(
-        Some(1.into()),
-        ctx2.read(&key!("0a711355")).unwrap().into_owned()
-    );
-    assert_eq!(None, ctx2.read(&key!("0a705678")).unwrap().into_owned());
-    assert_eq!(None, ctx2.read(&key!("0a775678")).unwrap().into_owned());
-    assert_eq!(
-        Some(2.into()),
-        ctx2.read(&key!("0a77d337")).unwrap().into_owned()
-    );
+    assert_eq!(None, ctx2.read(&key!("12345678")).unwrap());
+    assert_eq!(Some(&1.into()), ctx2.read(&key!("0a711355")).unwrap());
+    assert_eq!(None, ctx2.read(&key!("0a705678")).unwrap());
+    assert_eq!(None, ctx2.read(&key!("0a775678")).unwrap());
+    assert_eq!(Some(&2.into()), ctx2.read(&key!("0a77d337")).unwrap());
 
     let p = ctx2.into_proof();
     assert_eq!(trie.root, p.root_hash());

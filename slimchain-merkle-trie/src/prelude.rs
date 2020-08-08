@@ -15,5 +15,5 @@ pub use crate::{
     storage::{BranchNode, ExtensionNode, LeafNode, NodeLoader, TrieNode},
     traits::{Key as _, Value as _},
 };
-pub use alloc::{borrow::Cow, boxed::Box};
+pub use alloc::boxed::Box;
 pub use slimchain_common::{basic::H256, digest::Digestible, error::Result};

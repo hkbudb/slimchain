@@ -4,7 +4,7 @@ use crate::{
     storage::{NodeLoader, TrieNode},
     traits::{Key, Value},
 };
-use alloc::{borrow::Cow, boxed::Box};
+use alloc::boxed::Box;
 use slimchain_common::{
     basic::H256,
     collections::{hash_map, HashMap},
@@ -154,7 +154,7 @@ impl<K: Key, V: Value, L: NodeLoader<V>> ReadTrieContext<K, V, L> {
         &self.proof
     }
 
-    pub fn read(&mut self, key: &K) -> Result<Cow<Option<V>>> {
+    pub fn read(&mut self, key: &K) -> Result<Option<&'_ V>> {
         use hash_map::Entry;
 
         let v = match self.cache.entry(key.clone()) {
@@ -184,6 +184,6 @@ impl<K: Key, V: Value, L: NodeLoader<V>> ReadTrieContext<K, V, L> {
             Entry::Occupied(entry) => entry.into_mut(),
         };
 
-        Ok(Cow::Borrowed(v))
+        Ok(v.as_ref())
     }
 }
