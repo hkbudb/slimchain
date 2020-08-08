@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "crate::proof::SubProof")]
-#[serde(into = "crate::proof::SubProof")]
 pub(crate) enum SubTree {
     Hash(H256),
     Extension(Box<ExtensionNode>),

@@ -7,11 +7,10 @@ use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-#[serde(from = "crate::proof::LeafNode")]
-#[serde(into = "crate::proof::LeafNode")]
 pub(crate) struct LeafNode {
     pub(crate) nibbles: NibbleBuf,
     pub(crate) value_hash: H256,
+    #[serde(skip)]
     node_hash: Cell<Option<H256>>,
 }
 

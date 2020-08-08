@@ -18,8 +18,6 @@ pub mod prune;
 pub use prune::*;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(from = "crate::proof::Proof")]
-#[serde(into = "crate::proof::Proof")]
 pub struct PartialTrie {
     pub(crate) root: Option<Arc<SubTree>>,
 }

@@ -6,10 +6,9 @@ use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-#[serde(from = "crate::proof::BranchNode")]
-#[serde(into = "crate::proof::BranchNode")]
 pub(crate) struct BranchNode {
     pub(crate) children: [Option<Arc<SubTree>>; 16],
+    #[serde(skip)]
     node_hash: Cell<Option<H256>>,
 }
 
