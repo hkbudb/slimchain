@@ -109,7 +109,7 @@ pub fn read_trie<K: Key, V: Value>(
     let root_node = match trie_node_loader.check_address_and_load_node(root_address)? {
         Some(n) => n,
         None => {
-            return Ok((None, Proof::new()));
+            return Ok((None, Proof::from_root_hash(root_address)));
         }
     };
 

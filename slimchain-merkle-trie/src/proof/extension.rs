@@ -21,6 +21,7 @@ impl Digestible for ExtensionNode {
 
 impl ExtensionNode {
     pub(crate) fn new(nibbles: NibbleBuf, child: Box<SubProof>) -> Self {
+        debug_assert!(!nibbles.is_empty());
         Self { nibbles, child }
     }
 

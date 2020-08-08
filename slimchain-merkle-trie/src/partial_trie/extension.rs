@@ -50,6 +50,7 @@ impl Eq for ExtensionNode {}
 
 impl ExtensionNode {
     pub(crate) fn new(nibbles: NibbleBuf, child: Arc<SubTree>) -> Self {
+        debug_assert!(!nibbles.is_empty());
         Self {
             nibbles,
             child,
