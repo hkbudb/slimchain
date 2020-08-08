@@ -44,17 +44,20 @@ fn test_read_write() {
         },
         "0000000000000000000000000000000000000100" => {
             nonce: 0,
+            values: {
+                "0000000000000000000000000000000000000000000000000000000000000001" => 0,
+            }
         }
     };
 
-    let mut read_ctx = TxStateReadContext::new(state.state_view(), state.state_root());
+    let mut read_ctx1 = TxStateReadContext::new(state.state_view(), state.state_root());
     let acc_addr1 = create_address!("0000000000000000000000000000000000000000");
     let acc_addr2 = create_address!("0000000000000000000000000000000000000010");
     let acc_addr3 = create_address!("0000000000000000000000000000000000000100");
-    assert_eq!(read_ctx.get_nonce(acc_addr1).unwrap(), 1.into());
-    assert_eq!(read_ctx.get_code_len(acc_addr1).unwrap(), 0);
+    assert_eq!(read_ctx1.get_nonce(acc_addr1).unwrap(), 1.into());
+    assert_eq!(read_ctx1.get_code_len(acc_addr1).unwrap(), 0);
     assert_eq!(
-        read_ctx
+        read_ctx1
             .get_value(
                 acc_addr1,
                 create_state_key!(
@@ -65,11 +68,11 @@ fn test_read_write() {
         0.into()
     );
     assert_eq!(
-        read_ctx.get_code(acc_addr2).unwrap(),
+        read_ctx1.get_code(acc_addr2).unwrap(),
         b"code".to_vec().into()
     );
     assert_eq!(
-        read_ctx
+        read_ctx1
             .get_value(
                 acc_addr2,
                 create_state_key!(
@@ -80,7 +83,7 @@ fn test_read_write() {
         1.into()
     );
     assert_eq!(
-        read_ctx
+        read_ctx1
             .get_value(
                 acc_addr2,
                 create_state_key!(
@@ -90,9 +93,19 @@ fn test_read_write() {
             .unwrap(),
         3.into()
     );
-    assert_eq!(read_ctx.get_nonce(acc_addr3).unwrap(), 0.into());
-
-    let read_proof1 = read_ctx.generate_proof().unwrap();
+    assert_eq!(read_ctx1.get_nonce(acc_addr3).unwrap(), 0.into());
+    assert_eq!(
+        read_ctx1
+            .get_value(
+                acc_addr3,
+                create_state_key!(
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                )
+            )
+            .unwrap(),
+        0.into()
+    );
+    let read_proof1 = read_ctx1.generate_proof().unwrap();
     assert!(read_proof1.verify(&read1, state.state_root()).is_ok());
 
     let write2 = create_tx_write_set! {
@@ -120,10 +133,10 @@ fn test_read_write() {
             }
         },
     };
-    let mut read_ctx = TxStateReadContext::new(state.state_view(), state.state_root());
-    assert_eq!(read_ctx.get_nonce(acc_addr1).unwrap(), 2.into());
+    let mut read_ctx2 = TxStateReadContext::new(state.state_view(), state.state_root());
+    assert_eq!(read_ctx2.get_nonce(acc_addr1).unwrap(), 2.into());
     assert_eq!(
-        read_ctx
+        read_ctx2
             .get_value(
                 acc_addr2,
                 create_state_key!(
@@ -134,7 +147,7 @@ fn test_read_write() {
         7.into()
     );
     assert_eq!(
-        read_ctx
+        read_ctx2
             .get_value(
                 acc_addr2,
                 create_state_key!(
@@ -144,7 +157,7 @@ fn test_read_write() {
             .unwrap(),
         8.into()
     );
-    let read_proof2 = read_ctx.generate_proof().unwrap();
+    let read_proof2 = read_ctx2.generate_proof().unwrap();
     assert!(read_proof2.verify(&read2, state.state_root()).is_ok());
 
     let read3 = create_tx_read_data! {
@@ -152,8 +165,8 @@ fn test_read_write() {
             nonce: 2,
         },
     };
-    let mut read_ctx = TxStateReadContext::new(state.state_view(), state.state_root());
-    assert_eq!(read_ctx.get_nonce(acc_addr2).unwrap(), 2.into());
-    let read_proof3 = read_ctx.generate_proof().unwrap();
+    let mut read_ctx3 = TxStateReadContext::new(state.state_view(), state.state_root());
+    assert_eq!(read_ctx3.get_nonce(acc_addr2).unwrap(), 2.into());
+    let read_proof3 = read_ctx3.generate_proof().unwrap();
     assert!(read_proof3.verify(&read3, state.state_root()).is_ok());
 }
