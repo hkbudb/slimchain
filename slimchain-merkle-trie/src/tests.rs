@@ -55,7 +55,7 @@ impl NodeLoader<Value> for TestTrie {
         self.nodes
             .get(&id)
             .map(Cow::Borrowed)
-            .context("unknown node")
+            .context("Unknown node")
     }
 }
 
@@ -64,7 +64,7 @@ impl NodeLoader<Value> for &'_ TestTrie {
         self.nodes
             .get(&id)
             .map(Cow::Borrowed)
-            .context("unknown node")
+            .context("Unknown node")
     }
 }
 
