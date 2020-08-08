@@ -1,11 +1,13 @@
 use super::{BranchNode, ExtensionNode, LeafNode, PartialTrie, SubTree};
 use crate::{
     nibbles::{AsNibbles, NibbleBuf},
+    traits::Key,
     u4::U4,
 };
 use alloc::{collections::VecDeque, sync::Arc, vec::Vec};
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
+    basic::H256,
     collections::{hash_map::Entry, HashMap},
     digest::Digestible,
     error::{bail, ensure, Result},
@@ -13,6 +15,32 @@ use slimchain_common::{
 
 #[derive(Debug, Default, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct PartialTrieDiff(pub(crate) HashMap<NibbleBuf, Arc<SubTree>>);
+
+impl PartialTrieDiff {
+    pub fn diff_from_empty(fork: &PartialTrie) -> Self {
+        let mut diff = Self::default();
+
+        let fork_root = match fork.root.as_ref() {
+            Some(root) => root.clone(),
+            None => return diff,
+        };
+        diff.0.insert(NibbleBuf::default(), fork_root);
+
+        diff
+    }
+
+    pub fn value_hash(&self, key: &impl Key) -> Option<H256> {
+        let key = key.as_nibbles();
+
+        for (prefix, subtree) in self.0.iter() {
+            if let Some(remaining) = key.strip_prefix(prefix) {
+                return subtree.value_hash(remaining);
+            }
+        }
+
+        None
+    }
+}
 
 pub fn diff_missing_branches(
     main: &PartialTrie,

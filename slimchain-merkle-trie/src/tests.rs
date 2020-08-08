@@ -381,6 +381,9 @@ fn test_partial_trie_update_whole_trie() {
     let diff = diff_missing_branches(&partial_trie2, &partial_trie1, true).unwrap();
     let partial_trie3 = apply_diff(&partial_trie2, &diff, true).unwrap();
     assert_eq!(trie1.root, partial_trie3.root_hash());
+
+    let diff2 = PartialTrieDiff::diff_from_empty(&partial_trie1);
+    assert_eq!(diff, diff2);
 }
 
 #[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
