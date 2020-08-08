@@ -17,6 +17,7 @@ impl Digestible for ExtensionNode {
 
 impl ExtensionNode {
     pub fn new(nibbles: NibbleBuf, child: H256) -> Self {
+        debug_assert!(!nibbles.is_empty());
         Self { nibbles, child }
     }
 }
