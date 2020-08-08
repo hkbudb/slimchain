@@ -380,6 +380,23 @@ fn test_partial_trie_update() {
 
 #[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
 #[test]
+fn test_partial_trie_update_whole_trie() {
+    let trie1 = build_test_trie();
+
+    let mut read_ctx: ReadTrieContext<Key, _, _> = ReadTrieContext::new(&trie1, trie1.root);
+    read_ctx.read(&key!("0a77d337")).unwrap();
+    read_ctx.read(&key!("0b123456")).unwrap();
+    let partial_trie1: PartialTrie = read_ctx.into_proof().into();
+    assert_eq!(trie1.root, partial_trie1.root_hash());
+
+    let partial_trie2 = PartialTrie::from_root_hash(trie1.root);
+    let diff = diff_missing_branches(&partial_trie2, &partial_trie1, true).unwrap();
+    let partial_trie3 = apply_diff(&partial_trie2, &diff, true).unwrap();
+    assert_eq!(trie1.root, partial_trie3.root_hash());
+}
+
+#[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
+#[test]
 fn test_partial_trie_prune() {
     let trie = build_test_trie();
 
