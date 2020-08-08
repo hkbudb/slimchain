@@ -12,6 +12,7 @@ pub mod nibbles;
 #[cfg(feature = "partial_trie")]
 pub mod partial_trie;
 pub mod proof;
+#[cfg(feature = "read")]
 pub mod read;
 pub mod storage;
 pub mod traits;

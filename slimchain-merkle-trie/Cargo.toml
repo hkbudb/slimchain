@@ -8,8 +8,9 @@ publish = false
 [features]
 default = [
     "draw",
-    "std",
     "partial_trie",
+    "read",
+    "std",
     "write",
 ]
 std = [
@@ -18,6 +19,7 @@ std = [
 ]
 draw = []
 partial_trie = []
+read = []
 write = []
 
 [dependencies]

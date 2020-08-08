@@ -150,6 +150,7 @@ fn build_test_trie() -> TestTrie {
     trie
 }
 
+#[cfg(feature = "read")]
 #[test]
 fn test_trie_read() {
     let empty_trie = TestTrie::default();
@@ -198,6 +199,7 @@ fn test_trie_read() {
     assert_eq!(Some(4.to_digest()), p.value_hash(&key!("0a77d397")));
 }
 
+#[cfg(feature = "read")]
 #[test]
 fn test_trie_read_ctx() {
     let empty_trie = TestTrie::default();
@@ -300,7 +302,7 @@ fn test_trie_write() {
     }
 }
 
-#[cfg(all(feature = "partial_trie", feature = "write"))]
+#[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
 #[test]
 fn test_partial_trie_update() {
     let trie1 = build_test_trie();
@@ -376,7 +378,7 @@ fn test_partial_trie_update() {
     assert_eq!(trie3.root, partial_trie3.root_hash());
 }
 
-#[cfg(all(feature = "partial_trie", feature = "write"))]
+#[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
 #[test]
 fn test_partial_trie_prune() {
     let trie = build_test_trie();
