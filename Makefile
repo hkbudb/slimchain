@@ -17,6 +17,10 @@ test-release:
 	RUST_LOG=info cargo test --release -- --nocapture
 .PHONY: test-release
 
+clean:
+	-rm -rf target
+.PHONY: clean
+
 clippy:
 	cargo clippy --tests
 .PHONY: clippy
