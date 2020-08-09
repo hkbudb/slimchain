@@ -13,14 +13,14 @@ use slimchain_common::{
 };
 use slimchain_merkle_trie::prelude::*;
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AccountWriteSetPartialTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
     pub state_partial_trie: PartialTrie,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxWriteSetPartialTrie {
     pub main_partial_trie: PartialTrie,
     pub acc_partial_tries: HashMap<Address, AccountWriteSetPartialTrie>,

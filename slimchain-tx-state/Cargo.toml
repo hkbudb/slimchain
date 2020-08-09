@@ -32,7 +32,7 @@ write = [
 ]
 
 [dependencies]
-im = { version = "15.0", optional = true }
+im = { version = "15.0", optional = true, features = ["serde"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 slimchain-common = { path = "../slimchain-common", default-features = false }
 slimchain-merkle-trie = { path = "../slimchain-merkle-trie", default-features = false }
