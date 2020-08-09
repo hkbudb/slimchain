@@ -319,7 +319,9 @@ impl TxTrie {
     ) -> Result<()> {
         let mut entry = match self.acc_tries.entry(acc_addr) {
             im::hashmap::Entry::Occupied(o) => o,
-            im::hashmap::Entry::Vacant(_) => bail!("TxTrie#prune_helper account is already pruned"),
+            im::hashmap::Entry::Vacant(_) => {
+                bail!("TxTrie#prune_helper: Account is already pruned");
+            }
         };
 
         callback(entry.get_mut())?;
