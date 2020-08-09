@@ -235,7 +235,7 @@ impl TxTrieWithSharding {
         acc_addr: Address,
         keys: impl Iterator<Item = StateKey>,
     ) -> Result<()> {
-        self.prune_helper(acc_addr, |trie| {
+        self.prune_helper(acc_addr, move |trie| {
             *trie = prune_unused_keys(trie, keys)?;
             Ok(())
         })
