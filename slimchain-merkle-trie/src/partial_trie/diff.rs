@@ -30,6 +30,10 @@ impl PartialTrieDiff {
     }
 
     pub fn to_standalone_trie(&self) -> Result<PartialTrie> {
+        if self.0.is_empty() {
+            return Ok(PartialTrie::default());
+        }
+
         match self.0.get(&NibbleBuf::default()) {
             Some(root) => Ok(PartialTrie::from_subtree(root.clone())),
             None => bail!("PartialTrieDiff#to_standalone_trie: Invalid partial trie diff."),
