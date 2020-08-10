@@ -315,6 +315,14 @@ impl TxTrie {
         let mut main_ctx = WritePartialTrieContext::new(self.main_trie.clone());
         for (acc_addr, acc_writes) in writes.iter() {
             let acc_trie = self.acc_tries.entry(*acc_addr).or_default();
+
+            debug_assert_eq!(
+                self.main_trie.value_hash(acc_addr),
+                Some(acc_trie.root_hash_inner()),
+                "TxTrie#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
+                acc_addr
+            );
+
             acc_trie.apply_writes(acc_writes)?;
             let acc_hash = acc_trie.root_hash();
             main_ctx.insert(acc_addr, acc_hash)?;

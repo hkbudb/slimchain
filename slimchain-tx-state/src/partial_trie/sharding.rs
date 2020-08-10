@@ -168,6 +168,13 @@ impl TxTrieWithSharding {
                 } else {
                     let acc_state_trie = self.out_shard.entry(acc_addr).or_default();
 
+                    debug_assert_eq!(
+                        old_acc_data.acc_state_root,
+                        acc_state_trie.root_hash(),
+                        "TxTrieWithSharding#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
+                        acc_addr
+                    );
+
                     if acc_data.reset_values {
                         *acc_state_trie = PartialTrie::new();
                     }
