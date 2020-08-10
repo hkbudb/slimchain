@@ -26,7 +26,7 @@ clippy:
 .PHONY: clippy
 
 cov:
-	cargo tarpaulin --all-features --workspace --exclude-files 'rust-sgx-sdk/*' -o Html --out-dir target
+	cargo tarpaulin --all-features --workspace --exclude-files 'rust-sgx-sdk/*' -o Html --output-dir target
 .PHONY: cov
 
 check-deps:
