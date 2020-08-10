@@ -6,7 +6,7 @@ use slimchain_common::{
     basic::{account_data_to_digest, Address, Nonce, StateKey, H256},
     collections::HashMap,
     digest::Digestible,
-    error::{anyhow, bail, ensure, Result},
+    error::{bail, ensure, Result},
     rw_set::{AccessFlags, AccountWriteData, TxWriteData},
 };
 use slimchain_merkle_trie::prelude::*;
@@ -127,12 +127,8 @@ impl AccountTrie {
     }
 
     pub fn create_from_diff(diff: &AccountTrieDiff) -> Result<Self> {
-        let nonce = diff
-            .nonce
-            .ok_or_else(|| anyhow!("Invalid AccountTrieDiff."))?;
-        let code_hash = diff
-            .code_hash
-            .ok_or_else(|| anyhow!("Invalid AccountTrieDiff."))?;
+        let nonce = diff.nonce.unwrap_or_default();
+        let code_hash = diff.code_hash.unwrap_or_default();
         let state_trie = diff.state_trie_diff.to_standalone_trie()?;
         Ok(Self::new(
             nonce,
