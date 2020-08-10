@@ -211,7 +211,7 @@ pub struct TxTrie {
 impl From<TxWriteSetPartialTrie> for TxTrie {
     fn from(input: TxWriteSetPartialTrie) -> Self {
         Self {
-            main_trie: input.main_partial_trie.into(),
+            main_trie: input.main_partial_trie,
             acc_tries: input
                 .acc_partial_tries
                 .into_iter()
