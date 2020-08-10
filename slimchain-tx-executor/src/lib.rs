@@ -185,11 +185,11 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
 
     evm_backend
         .check_error()
-        .context("Failed when accessing the backend.")?;
+        .context("Error when accessing the backend.")?;
 
     ensure!(
         execute_result.is_succeed(),
-        "Failed to execute tx (reason: {:?}).",
+        "Failed to execute the tx (reason: {:?}).",
         execute_result
     );
 
