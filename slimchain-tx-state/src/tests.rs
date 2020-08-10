@@ -192,7 +192,7 @@ fn test_tx_trie() {
         "0000000000000000000000000000000000000000" => {
             nonce: 2,
         },
-        "0000000000000000000000000000000000000001" => {
+        "0000000000000000000000000000000000001001" => {
             values: {
                 "0000000000000000000000000000000000000000000000000000000000001000" => 3,
                 "0000000000000000000000000000000000000000000000000000000000001001" => 4,
@@ -203,7 +203,7 @@ fn test_tx_trie() {
         "0000000000000000000000000000000000000002" => {
             nonce: 1,
         },
-        "0000000000000000000000000000000000000004" => {
+        "0000000000000000000000000000100000000004" => {
             reset_values: true,
             code: b"code",
             values: {
@@ -211,10 +211,22 @@ fn test_tx_trie() {
                 "0000000000000000000000000000000000000000000000000000000000000001" => 2,
             }
         },
-        "0000000000000000000000000000000000000001" => {
+        "0000000000000000000000000000000000001001" => {
             values: {
                 "0000000000000000000000000000000000000000000000000000000000000002" => 3,
                 "0000000000000000000000000000000000000000000000000000000000000003" => 4,
+            }
+        }
+    };
+    let write_set4 = create_tx_write_set! {
+        "0000000000000000000000000000000000000100" => {
+            nonce: 1,
+        },
+        "0000000000000000000000000000000000001001" => {
+            values: {
+                "1000000000000000000000000000000000000000000000000000000000000000" => 1,
+                "0000000000000000000000000000000000000000000000000000000000001001" => 2,
+                "0000000000000000000000000000000000000000000000000000000000000005" => 3,
             }
         }
     };
@@ -342,23 +354,41 @@ fn test_tx_trie() {
     .unwrap()
     .into();
     let write_set3_diff = client1.diff_missing_branches(&write_set3_trie).unwrap();
+    let write_set4_trie: TxTrie = TxWriteSetPartialTrie::new(
+        full_node_storage.state_view(),
+        full_node_storage.state_root(),
+        &write_set4,
+    )
+    .unwrap()
+    .into();
+    let write_set4_diff = client1.diff_missing_branches(&write_set4_trie).unwrap();
 
-    client1.apply_diff(&write_set3_diff, true).unwrap();
+    let write_set34_diff = merge_tx_trie_diff(&write_set3_diff, &write_set4_diff);
+
+    client1.apply_diff(&write_set34_diff, true).unwrap();
     client1.apply_writes(&write_set3).unwrap();
+    client1.apply_writes(&write_set4).unwrap();
 
-    client2.apply_diff(&write_set3_diff, true).unwrap();
+    client2.apply_diff(&write_set34_diff, true).unwrap();
     client2.apply_writes(&write_set3).unwrap();
+    client2.apply_writes(&write_set4).unwrap();
 
-    full_node.apply_diff(&write_set3_diff, true).unwrap();
+    full_node.apply_diff(&write_set34_diff, true).unwrap();
     let update = full_node.apply_writes(&write_set3).unwrap();
     full_node_storage.apply_update(update).unwrap();
+    let update = full_node.apply_writes(&write_set4).unwrap();
+    full_node_storage.apply_update(update).unwrap();
 
-    shard_node1.apply_diff(&write_set3_diff, true).unwrap();
+    shard_node1.apply_diff(&write_set34_diff, true).unwrap();
     let update = shard_node1.apply_writes(&write_set3).unwrap();
     shard_node1_storage.apply_update(update).unwrap();
+    let update = shard_node1.apply_writes(&write_set4).unwrap();
+    shard_node1_storage.apply_update(update).unwrap();
 
-    shard_node2.apply_diff(&write_set3_diff, true).unwrap();
+    shard_node2.apply_diff(&write_set34_diff, true).unwrap();
     let update = shard_node2.apply_writes(&write_set3).unwrap();
+    shard_node2_storage.apply_update(update).unwrap();
+    let update = shard_node2.apply_writes(&write_set4).unwrap();
     shard_node2_storage.apply_update(update).unwrap();
 
     assert_eq!(
