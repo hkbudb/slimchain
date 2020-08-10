@@ -15,6 +15,13 @@ pub fn caller_address_from_pk(pk: &PublicKey) -> Address {
     blake2b_hash_to_h160(hash).into()
 }
 
+pub fn signed_tx_req_id(caller: Address, req: &TxRequest) -> H256 {
+    let mut hash_state = default_blake2().to_state();
+    hash_state.update(caller.to_digest().as_bytes());
+    hash_state.update(req.to_digest().as_bytes());
+    blake2b_hash_to_h256(hash_state.finalize())
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TxRequest {
     Create {
@@ -95,6 +102,10 @@ impl SignedTxRequest {
     pub fn caller_address(&self) -> Address {
         caller_address_from_pk(&self.pk_sig.public())
     }
+
+    pub fn id(&self) -> H256 {
+        signed_tx_req_id(self.caller_address(), &self.tx)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -129,6 +140,10 @@ impl RawTx {
             pk_sig: PubSigPair::create(keypair, hash),
         }
     }
+
+    pub fn id(&self) -> H256 {
+        signed_tx_req_id(self.caller, &self.input)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -151,6 +166,10 @@ impl SignedTx {
     pub fn verify(&self) -> Result<()> {
         let hash = self.raw_tx.to_digest();
         self.pk_sig.verify(hash)
+    }
+
+    pub fn id(&self) -> H256 {
+        self.raw_tx.id()
     }
 }
 
