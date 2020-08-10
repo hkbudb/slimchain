@@ -252,21 +252,35 @@ fn test_tx_trie() {
     let mut client1 = TxTrie::default();
     let mut client2 = TxTrie::default();
 
+    let write_set1_trie: TxTrie = TxWriteSetPartialTrie::new(
+        full_node_storage.state_view(),
+        full_node_storage.state_root(),
+        &write_set1,
+    )
+    .unwrap()
+    .into();
+    let write_set1_diff = client1.diff_missing_branches(&write_set1_trie).unwrap();
+
+    full_node.apply_diff(&write_set1_diff, true).unwrap();
     let update = full_node.apply_writes(&write_set1).unwrap();
     full_node_storage.apply_update(update).unwrap();
 
+    shard_node1.apply_diff(&write_set1_diff, true).unwrap();
     let update = shard_node1.apply_writes(&write_set1).unwrap();
     shard_node1_storage.apply_update(update).unwrap();
     shard_node1.out_shard.0.clear();
 
+    shard_node2.apply_diff(&write_set1_diff, true).unwrap();
     let update = shard_node2.apply_writes(&write_set1).unwrap();
     shard_node2_storage.apply_update(update).unwrap();
     shard_node2.out_shard.0.clear();
 
+    client1.apply_diff(&write_set1_diff, true).unwrap();
     client1.apply_writes(&write_set1).unwrap();
     client1.main_trie = PartialTrie::from_root_hash(client1.root_hash());
     client1.acc_tries.clear();
 
+    client2.apply_diff(&write_set1_diff, true).unwrap();
     client2.apply_writes(&write_set1).unwrap();
     client2.main_trie = PartialTrie::from_root_hash(client2.root_hash());
     client2.acc_tries.clear();
