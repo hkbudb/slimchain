@@ -21,7 +21,7 @@ pub struct AccountWriteSetPartialTrie {
 }
 
 impl AccountWriteSetPartialTrie {
-    pub fn root_hash(&self) -> H256 {
+    pub fn acc_hash(&self) -> H256 {
         account_data_to_digest(
             self.nonce.to_digest(),
             self.code_hash,
@@ -81,7 +81,7 @@ impl TxWriteSetPartialTrie {
 
     pub fn verify(&self, state_root: H256) -> Result<()> {
         for (acc_address, acc_trie) in self.acc_tries.iter() {
-            let acc_hash = acc_trie.root_hash();
+            let acc_hash = acc_trie.acc_hash();
             let main_trie_acc_hash = self.main_trie.value_hash(acc_address);
 
             ensure!(

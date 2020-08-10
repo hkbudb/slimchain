@@ -18,12 +18,12 @@ pub struct AccountTrie {
     pub state_trie: PartialTrie,
     pub access_flags: AccessFlags,
     #[serde(skip)]
-    root_hash: Cell<Option<H256>>,
+    acc_hash: Cell<Option<H256>>,
 }
 
 impl AccountTrie {
-    fn reset_root_hash(&mut self) {
-        self.root_hash.set(None);
+    fn reset_acc_hash(&mut self) {
+        self.acc_hash.set(None);
     }
 
     pub fn new(
@@ -37,23 +37,23 @@ impl AccountTrie {
             code_hash,
             state_trie,
             access_flags,
-            root_hash: Cell::new(None),
+            acc_hash: Cell::new(None),
         }
     }
 
-    fn root_hash_inner(&self) -> H256 {
+    fn acc_hash_inner(&self) -> H256 {
         let state_hash = self.state_trie.root_hash();
         account_data_to_digest(self.nonce.to_digest(), self.code_hash, state_hash)
     }
 
-    pub fn root_hash(&self) -> H256 {
-        if let Some(root_hash) = self.root_hash.get() {
-            return root_hash;
+    pub fn acc_hash(&self) -> H256 {
+        if let Some(acc_hash) = self.acc_hash.get() {
+            return acc_hash;
         }
 
-        let root_hash = self.root_hash_inner();
-        self.root_hash.set(Some(root_hash));
-        root_hash
+        let acc_hash = self.acc_hash_inner();
+        self.acc_hash.set(Some(acc_hash));
+        acc_hash
     }
 
     pub fn diff_missing_branches(
@@ -131,7 +131,7 @@ impl AccountTrie {
     }
 
     pub fn apply_writes(&mut self, writes: &AccountWriteData) -> Result<()> {
-        self.reset_root_hash();
+        self.reset_acc_hash();
 
         if let Some(nonce) = writes.nonce {
             self.nonce = nonce;
@@ -206,7 +206,7 @@ impl TxTrie {
             for (acc_addr, acc_trie) in self.acc_tries.iter() {
                 debug_assert_eq!(
                     self.main_trie.value_hash(acc_addr),
-                    Some(acc_trie.root_hash_inner()),
+                    Some(acc_trie.acc_hash_inner()),
                     "TxTrie#root_hash: Hash mismatched between main trie and account trie (address: {}).",
                     acc_addr
                 );
@@ -230,7 +230,7 @@ impl TxTrie {
                 }
                 None => {
                     if cfg!(debug_assertions) {
-                        let actual = fork_acc_trie.root_hash();
+                        let actual = fork_acc_trie.acc_hash();
                         let expect = match self.main_trie.value_hash(acc_addr) {
                             Some(hash) => hash,
                             None => main_trie_diff
@@ -270,14 +270,14 @@ impl TxTrie {
                     let acc_trie = AccountTrie::create_from_diff(acc_trie_diff)?;
                     if check_hash {
                         ensure!(
-                            self.main_trie.value_hash(acc_addr) == Some(acc_trie.root_hash()),
+                            self.main_trie.value_hash(acc_addr) == Some(acc_trie.acc_hash()),
                             "TxTrie#apply_diff: Hash mismatched (address: {}).",
                             acc_addr
                         );
                     } else {
                         debug_assert_eq!(
                             self.main_trie.value_hash(acc_addr),
-                            Some(acc_trie.root_hash()),
+                            Some(acc_trie.acc_hash()),
                             "TxTrie#apply_diff: Hash mismatched (address: {}).",
                             acc_addr
                         );
@@ -297,13 +297,13 @@ impl TxTrie {
 
             debug_assert_eq!(
                 self.main_trie.value_hash(acc_addr),
-                Some(acc_trie.root_hash_inner()),
+                Some(acc_trie.acc_hash_inner()),
                 "TxTrie#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
                 acc_addr
             );
 
             acc_trie.apply_writes(acc_writes)?;
-            let acc_hash = acc_trie.root_hash();
+            let acc_hash = acc_trie.acc_hash();
             main_ctx.insert(acc_addr, acc_hash)?;
         }
         self.main_trie = main_ctx.finish();
