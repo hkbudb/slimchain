@@ -6,13 +6,19 @@ edition = "2018"
 publish = false
 
 [features]
-default = ["std"]
+default = [
+    "std",
+    "primitive-types-rlp",
+]
 std = [
     "anyhow/std",
     "blake2b_simd/std",
     "ed25519-dalek/std",
     "primitive-types/std",
     "serde/std",
+]
+primitive-types-rlp = [
+    "primitive-types/rlp",
 ]
 
 [dependencies]
