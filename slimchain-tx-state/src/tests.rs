@@ -276,13 +276,14 @@ fn test_tx_trie() {
     let mut client1 = TxTrie::default();
     let mut client2 = TxTrie::default();
 
-    let write_set1_trie: TxTrie = TxWriteSetPartialTrie::new(
+    let write_set1_trie = TxWriteSetPartialTrie::new(
         full_node_storage.state_view(),
         full_node_storage.state_root(),
         &write_set1,
     )
-    .unwrap()
-    .into();
+    .unwrap();
+    assert!(write_set1_trie.verify(client1.root_hash()).is_ok());
+    let write_set1_trie: TxTrie = write_set1_trie.into();
     let write_set1_diff = client1.diff_missing_branches(&write_set1_trie).unwrap();
 
     full_node.apply_diff(&write_set1_diff, true).unwrap();
@@ -320,13 +321,14 @@ fn test_tx_trie() {
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
 
-    let write_set2_trie: TxTrie = TxWriteSetPartialTrie::new(
+    let write_set2_trie = TxWriteSetPartialTrie::new(
         full_node_storage.state_view(),
         full_node_storage.state_root(),
         &write_set2,
     )
-    .unwrap()
-    .into();
+    .unwrap();
+    assert!(write_set2_trie.verify(client1.root_hash()).is_ok());
+    let write_set2_trie: TxTrie = write_set2_trie.into();
     let write_set2_diff = client1.diff_missing_branches(&write_set2_trie).unwrap();
 
     client1.apply_diff(&write_set2_diff, true).unwrap();
@@ -358,21 +360,24 @@ fn test_tx_trie() {
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
 
-    let write_set3_trie: TxTrie = TxWriteSetPartialTrie::new(
+    let write_set3_trie = TxWriteSetPartialTrie::new(
         full_node_storage.state_view(),
         full_node_storage.state_root(),
         &write_set3,
     )
-    .unwrap()
-    .into();
+    .unwrap();
+    assert!(write_set3_trie.verify(client1.root_hash()).is_ok());
+    let write_set3_trie: TxTrie = write_set3_trie.into();
     let write_set3_diff = client1.diff_missing_branches(&write_set3_trie).unwrap();
-    let write_set4_trie: TxTrie = TxWriteSetPartialTrie::new(
+
+    let write_set4_trie = TxWriteSetPartialTrie::new(
         full_node_storage.state_view(),
         full_node_storage.state_root(),
         &write_set4,
     )
-    .unwrap()
-    .into();
+    .unwrap();
+    assert!(write_set4_trie.verify(client1.root_hash()).is_ok());
+    let write_set4_trie: TxTrie = write_set4_trie.into();
     let write_set4_diff = client1.diff_missing_branches(&write_set4_trie).unwrap();
 
     let write_set34_diff = merge_tx_trie_diff(&write_set3_diff, &write_set4_diff);
