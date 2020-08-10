@@ -2,12 +2,18 @@ default: build-release
 .PHONY: default
 
 build:
+	$(MAKE) -C contracts
 	cargo build
 .PHONY: build
 
 build-release:
+	$(MAKE) -C contracts
 	cargo build --release
 .PHONY: build-release
+
+build-contracts:
+	$(MAKE) -C contracts
+.PHONY: build-contracts
 
 test:
 	RUST_LOG=info cargo test -- --nocapture
@@ -19,6 +25,7 @@ test-release:
 
 clean:
 	-rm -rf target
+	-$(MAKE) -C contracts clean
 .PHONY: clean
 
 clippy:
