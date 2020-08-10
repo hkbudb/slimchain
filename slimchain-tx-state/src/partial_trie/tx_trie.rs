@@ -21,17 +21,6 @@ pub struct AccountTrie {
     root_hash: Cell<Option<H256>>,
 }
 
-impl From<AccountWriteSetPartialTrie> for AccountTrie {
-    fn from(input: AccountWriteSetPartialTrie) -> Self {
-        Self::new(
-            input.nonce,
-            input.code_hash,
-            input.state_partial_trie,
-            AccessFlags::empty(),
-        )
-    }
-}
-
 impl AccountTrie {
     fn reset_root_hash(&mut self) {
         self.root_hash.set(None);
@@ -67,7 +56,10 @@ impl AccountTrie {
         root_hash
     }
 
-    pub fn diff_missing_branches(&self, fork: &Self) -> Result<AccountTrieDiff> {
+    pub fn diff_missing_branches(
+        &self,
+        fork: &AccountWriteSetPartialTrie,
+    ) -> Result<AccountTrieDiff> {
         let state_trie_diff = diff_missing_branches(&self.state_trie, &fork.state_trie, true)?;
 
         Ok(AccountTrieDiff {
@@ -77,7 +69,7 @@ impl AccountTrie {
         })
     }
 
-    pub fn diff_from_empty(fork: &Self) -> AccountTrieDiff {
+    pub fn diff_from_empty(fork: &AccountWriteSetPartialTrie) -> AccountTrieDiff {
         let nonce = if fork.nonce.is_zero() {
             None
         } else {
@@ -208,19 +200,6 @@ pub struct TxTrie {
     pub acc_tries: im::HashMap<Address, AccountTrie>,
 }
 
-impl From<TxWriteSetPartialTrie> for TxTrie {
-    fn from(input: TxWriteSetPartialTrie) -> Self {
-        Self {
-            main_trie: input.main_partial_trie,
-            acc_tries: input
-                .acc_partial_tries
-                .into_iter()
-                .map(|(k, v)| (k, v.into()))
-                .collect(),
-        }
-    }
-}
-
 impl TxTrie {
     pub fn root_hash(&self) -> H256 {
         if cfg!(debug_assertions) {
@@ -237,7 +216,7 @@ impl TxTrie {
         self.main_trie.root_hash()
     }
 
-    pub fn diff_missing_branches(&self, fork: &Self) -> Result<TxTrieDiff> {
+    pub fn diff_missing_branches(&self, fork: &TxWriteSetPartialTrie) -> Result<TxTrieDiff> {
         let main_trie_diff = diff_missing_branches(&self.main_trie, &fork.main_trie, false)?;
         let mut acc_trie_diffs = HashMap::new();
 

@@ -17,13 +17,23 @@ use slimchain_merkle_trie::prelude::*;
 pub struct AccountWriteSetPartialTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
-    pub state_partial_trie: PartialTrie,
+    pub state_trie: PartialTrie,
+}
+
+impl AccountWriteSetPartialTrie {
+    pub fn root_hash(&self) -> H256 {
+        account_data_to_digest(
+            self.nonce.to_digest(),
+            self.code_hash,
+            self.state_trie.root_hash(),
+        )
+    }
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxWriteSetPartialTrie {
-    pub main_partial_trie: PartialTrie,
-    pub acc_partial_tries: HashMap<Address, AccountWriteSetPartialTrie>,
+    pub main_trie: PartialTrie,
+    pub acc_tries: HashMap<Address, AccountWriteSetPartialTrie>,
 }
 
 impl TxWriteSetPartialTrie {
@@ -32,7 +42,7 @@ impl TxWriteSetPartialTrie {
         root_address: H256,
         writes: &TxWriteData,
     ) -> Result<Self> {
-        let mut acc_partial_tries: HashMap<Address, AccountWriteSetPartialTrie> = HashMap::new();
+        let mut acc_tries: HashMap<Address, AccountWriteSetPartialTrie> = HashMap::new();
         let mut main_read_ctx =
             ReadTrieContext::new(AccountTrieView::new(Arc::clone(&state_view)), root_address);
 
@@ -57,43 +67,38 @@ impl TxWriteSetPartialTrie {
             let acc_proof = AccountWriteSetPartialTrie {
                 nonce: acc_data.map(|acc| acc.nonce).unwrap_or_default(),
                 code_hash: acc_data.map(|acc| acc.code.to_digest()).unwrap_or_default(),
-                state_partial_trie,
+                state_trie: state_partial_trie,
             };
 
-            acc_partial_tries.insert(*acc_address, acc_proof);
+            acc_tries.insert(*acc_address, acc_proof);
         }
 
         Ok(Self {
-            main_partial_trie: main_read_ctx.into_proof().into(),
-            acc_partial_tries,
+            main_trie: main_read_ctx.into_proof().into(),
+            acc_tries,
         })
     }
 
     pub fn verify(&self, state_root: H256) -> Result<()> {
-        for (acc_address, acc_partial_trie) in self.acc_partial_tries.iter() {
-            let acc_hash = account_data_to_digest(
-                acc_partial_trie.nonce.to_digest(),
-                acc_partial_trie.code_hash,
-                acc_partial_trie.state_partial_trie.root_hash(),
-            );
-
-            let main_partial_trie_acc_hash = self.main_partial_trie.value_hash(acc_address);
+        for (acc_address, acc_trie) in self.acc_tries.iter() {
+            let acc_hash = acc_trie.root_hash();
+            let main_trie_acc_hash = self.main_trie.value_hash(acc_address);
 
             ensure!(
-                main_partial_trie_acc_hash == Some(acc_hash),
+                main_trie_acc_hash == Some(acc_hash),
                 "TxWriteSetPartialTrie: Invalid account hash (address: {}, expect: {:?}, actual: {:?}).",
                 acc_address,
-                main_partial_trie_acc_hash,
+                main_trie_acc_hash,
                 Some(acc_hash)
             );
         }
 
-        let main_partial_trie_root = self.main_partial_trie.root_hash();
+        let main_trie_root = self.main_trie.root_hash();
         ensure!(
-            main_partial_trie_root == state_root,
+            main_trie_root == state_root,
             "TxWriteSetPartialTrie: Invalid state root (expect: {}, actual: {}).",
             state_root,
-            main_partial_trie_root
+            main_trie_root
         );
 
         Ok(())
