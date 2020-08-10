@@ -1,0 +1,19 @@
+[package]
+name = "slimchain-tx-executor"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[features]
+default = ["std"]
+std = [
+    "evm/std",
+    "serde/std",
+    "slimchain-common/std",
+]
+
+[dependencies]
+evm = { version = "0.17", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+slimchain-common = { path = "../slimchain-common", default-features = false }
