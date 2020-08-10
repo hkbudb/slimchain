@@ -78,11 +78,23 @@ impl AccountTrie {
     }
 
     pub fn diff_from_empty(fork: &Self) -> AccountTrieDiff {
+        let nonce = if fork.nonce.is_zero() {
+            None
+        } else {
+            Some(fork.nonce)
+        };
+
+        let code_hash = if fork.code_hash.is_zero() {
+            None
+        } else {
+            Some(fork.code_hash)
+        };
+
         let state_trie_diff = PartialTrieDiff::diff_from_empty(&fork.state_trie);
 
         AccountTrieDiff {
-            nonce: Some(fork.nonce),
-            code_hash: Some(fork.code_hash),
+            nonce,
+            code_hash,
             state_trie_diff,
         }
     }
@@ -237,7 +249,9 @@ impl TxTrie {
             match self.acc_tries.get(acc_addr) {
                 Some(main_acc_trie) => {
                     let acc_diff = main_acc_trie.diff_missing_branches(fork_acc_trie)?;
-                    acc_trie_diffs.insert(*acc_addr, acc_diff);
+                    if !acc_diff.is_empty() {
+                        acc_trie_diffs.insert(*acc_addr, acc_diff);
+                    }
                 }
                 None => {
                     if cfg!(debug_assertions) {
@@ -256,7 +270,9 @@ impl TxTrie {
                     }
 
                     let acc_diff = AccountTrie::diff_from_empty(&fork_acc_trie);
-                    acc_trie_diffs.insert(*acc_addr, acc_diff);
+                    if !acc_diff.is_empty() {
+                        acc_trie_diffs.insert(*acc_addr, acc_diff);
+                    }
                 }
             }
         }

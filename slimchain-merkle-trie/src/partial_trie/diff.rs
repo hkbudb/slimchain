@@ -17,6 +17,10 @@ use slimchain_common::{
 pub struct PartialTrieDiff(pub(crate) HashMap<NibbleBuf, Arc<SubTree>>);
 
 impl PartialTrieDiff {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn diff_from_empty(fork: &PartialTrie) -> Self {
         let mut diff = Self::default();
 

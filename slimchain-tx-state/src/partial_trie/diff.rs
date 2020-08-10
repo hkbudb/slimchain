@@ -12,6 +12,12 @@ pub struct AccountTrieDiff {
     pub state_trie_diff: PartialTrieDiff,
 }
 
+impl AccountTrieDiff {
+    pub fn is_empty(&self) -> bool {
+        self.nonce.is_none() && self.code_hash.is_none() && self.state_trie_diff.is_empty()
+    }
+}
+
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxTrieDiff {
     pub main_trie_diff: PartialTrieDiff,
