@@ -1,3 +1,4 @@
+pub use derive_more;
 pub use hex;
 
 #[macro_export]
@@ -15,11 +16,11 @@ macro_rules! create_id_type {
             Hash,
             serde::Serialize,
             serde::Deserialize,
-            derive_more::Deref,
-            derive_more::DerefMut,
-            derive_more::Display,
-            derive_more::From,
-            derive_more::Into,
+            $crate::utils::derive_more::Deref,
+            $crate::utils::derive_more::DerefMut,
+            $crate::utils::derive_more::Display,
+            $crate::utils::derive_more::From,
+            $crate::utils::derive_more::Into,
         )]
         pub struct $name(pub $inner_type);
 
