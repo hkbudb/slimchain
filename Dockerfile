@@ -14,8 +14,8 @@ RUN chmod +x /tmp/install_deps.sh && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /var/cache/apt/archives/*
 
-RUN curl -sSf https://sh.rustup.rs | sh -s -- --profile minimal --default-toolchain none -y \
-    RUST_TOOLCHAIN=$(cat /tmp/rust-toolchain) && \
+RUN curl -sSf https://sh.rustup.rs | sh -s -- --profile minimal --default-toolchain none -y
+RUN RUST_TOOLCHAIN=$(cat /tmp/rust-toolchain) && \
     rustup toolchain install $RUST_TOOLCHAIN && \
     rustup component add clippy rustfmt --toolchain $RUST_TOOLCHAIN && \
     rm /tmp/rust-toolchain
