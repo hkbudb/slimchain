@@ -107,9 +107,9 @@ mod tests {
         tx::TxTrait,
         tx_req::{caller_address_from_pk, TxRequest},
     };
-    use slimchain_contract_utils::{contract_address, Contract, Token};
     use slimchain_tx_engine::TxEngineTask;
     use slimchain_tx_state::MemTxState;
+    use slimchain_utils::contract::{contract_address, Contract, Token};
     use std::path::PathBuf;
 
     #[tokio::test]

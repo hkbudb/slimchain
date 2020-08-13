@@ -16,5 +16,5 @@ slimchain-tx-state = { path = "../slimchain-tx-state" }
 
 [dev-dependencies]
 rand = "0.7"
-slimchain-contract-utils = { path = "../slimchain-contract-utils" }
+slimchain-utils = { path = "../slimchain-utils" }
 tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
