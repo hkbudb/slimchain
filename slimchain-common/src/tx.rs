@@ -1,111 +1,27 @@
 use crate::{
-    basic::{Address, BlockHeight, Code, Nonce, H256},
-    digest::{blake2, blake2b_hash_to_h160, blake2b_hash_to_h256, default_blake2, Digestible},
-    ed25519::{verify_multi_signature, Keypair, PubSigPair, PublicKey},
+    basic::{Address, BlockHeight, H256},
+    digest::{blake2b_hash_to_h256, default_blake2, Digestible},
+    ed25519::{verify_multi_signature, Keypair, PubSigPair},
     error::Result,
     rw_set::{TxReadSet, TxWriteData},
+    tx_req::{tx_id_from_caller_and_input, TxRequest},
 };
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
-crate::create_id_type_u64!(TxReqId);
+pub trait TxTrait: Digestible {
+    fn tx_caller(&self) -> Address;
+    fn tx_input(&self) -> &TxRequest;
+    fn tx_block_height(&self) -> BlockHeight;
+    fn tx_state_root(&self) -> H256;
+    fn tx_reads(&self) -> &TxReadSet;
+    fn tx_writes(&self) -> &TxWriteData;
 
-pub fn caller_address_from_pk(pk: &PublicKey) -> Address {
-    let hash = blake2(20).hash(&pk.to_bytes()[..]);
-    blake2b_hash_to_h160(hash).into()
-}
-
-pub fn signed_tx_req_id(caller: Address, req: &TxRequest) -> H256 {
-    let mut hash_state = default_blake2().to_state();
-    hash_state.update(caller.to_digest().as_bytes());
-    hash_state.update(req.to_digest().as_bytes());
-    blake2b_hash_to_h256(hash_state.finalize())
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub enum TxRequest {
-    Create {
-        nonce: Nonce,
-        code: Code,
-    },
-    Call {
-        nonce: Nonce,
-        address: Address,
-        data: Vec<u8>,
-    },
-}
-
-impl Digestible for TxRequest {
-    fn to_digest(&self) -> H256 {
-        let mut hash_state = default_blake2().to_state();
-        let hash = match self {
-            TxRequest::Create { nonce, code } => {
-                hash_state.update(b"Create");
-                hash_state.update(nonce.to_digest().as_bytes());
-                hash_state.update(code.to_digest().as_bytes());
-                hash_state.finalize()
-            }
-            TxRequest::Call {
-                nonce,
-                address,
-                data,
-            } => {
-                hash_state.update(b"Call");
-                hash_state.update(nonce.to_digest().as_bytes());
-                hash_state.update(address.to_digest().as_bytes());
-                hash_state.update(&data[..]);
-                hash_state.finalize()
-            }
-        };
-        blake2b_hash_to_h256(hash)
-    }
-}
-
-impl TxRequest {
-    pub fn nonce(&self) -> Nonce {
-        match self {
-            TxRequest::Call { nonce, .. } | TxRequest::Create { nonce, .. } => *nonce,
-        }
+    fn id(&self) -> H256 {
+        tx_id_from_caller_and_input(self.tx_caller(), self.tx_input())
     }
 
-    pub fn sign(self, keypair: &Keypair) -> SignedTxRequest {
-        let hash = self.to_digest();
-        SignedTxRequest {
-            tx: self,
-            pk_sig: PubSigPair::create(keypair, hash),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct SignedTxRequest {
-    pub tx: TxRequest,
-    pub pk_sig: PubSigPair,
-}
-
-impl Digestible for SignedTxRequest {
-    fn to_digest(&self) -> H256 {
-        let mut hash_state = default_blake2().to_state();
-        hash_state.update(self.tx.to_digest().as_bytes());
-        hash_state.update(self.pk_sig.to_digest().as_bytes());
-        let hash = hash_state.finalize();
-        blake2b_hash_to_h256(hash)
-    }
-}
-
-impl SignedTxRequest {
-    pub fn verify(&self) -> Result<()> {
-        let hash = self.tx.to_digest();
-        self.pk_sig.verify(hash)
-    }
-
-    pub fn caller_address(&self) -> Address {
-        caller_address_from_pk(&self.pk_sig.public())
-    }
-
-    pub fn id(&self) -> H256 {
-        signed_tx_req_id(self.caller_address(), &self.tx)
-    }
+    fn verify_sig(&self) -> Result<()>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -132,6 +48,36 @@ impl Digestible for RawTx {
     }
 }
 
+impl TxTrait for RawTx {
+    fn tx_caller(&self) -> Address {
+        self.caller
+    }
+
+    fn tx_input(&self) -> &TxRequest {
+        &self.input
+    }
+
+    fn tx_block_height(&self) -> BlockHeight {
+        self.block_height
+    }
+
+    fn tx_state_root(&self) -> H256 {
+        self.state_root
+    }
+
+    fn tx_reads(&self) -> &TxReadSet {
+        &self.reads
+    }
+
+    fn tx_writes(&self) -> &TxWriteData {
+        &self.writes
+    }
+
+    fn verify_sig(&self) -> Result<()> {
+        Ok(())
+    }
+}
+
 impl RawTx {
     pub fn sign(self, keypair: &Keypair) -> SignedTx {
         let hash = self.to_digest();
@@ -139,10 +85,6 @@ impl RawTx {
             raw_tx: self,
             pk_sig: PubSigPair::create(keypair, hash),
         }
-    }
-
-    pub fn id(&self) -> H256 {
-        signed_tx_req_id(self.caller, &self.input)
     }
 }
 
@@ -162,14 +104,34 @@ impl Digestible for SignedTx {
     }
 }
 
-impl SignedTx {
-    pub fn verify(&self) -> Result<()> {
-        let hash = self.raw_tx.to_digest();
-        self.pk_sig.verify(hash)
+impl TxTrait for SignedTx {
+    fn tx_caller(&self) -> Address {
+        self.raw_tx.tx_caller()
     }
 
-    pub fn id(&self) -> H256 {
-        self.raw_tx.id()
+    fn tx_input(&self) -> &TxRequest {
+        self.raw_tx.tx_input()
+    }
+
+    fn tx_block_height(&self) -> BlockHeight {
+        self.raw_tx.tx_block_height()
+    }
+
+    fn tx_state_root(&self) -> H256 {
+        self.raw_tx.tx_state_root()
+    }
+
+    fn tx_reads(&self) -> &TxReadSet {
+        self.raw_tx.tx_reads()
+    }
+
+    fn tx_writes(&self) -> &TxWriteData {
+        self.raw_tx.tx_writes()
+    }
+
+    fn verify_sig(&self) -> Result<()> {
+        let hash = self.raw_tx.to_digest();
+        self.pk_sig.verify(hash)
     }
 }
 
@@ -191,6 +153,37 @@ impl Digestible for MultiSignedTx {
     }
 }
 
+impl TxTrait for MultiSignedTx {
+    fn tx_caller(&self) -> Address {
+        self.raw_tx.tx_caller()
+    }
+
+    fn tx_input(&self) -> &TxRequest {
+        self.raw_tx.tx_input()
+    }
+
+    fn tx_block_height(&self) -> BlockHeight {
+        self.raw_tx.tx_block_height()
+    }
+
+    fn tx_state_root(&self) -> H256 {
+        self.raw_tx.tx_state_root()
+    }
+
+    fn tx_reads(&self) -> &TxReadSet {
+        self.raw_tx.tx_reads()
+    }
+
+    fn tx_writes(&self) -> &TxWriteData {
+        self.raw_tx.tx_writes()
+    }
+
+    fn verify_sig(&self) -> Result<()> {
+        let hash = self.raw_tx.to_digest();
+        verify_multi_signature(hash, &self.pk_sig_pairs)
+    }
+}
+
 impl From<SignedTx> for MultiSignedTx {
     fn from(input: SignedTx) -> Self {
         let mut pk_sig_pairs = Vec::new();
@@ -205,49 +198,5 @@ impl From<SignedTx> for MultiSignedTx {
 impl MultiSignedTx {
     pub fn add_pk_sig(&mut self, pk_sig: PubSigPair) {
         self.pk_sig_pairs.push(pk_sig);
-    }
-
-    pub fn verify(&self) -> Result<()> {
-        let hash = self.raw_tx.to_digest();
-        verify_multi_signature(hash, &self.pk_sig_pairs)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::basic::H160;
-
-    #[test]
-    fn test_sign_verify_tx_req() {
-        let tx_req = TxRequest::Call {
-            nonce: 1.into(),
-            address: H160::repeat_byte(0xf).into(),
-            data: b"data".to_vec(),
-        };
-
-        let mut rng = rand::thread_rng();
-        let keypair = Keypair::generate(&mut rng);
-        let signed_tx_req = tx_req.sign(&keypair);
-        assert!(signed_tx_req.verify().is_ok());
-    }
-
-    #[test]
-    fn test_tx_req_serde() {
-        let tx_req = TxRequest::Call {
-            nonce: 1.into(),
-            address: H160::repeat_byte(0xf).into(),
-            data: b"data".to_vec(),
-        };
-
-        let mut rng = rand::thread_rng();
-        let keypair = Keypair::generate(&mut rng);
-        let signed_tx_req = tx_req.sign(&keypair);
-
-        let bin = postcard::to_allocvec(&signed_tx_req).unwrap();
-        assert_eq!(
-            postcard::from_bytes::<SignedTxRequest>(&bin[..]).unwrap(),
-            signed_tx_req
-        );
     }
 }

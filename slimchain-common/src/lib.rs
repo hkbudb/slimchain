@@ -12,4 +12,5 @@ pub mod digest;
 pub mod ed25519;
 pub mod rw_set;
 pub mod tx;
+pub mod tx_req;
 pub mod utils;

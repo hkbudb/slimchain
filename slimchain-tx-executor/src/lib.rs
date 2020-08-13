@@ -13,7 +13,7 @@ use slimchain_common::{
     digest::Digestible,
     error::{ensure, Context as _, Error, Result},
     rw_set::{TxReadData, TxWriteData},
-    tx::{SignedTxRequest, TxRequest},
+    tx_req::{SignedTxRequest, TxRequest},
 };
 
 pub trait Backend {
@@ -147,7 +147,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
     signed_tx_req.verify().context("Invalid signature.")?;
 
     let caller = signed_tx_req.caller_address();
-    let tx_req = signed_tx_req.tx;
+    let tx_req = signed_tx_req.input;
 
     let evm_backend = EVMBackend::new(backend);
     let evm_config = evm::Config::istanbul();
