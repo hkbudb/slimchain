@@ -51,6 +51,44 @@ impl<'a, B: Backend> EVMBackend<'a, B> {
     fn take_reads(&self) -> TxReadData {
         self.reads.replace_with(|_| Default::default())
     }
+
+    fn get_nonce(&self, acc_address: Address) -> Nonce {
+        self.reads.borrow_mut().get_or_add_nonce(acc_address, || {
+            match self.backend.get_nonce(acc_address) {
+                Ok(nonce) => nonce,
+                Err(err) => {
+                    self.set_error(err);
+                    Default::default()
+                }
+            }
+        })
+    }
+
+    fn map_code<T>(&self, acc_address: Address, f: impl FnOnce(&Code) -> T) -> T {
+        f(self.reads.borrow_mut().get_or_add_code(acc_address, || {
+            match self.backend.get_code(acc_address) {
+                Ok(code) => code,
+                Err(err) => {
+                    self.set_error(err);
+                    Default::default()
+                }
+            }
+        }))
+    }
+
+    fn get_value(&self, acc_address: Address, key: StateKey) -> StateValue {
+        self.reads
+            .borrow_mut()
+            .get_or_add_value(acc_address, key, || {
+                match self.backend.get_value(acc_address, key) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        self.set_error(err);
+                        Default::default()
+                    }
+                }
+            })
+    }
 }
 
 impl<'a, B: Backend> evm::backend::Backend for EVMBackend<'a, B> {
@@ -85,53 +123,29 @@ impl<'a, B: Backend> evm::backend::Backend for EVMBackend<'a, B> {
         true
     }
     fn basic(&self, address: H160) -> evm::backend::Basic {
-        let address: Address = address.into();
-        match self.backend.get_nonce(address) {
-            Ok(nonce) => {
-                self.reads.borrow_mut().add_nonce(address, nonce);
-                evm::backend::Basic {
-                    balance: U256::max_value(),
-                    nonce: nonce.into(),
-                }
-            }
-            Err(err) => {
-                self.set_error(err);
-                Default::default()
-            }
+        let acc_address: Address = address.into();
+        let nonce = self.get_nonce(acc_address);
+        evm::backend::Basic {
+            balance: U256::max_value(),
+            nonce: nonce.into(),
         }
     }
     fn code_hash(&self, address: H160) -> H256 {
-        Code::from(self.code(address)).to_digest()
+        let acc_address: Address = address.into();
+        self.map_code(acc_address, |c| c.to_digest())
     }
     fn code_size(&self, address: H160) -> usize {
-        self.code(address).len()
+        let acc_address: Address = address.into();
+        self.map_code(acc_address, |c| c.len())
     }
     fn code(&self, address: H160) -> Vec<u8> {
-        let address: Address = address.into();
-        match self.backend.get_code(address) {
-            Ok(code) => {
-                self.reads.borrow_mut().add_code(address, code.clone());
-                code.into()
-            }
-            Err(err) => {
-                self.set_error(err);
-                Default::default()
-            }
-        }
+        let acc_address: Address = address.into();
+        self.map_code(acc_address, |c| c.clone().into())
     }
     fn storage(&self, address: H160, index: H256) -> H256 {
-        let address: Address = address.into();
-        let index: StateKey = index.into();
-        match self.backend.get_value(address, index) {
-            Ok(value) => {
-                self.reads.borrow_mut().add_value(address, index, value);
-                value.into()
-            }
-            Err(err) => {
-                self.set_error(err);
-                Default::default()
-            }
-        }
+        let acc_address: Address = address.into();
+        let key: StateKey = index.into();
+        self.get_value(acc_address, key).into()
     }
 }
 
