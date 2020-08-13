@@ -7,10 +7,7 @@ use slimchain_common::{
     tx_req::SignedTxRequest,
 };
 use slimchain_tx_state::{TxStateView, TxWriteSetPartialTrie};
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, time::Duration};
 
 create_id_type_u32!(TxEngineTaskId);
 
@@ -18,18 +15,25 @@ create_id_type_u32!(TxEngineTaskId);
 pub trait TxEngine {
     type Output: TxTrait;
 
-    async fn execute_inner(&self, task: TxEngineTask) -> Result<Self::Output>;
+    async fn execute_inner(&self, task: TxEngineTask) -> Result<(Self::Output, Duration)>;
 
     async fn execute(
         &self,
         task: TxEngineTask,
     ) -> Result<(Self::Output, TxWriteSetPartialTrie, Duration)> {
-        let begin = Instant::now();
         let state_view = task.state_view.clone();
         let root_address = task.state_root;
-        let output = self.execute_inner(task).await?;
+        let (output, time) = self.execute_inner(task).await?;
         let write_trie = TxWriteSetPartialTrie::new(state_view, root_address, output.tx_writes())?;
-        Ok((output, write_trie, Instant::now() - begin))
+        Ok((output, write_trie, time))
+    }
+
+    fn start(&self) -> Result<()> {
+        Ok(())
+    }
+
+    fn shutdown(&self) -> Result<()> {
+        Ok(())
     }
 }
 

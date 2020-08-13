@@ -12,7 +12,10 @@ use slimchain_tx_state::{
     trie_view_sync::{AccountTrieView, StateTrieView},
     TxStateView,
 };
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 struct ExecutorBackend {
     state_view: Arc<dyn TxStateView + Send + Sync>,
@@ -74,7 +77,8 @@ pub struct SimpleTxEngine {
 impl TxEngine for SimpleTxEngine {
     type Output = SignedTx;
 
-    async fn execute_inner(&self, task: TxEngineTask) -> Result<Self::Output> {
+    async fn execute_inner(&self, task: TxEngineTask) -> Result<(Self::Output, Duration)> {
+        let begin = Instant::now();
         let backend = ExecutorBackend::new(task.state_view, task.state_root);
         let output = execute_tx(task.signed_tx_req, &backend)?;
 
@@ -87,7 +91,10 @@ impl TxEngine for SimpleTxEngine {
             writes: output.writes,
         };
 
-        Ok(raw_tx.sign(&self.keypair))
+        let signed_tx = raw_tx.sign(&self.keypair);
+        let time = Instant::now() - begin;
+
+        Ok((signed_tx, time))
     }
 }
 
@@ -127,6 +134,7 @@ mod tests {
         let caller_address = caller_address_from_pk(&keypair.public);
         let contract_address = contract_address(caller_address, U256::from(0).into());
         let task_engine = SimpleTxEngine::new(Keypair::generate(&mut rng));
+        task_engine.start().unwrap();
 
         let tx_req1 = TxRequest::Create {
             nonce: U256::from(0).into(),
@@ -184,5 +192,7 @@ mod tests {
             .values
             .iter()
             .any(|(_k, v)| v.to_low_u64_be() == 43));
+
+        task_engine.shutdown().unwrap();
     }
 }
