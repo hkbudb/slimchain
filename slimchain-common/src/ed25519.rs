@@ -3,6 +3,7 @@ use crate::{
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
     error::{Error, Result},
 };
+#[cfg(feature = "ed25519-batch")]
 use alloc::vec::Vec;
 use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -49,6 +50,7 @@ impl Digestible for PubSigPair {
     }
 }
 
+#[cfg(feature = "ed25519-batch")]
 pub fn verify_multi_signature(msg_hash: H256, pk_sig_pairs: &[PubSigPair]) -> Result<()> {
     let msgs: Vec<_> = core::iter::repeat(msg_hash.as_bytes())
         .take(pk_sig_pairs.len())
@@ -56,6 +58,11 @@ pub fn verify_multi_signature(msg_hash: H256, pk_sig_pairs: &[PubSigPair]) -> Re
     let pks: Vec<_> = pk_sig_pairs.iter().map(|pair| pair.public()).collect();
     let sigs: Vec<_> = pk_sig_pairs.iter().map(|pair| pair.signature()).collect();
     ed25519_dalek::verify_batch(&msgs[..], &sigs[..], &pks[..]).map_err(Error::msg)
+}
+
+#[cfg(not(feature = "ed25519-batch"))]
+pub fn verify_multi_signature(_msg_hash: H256, _pk_sig_pairs: &[PubSigPair]) -> Result<()> {
+    panic!("Require slimchain-common/ed25519-batch feature to be enabled.");
 }
 
 pub mod keypair_serde_impl {
@@ -198,6 +205,7 @@ mod tests {
         assert!(pk_sig.verify(hash).is_ok());
     }
 
+    #[cfg(feature = "ed25519-batch")]
     #[test]
     fn test_multi_sign_and_verify() {
         let mut rng = rand::thread_rng();

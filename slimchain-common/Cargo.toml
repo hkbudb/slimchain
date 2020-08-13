@@ -8,6 +8,7 @@ publish = false
 [features]
 default = [
     "std",
+    "ed25519-batch",
     "primitive-types-rlp",
 ]
 std = [
@@ -16,6 +17,9 @@ std = [
     "ed25519-dalek/std",
     "primitive-types/std",
     "serde/std",
+]
+ed25519-batch = [
+    "ed25519-dalek/batch",
 ]
 primitive-types-rlp = [
     "primitive-types/rlp",
@@ -26,7 +30,7 @@ anyhow = { version = "1.0", default-features = false }
 bitflags = "1.2"
 blake2b_simd = { version = "0.5", default-features = false }
 derive_more = "0.99"
-ed25519-dalek = { version = "1.0.0-pre.4", default-features = false, features = ["u64_backend", "alloc", "batch", "serde"] }
+ed25519-dalek = { version = "1.0.0-pre.4", default-features = false, features = ["u64_backend", "alloc", "serde"] }
 hashbrown = { version = "0.8", features = ["serde"] }
 hex = "0.4"
 primitive-types = { version = "0.7", default-features = false, features = ["serde_no_std", "byteorder"] }
