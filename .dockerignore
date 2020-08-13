@@ -1,0 +1,3 @@
+*
+!/scripts/install_deps.sh
+!/rust-sgx-sdk/rust-toolchain
