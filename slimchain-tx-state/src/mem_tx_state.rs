@@ -5,6 +5,7 @@ use slimchain_common::{
     basic::{AccountData, Address, StateValue, H256},
     collections::HashMap,
     error::{Context as _, Result},
+    rw_set::TxWriteData,
 };
 use slimchain_merkle_trie::prelude::*;
 use std::sync::{Arc, RwLock, RwLockReadGuard};
@@ -54,6 +55,12 @@ impl MemTxState {
                 .extend(nodes.into_iter());
         }
         Ok(())
+    }
+
+    #[cfg(feature = "write")]
+    pub fn apply_writes(self: &mut Arc<Self>, writes: &TxWriteData) -> Result<()> {
+        let update = crate::write::update_tx_state(&self.state_view(), self.state_root(), writes)?;
+        self.apply_update(update)
     }
 }
 

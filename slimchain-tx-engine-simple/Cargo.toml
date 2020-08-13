@@ -1,0 +1,20 @@
+[package]
+name = "slimchain-tx-engine-simple"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+slimchain-common = { path = "../slimchain-common" }
+slimchain-merkle-trie = { path = "../slimchain-merkle-trie" }
+slimchain-tx-engine = { path = "../slimchain-tx-engine" }
+slimchain-tx-executor = { path = "../slimchain-tx-executor" }
+slimchain-tx-state = { path = "../slimchain-tx-state" }
+
+[dev-dependencies]
+rand = "0.7"
+slimchain-contract-utils = { path = "../slimchain-contract-utils" }
+tokio = { version = "0.2", features = ["rt-threaded", "macros"] }

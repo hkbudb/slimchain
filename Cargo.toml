@@ -3,6 +3,8 @@ members = [
     "slimchain-common",
     "slimchain-contract-utils",
     "slimchain-merkle-trie",
+    "slimchain-tx-engine",
+    "slimchain-tx-engine-simple",
     "slimchain-tx-executor",
     "slimchain-tx-state",
 ]
