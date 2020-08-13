@@ -167,18 +167,43 @@ impl TxReadData {
         }
     }
 
+    pub fn get_or_add_nonce(&mut self, address: Address, f: impl FnOnce() -> Nonce) -> Nonce {
+        let acc_data = self.0.entry(address).or_default();
+        *acc_data.nonce.get_or_insert_with(f)
+    }
+
+    pub fn get_code(&self, address: Address) -> Option<&Code> {
+        self.0.get(&address).and_then(|acc| acc.code.as_ref())
+    }
+
     pub fn add_code(&mut self, address: Address, code: Code) {
         self.0.entry(address).or_default().code = Some(code);
     }
 
+    pub fn get_or_add_code(&mut self, address: Address, f: impl FnOnce() -> Code) -> &Code {
+        let acc_data = self.0.entry(address).or_default();
+        acc_data.code.get_or_insert_with(f)
+    }
+
+    pub fn get_value(&self, address: Address, key: StateKey) -> Option<StateValue> {
+        self.0
+            .get(&address)
+            .and_then(|acc| acc.values.get(&key).copied())
+    }
+
     pub fn add_value(&mut self, address: Address, key: StateKey, value: StateValue) {
-        *self
-            .0
-            .entry(address)
-            .or_default()
-            .values
-            .entry(key)
-            .or_default() = value;
+        let acc_data = self.0.entry(address).or_default();
+        *acc_data.values.entry(key).or_default() = value;
+    }
+
+    pub fn get_or_add_value(
+        &mut self,
+        address: Address,
+        key: StateKey,
+        f: impl FnOnce() -> StateValue,
+    ) -> StateValue {
+        let acc_data = self.0.entry(address).or_default();
+        *acc_data.values.entry(key).or_insert_with(f)
     }
 }
 
@@ -356,6 +381,13 @@ mod tests {
             crate::create_address!("0000000000000000000000000000000000000000"),
             b"code".to_vec().into(),
         );
+        assert_eq!(
+            read.get_or_add_code(
+                crate::create_address!("0000000000000000000000000000000000000002"),
+                || b"code2".to_vec().into()
+            ),
+            &Code::from(b"code2".to_vec()),
+        );
         read.add_nonce(
             crate::create_address!("0000000000000000000000000000000000000000"),
             1.into(),
@@ -367,6 +399,13 @@ mod tests {
         read.remove_nonce(crate::create_address!(
             "0000000000000000000000000000000000000000"
         ));
+        assert_eq!(
+            read.get_or_add_nonce(
+                crate::create_address!("0000000000000000000000000000000000000002"),
+                || 2.into()
+            ),
+            2.into()
+        );
         read.add_value(
             crate::create_address!("0000000000000000000000000000000000000000"),
             crate::create_state_key!(
@@ -374,18 +413,84 @@ mod tests {
             ),
             1.into(),
         );
+        assert_eq!(
+            read.get_or_add_value(
+                crate::create_address!("0000000000000000000000000000000000000000"),
+                crate::create_state_key!(
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                ),
+                || 2.into()
+            ),
+            2.into()
+        );
         let expect = crate::create_tx_read_data! {
             "0000000000000000000000000000000000000000" => {
                 code: b"code",
                 values: {
                     "0000000000000000000000000000000000000000000000000000000000000000" => 1,
+                    "0000000000000000000000000000000000000000000000000000000000000001" => 2,
                 }
             },
             "0000000000000000000000000000000000000001" => {
                 nonce: 1,
             },
+            "0000000000000000000000000000000000000002" => {
+                nonce: 2,
+                code: b"code2",
+            },
         };
         assert_eq!(read, expect);
+        assert_eq!(
+            read.get_nonce(crate::create_address!(
+                "0000000000000000000000000000000000000000"
+            )),
+            None,
+        );
+        assert_eq!(
+            read.get_nonce(crate::create_address!(
+                "0000000000000000000000000000000000000001"
+            )),
+            Some(1.into()),
+        );
+        assert_eq!(
+            read.get_code(crate::create_address!(
+                "0000000000000000000000000000000000000000"
+            )),
+            Some(&Code::from(b"code".to_vec())),
+        );
+        assert_eq!(
+            read.get_code(crate::create_address!(
+                "0000000000000000000000000000000000000001"
+            )),
+            None,
+        );
+        assert_eq!(
+            read.get_value(
+                crate::create_address!("0000000000000000000000000000000000000000"),
+                crate::create_state_key!(
+                    "0000000000000000000000000000000000000000000000000000000000000000"
+                )
+            ),
+            Some(1.into()),
+        );
+        assert_eq!(
+            read.get_value(
+                crate::create_address!("0000000000000000000000000000000000000001"),
+                crate::create_state_key!(
+                    "0000000000000000000000000000000000000000000000000000000000000000"
+                )
+            ),
+            None,
+        );
+        assert_eq!(
+            read.get_value(
+                crate::create_address!("0000000000000000000000000000000000000002"),
+                crate::create_state_key!(
+                    "0000000000000000000000000000000000000000000000000000000000000000"
+                )
+            ),
+            None,
+        );
     }
 
     #[test]
