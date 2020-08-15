@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use slimchain_common::{
     basic::{AccountData, Address, Code, Nonce, StateKey, StateValue, H256},
     ed25519::Keypair,
@@ -6,16 +5,13 @@ use slimchain_common::{
     tx::{RawTx, SignedTx},
 };
 use slimchain_merkle_trie::prelude::*;
-use slimchain_tx_engine::{TxEngine, TxEngineTask};
+use slimchain_tx_engine::{TxEngineWorker, TxTask};
 use slimchain_tx_executor::execute_tx;
 use slimchain_tx_state::{
     trie_view_sync::{AccountTrieView, StateTrieView},
     TxStateView,
 };
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::sync::Arc;
 
 struct ExecutorBackend {
     state_view: Arc<dyn TxStateView + Send + Sync>,
@@ -69,16 +65,14 @@ impl slimchain_tx_executor::Backend for ExecutorBackend {
     }
 }
 
-pub struct SimpleTxEngine {
+pub struct SimpleTxEngineWorker {
     keypair: Keypair,
 }
 
-#[async_trait]
-impl TxEngine for SimpleTxEngine {
+impl TxEngineWorker for SimpleTxEngineWorker {
     type Output = SignedTx;
 
-    async fn execute_inner(&self, task: TxEngineTask) -> Result<(Self::Output, Duration)> {
-        let begin = Instant::now();
+    fn execute(&self, task: TxTask) -> Result<Self::Output> {
         let backend = ExecutorBackend::new(task.state_view, task.state_root);
         let output = execute_tx(task.signed_tx_req, &backend)?;
 
@@ -91,14 +85,11 @@ impl TxEngine for SimpleTxEngine {
             writes: output.writes,
         };
 
-        let signed_tx = raw_tx.sign(&self.keypair);
-        let time = Instant::now() - begin;
-
-        Ok((signed_tx, time))
+        Ok(raw_tx.sign(&self.keypair))
     }
 }
 
-impl SimpleTxEngine {
+impl SimpleTxEngineWorker {
     pub fn new(keypair: Keypair) -> Self {
         Self { keypair }
     }
@@ -114,13 +105,13 @@ mod tests {
         tx::TxTrait,
         tx_req::{caller_address_from_pk, TxRequest},
     };
-    use slimchain_tx_engine::TxEngineTask;
+    use slimchain_tx_engine::{TxEngine, TxTask, TxTaskOutput};
     use slimchain_tx_state::MemTxState;
     use slimchain_utils::contract::{contract_address, Contract, Token};
     use std::path::PathBuf;
 
-    #[tokio::test]
-    async fn test() {
+    #[test]
+    fn test() {
         let mut states = MemTxState::new();
 
         let contract_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -133,8 +124,11 @@ mod tests {
         let keypair = Keypair::generate(&mut rng);
         let caller_address = caller_address_from_pk(&keypair.public);
         let contract_address = contract_address(caller_address, U256::from(0).into());
-        let task_engine = SimpleTxEngine::new(Keypair::generate(&mut rng));
-        task_engine.start().unwrap();
+
+        let task_engine = TxEngine::new(2, || {
+            let mut rng = rand::rngs::StdRng::seed_from_u64(1u64);
+            Box::new(SimpleTxEngineWorker::new(Keypair::generate(&mut rng)))
+        });
 
         let tx_req1 = TxRequest::Create {
             nonce: U256::from(0).into(),
@@ -142,13 +136,18 @@ mod tests {
         };
         let signed_tx_req1 = tx_req1.sign(&keypair);
 
-        let task1 = TxEngineTask::new(
+        let task1 = TxTask::new(
             1.into(),
             states.state_view(),
             states.state_root(),
             signed_tx_req1,
         );
-        let (tx1, write_trie1, _) = task_engine.execute(task1).await.unwrap();
+        task_engine.push_task(task1);
+        let TxTaskOutput {
+            tx_output: tx1,
+            write_trie: write_trie1,
+            ..
+        } = task_engine.pop_or_wait_result();
         assert!(write_trie1.verify(states.state_root()).is_ok());
         assert!(tx1.verify_sig().is_ok());
 
@@ -174,13 +173,18 @@ mod tests {
         };
         let signed_tx_req2 = tx_req2.sign(&keypair);
 
-        let task2 = TxEngineTask::new(
+        let task2 = TxTask::new(
             2.into(),
             states.state_view(),
             states.state_root(),
             signed_tx_req2,
         );
-        let (tx2, write_trie2, _) = task_engine.execute(task2).await.unwrap();
+        task_engine.push_task(task2);
+        let TxTaskOutput {
+            tx_output: tx2,
+            write_trie: write_trie2,
+            ..
+        } = task_engine.pop_or_wait_result();
         assert!(write_trie2.verify(states.state_root()).is_ok());
         assert!(tx2.verify_sig().is_ok());
 
@@ -192,7 +196,5 @@ mod tests {
             .values
             .iter()
             .any(|(_k, v)| v.to_low_u64_be() == 43));
-
-        task_engine.shutdown().unwrap();
     }
 }
