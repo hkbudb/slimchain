@@ -3,7 +3,8 @@ extern crate log;
 
 use crossbeam::{
     deque::{Injector, Stealer, Worker},
-    queue::SegQueue,
+    queue::{ArrayQueue, SegQueue},
+    sync::{Parker, Unparker},
     utils::Backoff,
 };
 use slimchain_common::{
@@ -73,8 +74,9 @@ pub struct TxTaskOutput<TxOutput: TxTrait> {
 pub struct TxEngine<TxOutput: TxTrait + 'static> {
     task_queue: Arc<Injector<TxTask>>,
     result_queue: Arc<SegQueue<TxTaskOutput<TxOutput>>>,
-    worker_threads: Vec<JoinHandle<()>>,
+    unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
+    worker_threads: Vec<JoinHandle<()>>,
 }
 
 impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
@@ -84,6 +86,7 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
     ) -> Self {
         let task_queue = Arc::new(Injector::new());
         let result_queue = Arc::new(SegQueue::new());
+        let unparker_queue = Arc::new(ArrayQueue::new(threads));
         let shutdown_flag = Arc::new(AtomicBool::new(false));
 
         let mut workers: Vec<_> = (0..threads)
@@ -93,6 +96,7 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
                     task_queue.clone(),
                     threads - 1,
                     result_queue.clone(),
+                    unparker_queue.clone(),
                     shutdown_flag.clone(),
                 )
             })
@@ -116,15 +120,16 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
         Self {
             task_queue,
             result_queue,
-            worker_threads,
+            unparker_queue,
             shutdown_flag,
+            worker_threads,
         }
     }
 
     pub fn push_task(&self, task: TxTask) {
         self.task_queue.push(task);
-        for w in &self.worker_threads {
-            w.thread().unpark();
+        if let Ok(unpaker) = self.unparker_queue.pop() {
+            unpaker.unpark();
         }
     }
 
@@ -147,8 +152,12 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
 impl<TxOutput: TxTrait + 'static> Drop for TxEngine<TxOutput> {
     fn drop(&mut self) {
         self.shutdown_flag.store(true, Ordering::Release);
+
+        while let Ok(unpacker) = self.unparker_queue.pop() {
+            unpacker.unpark();
+        }
+
         for w in self.worker_threads.drain(..) {
-            w.thread().unpark();
             w.join()
                 .expect("TxEngine: Failed to join the worker thread.");
         }
@@ -160,6 +169,7 @@ struct TxEngineWorkerInstance<TxOutput: TxTrait> {
     local_task_queue: Worker<TxTask>,
     stealers: Vec<Stealer<TxTask>>,
     result_queue: Arc<SegQueue<TxTaskOutput<TxOutput>>>,
+    unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
     worker: Box<dyn TxEngineWorker<Output = TxOutput>>,
 }
@@ -170,6 +180,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
         global_task_queue: Arc<Injector<TxTask>>,
         stealer_num: usize,
         result_queue: Arc<SegQueue<TxTaskOutput<TxOutput>>>,
+        unparker_queue: Arc<ArrayQueue<Unparker>>,
         shutdown_flag: Arc<AtomicBool>,
     ) -> Self {
         let local_task_queue = Worker::new_fifo();
@@ -179,6 +190,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
             local_task_queue,
             stealers: Vec::with_capacity(stealer_num),
             result_queue,
+            unparker_queue,
             shutdown_flag,
             worker,
         }
@@ -215,7 +227,9 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
                             return None;
                         }
 
-                        thread::park();
+                        let parker = Parker::new();
+                        self.unparker_queue.push(parker.unparker().clone()).ok();
+                        parker.park();
                     } else {
                         backoff.snooze();
                     }
