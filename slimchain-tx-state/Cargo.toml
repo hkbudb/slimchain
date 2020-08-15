@@ -18,6 +18,7 @@ std = [
     "slimchain-merkle-trie/std",
 ]
 partial_trie = [
+    "crossbeam-utils",
     "derive_more",
     "im",
     "read",
@@ -33,6 +34,7 @@ write = [
 ]
 
 [dependencies]
+crossbeam-utils = { version = "0.7", optional = true }
 derive_more = { version = "0.99", optional = true }
 im = { version = "15.0", optional = true, features = ["serde"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }

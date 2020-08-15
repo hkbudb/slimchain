@@ -4,27 +4,37 @@ use crate::{
     nibbles::{NibbleBuf, Nibbles},
 };
 use alloc::{boxed::Box, sync::Arc};
-use core::cell::Cell;
+use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct ExtensionNode {
     pub(crate) nibbles: NibbleBuf,
     pub(crate) child: Arc<SubTree>,
     #[serde(skip)]
-    node_hash: Cell<Option<H256>>,
+    node_hash: AtomicCell<Option<H256>>,
 }
 
 impl Digestible for ExtensionNode {
     fn to_digest(&self) -> H256 {
-        if let Some(h) = self.node_hash.get() {
+        if let Some(h) = self.node_hash.load() {
             return h;
         }
 
         let h = extension_node_hash(&self.nibbles, self.child.to_digest());
-        self.node_hash.set(Some(h));
+        self.node_hash.store(Some(h));
         h
+    }
+}
+
+impl Clone for ExtensionNode {
+    fn clone(&self) -> Self {
+        Self {
+            nibbles: self.nibbles.clone(),
+            child: self.child.clone(),
+            node_hash: AtomicCell::new(self.node_hash.load()),
+        }
     }
 }
 
@@ -54,7 +64,7 @@ impl ExtensionNode {
         Self {
             nibbles,
             child,
-            node_hash: Cell::new(None),
+            node_hash: AtomicCell::new(None),
         }
     }
 

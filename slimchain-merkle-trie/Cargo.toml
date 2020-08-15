@@ -14,8 +14,9 @@ default = [
     "write",
 ]
 std = [
-    "slimchain-common/std",
+    "crossbeam-utils/std",
     "serde/std",
+    "slimchain-common/std",
 ]
 draw = []
 partial_trie = []
@@ -23,5 +24,6 @@ read = []
 write = []
 
 [dependencies]
+crossbeam-utils = { version = "0.7", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc", "rc"] }
 slimchain-common = { path = "../slimchain-common", default-features = false }

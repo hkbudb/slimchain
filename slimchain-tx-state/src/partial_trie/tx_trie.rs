@@ -1,6 +1,6 @@
 use super::{AccountTrieDiff, AccountWriteSetPartialTrie, TxTrieDiff, TxWriteSetPartialTrie};
 use alloc::format;
-use core::cell::Cell;
+use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{account_data_to_digest, Address, Nonce, StateKey, H256},
@@ -11,19 +11,42 @@ use slimchain_common::{
 };
 use slimchain_merkle_trie::prelude::*;
 
-#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AccountTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
     pub state_trie: PartialTrie,
     pub access_flags: AccessFlags,
     #[serde(skip)]
-    acc_hash: Cell<Option<H256>>,
+    acc_hash: AtomicCell<Option<H256>>,
 }
+
+impl Clone for AccountTrie {
+    fn clone(&self) -> Self {
+        Self {
+            nonce: self.nonce,
+            code_hash: self.code_hash,
+            state_trie: self.state_trie.clone(),
+            access_flags: self.access_flags,
+            acc_hash: AtomicCell::new(self.acc_hash.load()),
+        }
+    }
+}
+
+impl PartialEq for AccountTrie {
+    fn eq(&self, other: &Self) -> bool {
+        self.nonce == other.nonce
+            && self.code_hash == other.code_hash
+            && self.state_trie == other.state_trie
+            && self.access_flags == other.access_flags
+    }
+}
+
+impl Eq for AccountTrie {}
 
 impl AccountTrie {
     fn reset_acc_hash(&mut self) {
-        self.acc_hash.set(None);
+        self.acc_hash.store(None);
     }
 
     pub fn new(
@@ -37,7 +60,7 @@ impl AccountTrie {
             code_hash,
             state_trie,
             access_flags,
-            acc_hash: Cell::new(None),
+            acc_hash: AtomicCell::new(None),
         }
     }
 
@@ -47,12 +70,12 @@ impl AccountTrie {
     }
 
     pub fn acc_hash(&self) -> H256 {
-        if let Some(acc_hash) = self.acc_hash.get() {
+        if let Some(acc_hash) = self.acc_hash.load() {
             return acc_hash;
         }
 
         let acc_hash = self.acc_hash_inner();
-        self.acc_hash.set(Some(acc_hash));
+        self.acc_hash.store(Some(acc_hash));
         acc_hash
     }
 
