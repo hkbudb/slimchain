@@ -84,6 +84,8 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
         threads: usize,
         worker_factory: impl Fn() -> Box<dyn TxEngineWorker<Output = TxOutput>>,
     ) -> Self {
+        info!("Spawning TxEngine workers in {} threads.", threads);
+
         let task_queue = Arc::new(Injector::new());
         let result_queue = Arc::new(SegQueue::new());
         let unparker_queue = Arc::new(ArrayQueue::new(threads));
@@ -157,10 +159,12 @@ impl<TxOutput: TxTrait + 'static> Drop for TxEngine<TxOutput> {
             unpacker.unpark();
         }
 
+        info!("Waiting TxEngine workers to be shutdown.");
         for w in self.worker_threads.drain(..) {
             w.join()
                 .expect("TxEngine: Failed to join the worker thread.");
         }
+        info!("TxEngine is shutdown.");
     }
 }
 
@@ -228,7 +232,9 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
                         }
 
                         let parker = Parker::new();
-                        self.unparker_queue.push(parker.unparker().clone()).ok();
+                        self.unparker_queue
+                            .push(parker.unparker().clone())
+                            .expect("TxEngine: Failed to send unpaker.");
                         parker.park();
                     } else {
                         backoff.snooze();
@@ -251,7 +257,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
             let tx_output = match self.worker.execute(task) {
                 Ok(output) => output,
                 Err(e) => {
-                    error!("TxEngine: failed to execute task. Error: {}", e);
+                    error!("TxEngine: Failed to execute task. Error: {}", e);
                     continue;
                 }
             };
@@ -260,7 +266,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
                     Ok(trie) => trie,
                     Err(e) => {
                         error!(
-                            "TxEngine: failed to create TxWriteSetPartialTrie. Error: {}",
+                            "TxEngine: Failed to create TxWriteSetPartialTrie. Error: {}",
                             e
                         );
                         continue;
