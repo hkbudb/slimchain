@@ -2,6 +2,7 @@
 members = [
     "slimchain-common",
     "slimchain-merkle-trie",
+    "slimchain-tee-sig",
     "slimchain-tx-engine",
     "slimchain-tx-engine-simple",
     "slimchain-tx-executor",
