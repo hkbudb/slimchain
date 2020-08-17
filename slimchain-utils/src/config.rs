@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use hex::{FromHex, FromHexError};
+use serde::{de::Error as SerdeError, Deserialize, Deserializer};
 use slimchain_common::error::{anyhow, Error, Result};
 use std::{fs, path::Path};
 use toml::Value as TomlValue;
@@ -39,4 +40,13 @@ impl Config {
             .try_into()
             .map_err(Error::msg)
     }
+}
+
+pub fn deserialize_from_hex<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromHex<Error = FromHexError>,
+{
+    let encoded_hex = String::deserialize(deserializer)?;
+    T::from_hex(encoded_hex).map_err(SerdeError::custom)
 }
