@@ -18,7 +18,7 @@ fi
 apt-get update -y
 apt-get upgrade -y
 apt-get install -y build-essential autoconf libtool libssl-dev pkg-config
-apt-get install -y clang llvm # required by bindgen
+apt-get install -y llvm-dev libclang-dev clang # required by bindgen
 apt-get install -y curl gnupg
 
 echo "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main" > /etc/apt/sources.list.d/intel-sgx.list
