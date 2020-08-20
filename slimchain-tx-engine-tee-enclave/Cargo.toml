@@ -20,7 +20,6 @@ postcard = { version = "0.5", features = ["alloc"] }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 sgx_rand = { path = "../rust-sgx-sdk/sgx_rand" }
-sgx_tcrypto = { path = "../rust-sgx-sdk/sgx_tcrypto" }
 sgx_trts = { path = "../rust-sgx-sdk/sgx_trts" }
 sgx_tse = { path = "../rust-sgx-sdk/sgx_tse" }
 sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }
