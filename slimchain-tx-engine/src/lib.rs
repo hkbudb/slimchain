@@ -155,6 +155,7 @@ impl<TxOutput: TxTrait + 'static> Drop for TxEngine<TxOutput> {
     fn drop(&mut self) {
         self.shutdown_flag.store(true, Ordering::Release);
 
+        thread::sleep(Duration::from_millis(10));
         while let Ok(unpacker) = self.unparker_queue.pop() {
             unpacker.unpark();
         }
