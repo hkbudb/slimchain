@@ -244,7 +244,7 @@ fn test_tx_trie() {
     };
 
     let mut full_node_storage = MemTxState::new();
-    let mut full_node = TxTrieWithSharding::new(
+    let mut full_node = StorageTxTrie::new(
         ShardId::new(0, 1),
         InShardData::new(
             full_node_storage.state_view(),
@@ -254,7 +254,7 @@ fn test_tx_trie() {
     );
 
     let mut shard_node1_storage = MemTxState::new();
-    let mut shard_node1 = TxTrieWithSharding::new(
+    let mut shard_node1 = StorageTxTrie::new(
         ShardId::new(0, 2),
         InShardData::new(
             shard_node1_storage.state_view(),
@@ -264,7 +264,7 @@ fn test_tx_trie() {
     );
 
     let mut shard_node2_storage = MemTxState::new();
-    let mut shard_node2 = TxTrieWithSharding::new(
+    let mut shard_node2 = StorageTxTrie::new(
         ShardId::new(1, 2),
         InShardData::new(
             shard_node2_storage.state_view(),
@@ -477,7 +477,7 @@ fn test_prune() {
     assert_eq!(trie1.root_hash(), root);
 
     let mut trie2_storage = MemTxState::new();
-    let mut trie2 = TxTrieWithSharding::new(
+    let mut trie2 = StorageTxTrie::new(
         ShardId::new(0, 2),
         InShardData::new(trie2_storage.state_view(), trie2_storage.state_root()),
         OutShardData::default(),
@@ -511,7 +511,7 @@ fn test_prune() {
     assert_eq!(trie2.out_shard.len(), 0);
 
     let mut trie3_storage = MemTxState::new();
-    let mut trie3 = TxTrieWithSharding::new(
+    let mut trie3 = StorageTxTrie::new(
         ShardId::new(1, 2),
         InShardData::new(trie3_storage.state_view(), trie3_storage.state_root()),
         OutShardData::default(),

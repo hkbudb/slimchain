@@ -64,13 +64,13 @@ impl InShardData {
 }
 
 #[derive(Clone)]
-pub struct TxTrieWithSharding {
+pub struct StorageTxTrie {
     pub shard_id: ShardId,
     pub in_shard: InShardData,
     pub out_shard: OutShardData,
 }
 
-impl TxTrieWithSharding {
+impl StorageTxTrie {
     pub fn new(shard_id: ShardId, in_shard: InShardData, out_shard: OutShardData) -> Self {
         Self {
             shard_id,
