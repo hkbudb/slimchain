@@ -1,0 +1,61 @@
+enclave {
+    from "sgx_backtrace.edl" import *;
+    from "sgx_stdio.edl" import *;
+    from "sgx_tstd.edl" import *;
+    from "sgx_tstdc.edl" import *;
+
+    include "sgx_quote.h"
+
+    trusted {
+        public int32_t ecall_quote_pk(
+            [in] const sgx_target_info_t* quote_target,
+            [out] sgx_report_t *report
+        );
+        public int32_t ecall_exec_tx(
+            uint32_t id,
+            uint64_t block_height,
+            [in, size=32] const uint8_t* state_root,
+            [in, size=req_len] const uint8_t* signed_tx_req,
+            size_t req_len
+        );
+    };
+
+    untrusted {
+        int32_t ocall_get_nonce(
+            uint32_t id,
+            [in, size=20] const uint8_t* acc_address,
+            [out, size=32] uint8_t* nonce
+        );
+        int32_t ocall_get_code_len(
+            uint32_t id,
+            [in, size=20] const uint8_t* acc_address,
+            [out] size_t* code_len
+        );
+        int32_t ocall_get_code(
+            uint32_t id,
+            [in, size=20] const uint8_t* acc_address,
+            [out, size=code_len] uint8_t* code,
+            size_t code_len
+        );
+        int32_t ocall_get_value(
+            uint32_t id,
+            [in, size=20] const uint8_t* acc_address,
+            [in, size=32] const uint8_t* key,
+            [out, size=32] uint8_t* value
+        );
+        int32_t ocall_get_read_proof_len(
+            uint32_t id,
+            [out] size_t* proof_len
+        );
+        int32_t ocall_get_read_proof(
+            uint32_t id,
+            [out, size=proof_len] uint8_t* proof,
+            size_t proof_len
+        );
+        int32_t ocall_return_result(
+            uint32_t id,
+            [in, size=result_len] const uint8_t* result,
+            size_t result_len
+        );
+    };
+};

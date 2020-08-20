@@ -19,7 +19,6 @@ impl Config {
         Ok(Self(cfg))
     }
 
-    #[cfg(test)]
     pub fn load_test() -> Result<Self> {
         Self::load(&crate::path::project_root_directory()?.join(CONFIG_FILE_NAME))
     }

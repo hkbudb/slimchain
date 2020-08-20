@@ -1,0 +1,34 @@
+[package]
+name = "slimchain-tx-engine-tee-enclave"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[lib]
+name = "slimchain_tx_engine_tee_enclave_rust"
+crate-type = ["staticlib"]
+
+[profile.release]
+lto = true
+opt-level = 3
+panic = "abort"
+
+[dependencies]
+lazy_static = { version = "1.4", features = ["spin_no_std"] }
+postcard = { version = "0.5", features = ["alloc"] }
+rand_core = "0.5"
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+sgx_rand = { path = "../rust-sgx-sdk/sgx_rand" }
+sgx_tcrypto = { path = "../rust-sgx-sdk/sgx_tcrypto" }
+sgx_trts = { path = "../rust-sgx-sdk/sgx_trts" }
+sgx_tse = { path = "../rust-sgx-sdk/sgx_tse" }
+sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }
+sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
+slimchain-common = { path = "../slimchain-common", default-features = false }
+slimchain-merkle-trie = { path = "../slimchain-merkle-trie", default-features = false }
+slimchain-tx-executor = { path = "../slimchain-tx-executor", default-features = false }
+slimchain-tx-state = { path = "../slimchain-tx-state", default-features = false }
+
+[patch.'https://github.com/apache/teaclave-sgx-sdk.git']
+sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }

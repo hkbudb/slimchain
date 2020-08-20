@@ -9,7 +9,6 @@ pub fn current_directory() -> Result<PathBuf> {
     Ok(binary_dir.to_path_buf())
 }
 
-#[cfg(test)]
 pub fn project_root_directory() -> Result<PathBuf> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let root_dir = manifest_dir

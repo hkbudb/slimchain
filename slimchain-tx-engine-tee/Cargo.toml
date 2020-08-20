@@ -1,0 +1,34 @@
+[package]
+name = "slimchain-tx-engine-tee"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+build = "build.rs"
+
+[dependencies]
+base64 = "0.12"
+dashmap = "3.11"
+hex = "0.4"
+lazy_static = "1.4"
+log = "0.4"
+parking_lot = "0.11"
+percent-encoding = "2.1"
+postcard = { version = "0.5", features = ["alloc"] }
+rand = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
+sgx_urts = { path = "../rust-sgx-sdk/sgx_urts" }
+slimchain-common = { path = "../slimchain-common" }
+slimchain-tee-sig = { path = "../slimchain-tee-sig" }
+slimchain-tx-engine = { path = "../slimchain-tx-engine" }
+slimchain-tx-state = { path = "../slimchain-tx-state" }
+slimchain-utils = { path = "../slimchain-utils" }
+ureq = { version = "1.2", features = ["json"] }
+
+[dev-dependencies]
+env_logger = "0.7"
+
+[build-dependencies]
+bindgen = "0.54"
+cc = "1.0"

@@ -5,12 +5,14 @@ members = [
     "slimchain-tee-sig",
     "slimchain-tx-engine",
     "slimchain-tx-engine-simple",
+    "slimchain-tx-engine-tee",
     "slimchain-tx-executor",
     "slimchain-tx-state",
     "slimchain-utils",
 ]
 exclude = [
     "rust-sgx-sdk",
+    "slimchain-tx-engine-tee-enclave",
 ]
 
 [profile.release]

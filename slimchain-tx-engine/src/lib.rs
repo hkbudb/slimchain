@@ -245,11 +245,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
     }
 
     fn run(&self) {
-        loop {
-            let task = match self.wait_until_task() {
-                Some(task) => task,
-                None => break,
-            };
+        while let Some(task) = self.wait_until_task() {
             let begin = Instant::now();
             let task_id = task.get_id();
             let state_view = task.state_view.clone();

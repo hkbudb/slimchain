@@ -1,0 +1,9 @@
+libslimchain_tx_engine_tee_enclave.so
+{
+    global:
+        g_global_data_sim;
+        g_global_data;
+        enclave_entry;
+    local:
+        *;
+};

@@ -3,11 +3,13 @@ default: build-release
 
 build:
 	$(MAKE) -C contracts
+	$(MAKE) -C slimchain-tx-engine-tee-enclave DEBUG=1
 	cargo build
 .PHONY: build
 
 build-release:
 	$(MAKE) -C contracts
+	$(MAKE) -C slimchain-tx-engine-tee-enclave
 	cargo build --release
 .PHONY: build-release
 
@@ -26,6 +28,7 @@ test-release:
 clean:
 	-rm -rf target
 	-$(MAKE) -C contracts clean
+	-$(MAKE) -C slimchain-tx-engine-tee-enclave clean
 .PHONY: clean
 
 clippy:
@@ -38,4 +41,10 @@ cov:
 
 check-deps:
 	cargo upgrade --workspace --skip-compatible --dry-run
+	$(MAKE) -C slimchain-tx-engine-tee-enclave check-deps
 .PHONY: check-deps
+
+fmt:
+	cargo fmt
+	$(MAKE) -C slimchain-tx-engine-tee-enclave fmt
+.PHONY: fmt
