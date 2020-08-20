@@ -34,6 +34,10 @@ pub(crate) fn get_intel_sigrl(quote_gid: sgx_epid_group_id_t, api_key: &str) -> 
 }
 
 pub(crate) fn get_intel_report(quote: &[u8], api_key: &str) -> Result<AttestationReport> {
+    if cfg!(sim_enclave) {
+        return Ok(AttestationReport::default());
+    }
+
     let encoded_quote = base64::encode(quote);
     let encoded_body = ureq::json!({ "isvEnclaveQuote": encoded_quote });
 
