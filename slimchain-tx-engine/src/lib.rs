@@ -130,8 +130,8 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
 
     pub fn push_task(&self, task: TxTask) {
         self.task_queue.push(task);
-        if let Ok(unpaker) = self.unparker_queue.pop() {
-            unpaker.unpark();
+        if let Ok(unparker) = self.unparker_queue.pop() {
+            unparker.unpark();
         }
     }
 
@@ -235,7 +235,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
                         let parker = Parker::new();
                         self.unparker_queue
                             .push(parker.unparker().clone())
-                            .expect("TxEngine: Failed to send unpaker.");
+                            .expect("TxEngine: Failed to send unparker.");
                         parker.park();
                     } else {
                         backoff.snooze();
