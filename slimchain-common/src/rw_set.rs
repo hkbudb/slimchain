@@ -9,14 +9,13 @@ use serde::{Deserialize, Serialize};
 
 bitflags! {
     #[derive(Default, Serialize, Deserialize)]
-    pub struct AccessFlags: u8 {
+    pub struct ReadAccessFlags: u8 {
         const NONCE = 0b001;
         const CODE  = 0b010;
-        const STATE = 0b100;
     }
 }
 
-impl AccessFlags {
+impl ReadAccessFlags {
     pub fn get_nonce(self) -> bool {
         self.contains(Self::NONCE)
     }
@@ -25,20 +24,12 @@ impl AccessFlags {
         self.contains(Self::CODE)
     }
 
-    pub fn get_state(self) -> bool {
-        self.contains(Self::STATE)
-    }
-
     pub fn set_nonce(&mut self, value: bool) {
         self.set(Self::NONCE, value);
     }
 
     pub fn set_code(&mut self, value: bool) {
         self.set(Self::CODE, value);
-    }
-
-    pub fn set_state(&mut self, value: bool) {
-        self.set(Self::STATE, value);
     }
 }
 
@@ -71,7 +62,7 @@ impl Digestible for TxReadSet {
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AccountReadSet {
-    pub access_flags: AccessFlags,
+    pub access_flags: ReadAccessFlags,
     pub values: HashSet<StateKey>,
 }
 
@@ -216,7 +207,7 @@ pub struct AccountReadData {
 
 impl AccountReadData {
     pub fn to_set(&self) -> AccountReadSet {
-        let mut access_flags = AccessFlags::empty();
+        let mut access_flags = ReadAccessFlags::empty();
         access_flags.set_nonce(self.nonce.is_some());
         access_flags.set_code(self.code.is_some());
         AccountReadSet {
