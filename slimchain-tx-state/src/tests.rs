@@ -470,6 +470,9 @@ fn test_prune() {
     trie1
         .prune_acc_code(create_address!("0000000000000000000000000000000000000001"))
         .unwrap();
+    trie1
+        .prune_acc_reset_values(create_address!("0000000000000000000000000000000000000001"))
+        .unwrap();
     assert_eq!(trie1.acc_tries.len(), 0);
     assert_eq!(trie1.root_hash(), root);
 

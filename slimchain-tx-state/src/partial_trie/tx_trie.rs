@@ -1,6 +1,5 @@
 use super::{AccountTrieDiff, AccountWriteSetPartialTrie, TxTrieDiff, TxWriteSetPartialTrie};
 use alloc::format;
-use bitflags::bitflags;
 use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
@@ -8,51 +7,16 @@ use slimchain_common::{
     collections::HashMap,
     digest::Digestible,
     error::{bail, ensure, Result},
-    rw_set::{AccountWriteData, TxWriteData},
+    rw_set::{AccountWriteData, TxWriteData, WriteAccessFlags},
 };
 use slimchain_merkle_trie::prelude::*;
-
-bitflags! {
-    #[derive(Default, Serialize, Deserialize)]
-    pub struct AccountTrieAccessFlags: u8 {
-        const NONCE = 0b001;
-        const CODE  = 0b010;
-        const STATE = 0b100;
-    }
-}
-
-impl AccountTrieAccessFlags {
-    pub fn get_nonce(self) -> bool {
-        self.contains(Self::NONCE)
-    }
-
-    pub fn get_code(self) -> bool {
-        self.contains(Self::CODE)
-    }
-
-    pub fn get_state(self) -> bool {
-        self.contains(Self::STATE)
-    }
-
-    pub fn set_nonce(&mut self, value: bool) {
-        self.set(Self::NONCE, value);
-    }
-
-    pub fn set_code(&mut self, value: bool) {
-        self.set(Self::CODE, value);
-    }
-
-    pub fn set_state(&mut self, value: bool) {
-        self.set(Self::STATE, value);
-    }
-}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AccountTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
     pub state_trie: PartialTrie,
-    pub access_flags: AccountTrieAccessFlags,
+    pub access_flags: WriteAccessFlags,
     #[serde(skip)]
     acc_hash: AtomicCell<Option<H256>>,
 }
@@ -89,7 +53,7 @@ impl AccountTrie {
         nonce: Nonce,
         code_hash: H256,
         state_trie: PartialTrie,
-        access_flags: AccountTrieAccessFlags,
+        access_flags: WriteAccessFlags,
     ) -> Self {
         Self {
             nonce,
@@ -185,7 +149,7 @@ impl AccountTrie {
             nonce,
             code_hash,
             state_trie,
-            AccountTrieAccessFlags::empty(),
+            WriteAccessFlags::empty(),
         ))
     }
 
@@ -204,11 +168,7 @@ impl AccountTrie {
 
         if writes.reset_values {
             self.state_trie = PartialTrie::new();
-            self.access_flags.set_state(true);
-        }
-
-        if !writes.values.is_empty() {
-            self.access_flags.set_state(true);
+            self.access_flags.set_reset_values(true);
         }
 
         let mut ctx = WritePartialTrieContext::new(self.state_trie.clone());
@@ -221,7 +181,7 @@ impl AccountTrie {
     }
 
     pub fn can_be_pruned(&self) -> bool {
-        self.access_flags.is_empty()
+        self.access_flags.is_empty() && self.state_trie.can_be_pruned()
     }
 
     pub fn prune_nonce(&mut self) {
@@ -234,22 +194,16 @@ impl AccountTrie {
 
     pub fn prune_state_key(&mut self, key: StateKey) -> Result<()> {
         self.state_trie = prune_unused_key(&self.state_trie, &key)?;
-
-        if self.state_trie.can_be_pruned() {
-            self.access_flags.set_state(false);
-        }
-
         Ok(())
     }
 
     pub fn prune_state_keys(&mut self, keys: impl Iterator<Item = StateKey>) -> Result<()> {
         self.state_trie = prune_unused_keys(&self.state_trie, keys)?;
-
-        if self.state_trie.can_be_pruned() {
-            self.access_flags.set_state(false);
-        }
-
         Ok(())
+    }
+
+    pub fn prune_reset_values(&mut self) {
+        self.access_flags.set_reset_values(false);
     }
 }
 
@@ -417,5 +371,12 @@ impl TxTrie {
         keys: impl Iterator<Item = StateKey>,
     ) -> Result<()> {
         self.prune_helper(acc_addr, move |acc_trie| acc_trie.prune_state_keys(keys))
+    }
+
+    pub fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()> {
+        self.prune_helper(acc_addr, move |acc_trie| {
+            acc_trie.prune_reset_values();
+            Ok(())
+        })
     }
 }

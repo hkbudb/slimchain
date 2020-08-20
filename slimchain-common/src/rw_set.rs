@@ -33,6 +33,41 @@ impl ReadAccessFlags {
     }
 }
 
+bitflags! {
+    #[derive(Default, Serialize, Deserialize)]
+    pub struct WriteAccessFlags: u8 {
+        const NONCE        = 0b001;
+        const CODE         = 0b010;
+        const RESET_VALUES = 0b100;
+    }
+}
+
+impl WriteAccessFlags {
+    pub fn get_nonce(self) -> bool {
+        self.contains(Self::NONCE)
+    }
+
+    pub fn get_code(self) -> bool {
+        self.contains(Self::CODE)
+    }
+
+    pub fn get_reset_values(self) -> bool {
+        self.contains(Self::RESET_VALUES)
+    }
+
+    pub fn set_nonce(&mut self, value: bool) {
+        self.set(Self::NONCE, value);
+    }
+
+    pub fn set_code(&mut self, value: bool) {
+        self.set(Self::CODE, value);
+    }
+
+    pub fn set_reset_values(&mut self, value: bool) {
+        self.set(Self::RESET_VALUES, value);
+    }
+}
+
 #[derive(
     Debug,
     Default,
