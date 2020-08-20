@@ -1,12 +1,12 @@
-use sgx_rand::Rng as _;
+use sgx_rand::{Rng as _, SgxRng};
 
-pub struct ThreadRng(sgx_rand::ThreadRng);
+pub struct OsRng(SgxRng);
 
-pub fn thread_rng() -> ThreadRng {
-    ThreadRng(sgx_rand::thread_rng())
+pub fn os_rng() -> OsRng {
+    OsRng(SgxRng::new().expect("Failed to call initialize SgxRng"))
 }
 
-impl rand_core::RngCore for ThreadRng {
+impl rand_core::RngCore for OsRng {
     fn next_u32(&mut self) -> u32 {
         self.0.next_u32()
     }
@@ -25,4 +25,4 @@ impl rand_core::RngCore for ThreadRng {
     }
 }
 
-impl rand_core::CryptoRng for ThreadRng {}
+impl rand_core::CryptoRng for OsRng {}

@@ -14,7 +14,7 @@ pub(crate) mod rand;
 
 lazy_static! {
     pub(crate) static ref KEY_PAIR: Keypair = {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::os_rng();
         Keypair::generate(&mut rng)
     };
 }
