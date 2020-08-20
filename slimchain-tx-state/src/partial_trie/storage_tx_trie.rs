@@ -12,23 +12,54 @@ use slimchain_common::{
     basic::{AccountData, Address, ShardId, StateKey, H256},
     error::{bail, ensure, Result},
     rw_set::TxWriteData,
+    utils::derive_more::{Deref, DerefMut},
 };
 use slimchain_merkle_trie::prelude::*;
 
-#[derive(
-    Debug,
-    Default,
-    Clone,
-    Eq,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    derive_more::Deref,
-    derive_more::DerefMut,
-    derive_more::From,
-    derive_more::Into,
-)]
-pub struct OutShardData(pub im::HashMap<Address, PartialTrie>);
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct StorageAccountTrie {
+    state_trie: PartialTrie,
+    reset_values_flag: bool,
+}
+
+impl StorageAccountTrie {
+    pub fn new(state_trie: PartialTrie, reset_values_flag: bool) -> Self {
+        Self {
+            state_trie,
+            reset_values_flag,
+        }
+    }
+
+    pub fn create_from_state_trie(state_trie: PartialTrie) -> Self {
+        Self {
+            state_trie,
+            reset_values_flag: false,
+        }
+    }
+
+    pub fn get_state_trie(&self) -> &PartialTrie {
+        &self.state_trie
+    }
+
+    pub fn set_state_trie(&mut self, state_trie: PartialTrie) {
+        self.state_trie = state_trie;
+    }
+
+    pub fn get_reset_values(&self) -> bool {
+        self.reset_values_flag
+    }
+
+    pub fn set_reset_values(&mut self, flag: bool) {
+        self.reset_values_flag = flag;
+    }
+
+    pub fn can_be_pruned(&self) -> bool {
+        (!self.reset_values_flag) && self.state_trie.can_be_pruned()
+    }
+}
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut)]
+pub struct OutShardData(pub im::HashMap<Address, StorageAccountTrie>);
 
 #[derive(Clone)]
 pub struct InShardData {
@@ -95,9 +126,12 @@ impl StorageTxTrie {
 
             match self.out_shard.entry(acc_addr) {
                 im::hashmap::Entry::Occupied(mut o) => {
-                    let acc_state_trie =
-                        apply_diff(o.get(), &acc_trie_diff.state_trie_diff, check_hash)?;
-                    *o.get_mut() = acc_state_trie;
+                    let acc_state_trie = apply_diff(
+                        o.get().get_state_trie(),
+                        &acc_trie_diff.state_trie_diff,
+                        check_hash,
+                    )?;
+                    o.get_mut().set_state_trie(acc_state_trie);
                 }
                 im::hashmap::Entry::Vacant(v) => {
                     let acc_state_trie = acc_trie_diff.state_trie_diff.to_standalone_trie()?;
@@ -116,7 +150,7 @@ impl StorageTxTrie {
                             acc_addr
                         );
                     }
-                    v.insert(acc_state_trie);
+                    v.insert(StorageAccountTrie::create_from_state_trie(acc_state_trie));
                 }
             }
         }
@@ -166,26 +200,28 @@ impl StorageTxTrie {
                     // do not create out-shard trie if we do not update its values
                     old_acc_data.acc_state_root
                 } else {
-                    let acc_state_trie = self.out_shard.entry(acc_addr).or_default();
+                    let acc_state = self.out_shard.entry(acc_addr).or_default();
 
                     debug_assert_eq!(
                         old_acc_data.acc_state_root,
-                        acc_state_trie.root_hash(),
+                        acc_state.get_state_trie().root_hash(),
                         "TxTrieWithSharding#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
                         acc_addr
                     );
 
                     if acc_data.reset_values {
-                        *acc_state_trie = PartialTrie::new();
+                        acc_state.set_state_trie(PartialTrie::new());
+                        acc_state.set_reset_values(true);
                     }
 
-                    let mut state_write_ctx = WritePartialTrieContext::new(acc_state_trie.clone());
+                    let mut state_write_ctx =
+                        WritePartialTrieContext::new(acc_state.get_state_trie().clone());
                     for (k, v) in acc_data.values.iter() {
                         state_write_ctx.insert_with_value(k, v)?;
                     }
-                    *acc_state_trie = state_write_ctx.finish();
+                    acc_state.set_state_trie(state_write_ctx.finish());
 
-                    acc_state_trie.root_hash()
+                    acc_state.get_state_trie().root_hash()
                 };
 
                 let acc_data = AccountData {
@@ -208,7 +244,7 @@ impl StorageTxTrie {
     fn prune_helper(
         &mut self,
         acc_addr: Address,
-        callback: impl FnOnce(&mut PartialTrie) -> Result<()>,
+        callback: impl FnOnce(&mut StorageAccountTrie) -> Result<()>,
     ) -> Result<()> {
         if self.shard_id.contains(acc_addr) {
             return Ok(());
@@ -231,8 +267,9 @@ impl StorageTxTrie {
     }
 
     pub fn prune_acc_state_key(&mut self, acc_addr: Address, key: StateKey) -> Result<()> {
-        self.prune_helper(acc_addr, |trie| {
-            *trie = prune_unused_key(trie, &key)?;
+        self.prune_helper(acc_addr, |acc_state| {
+            let state_trie = prune_unused_key(acc_state.get_state_trie(), &key)?;
+            acc_state.set_state_trie(state_trie);
             Ok(())
         })
     }
@@ -242,8 +279,16 @@ impl StorageTxTrie {
         acc_addr: Address,
         keys: impl Iterator<Item = StateKey>,
     ) -> Result<()> {
-        self.prune_helper(acc_addr, move |trie| {
-            *trie = prune_unused_keys(trie, keys)?;
+        self.prune_helper(acc_addr, move |acc_state| {
+            let state_trie = prune_unused_keys(acc_state.get_state_trie(), keys)?;
+            acc_state.set_state_trie(state_trie);
+            Ok(())
+        })
+    }
+
+    pub fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()> {
+        self.prune_helper(acc_addr, move |acc_state| {
+            acc_state.set_reset_values(false);
             Ok(())
         })
     }

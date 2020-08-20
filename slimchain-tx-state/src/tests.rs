@@ -508,6 +508,10 @@ fn test_prune() {
             .copied(),
         )
         .unwrap();
+    assert_eq!(trie2.out_shard.len(), 1);
+    trie2
+        .prune_acc_reset_values(create_address!("0000000000000000000000000000000000000001"))
+        .unwrap();
     assert_eq!(trie2.out_shard.len(), 0);
 
     let mut trie3_storage = MemTxState::new();
@@ -541,6 +545,10 @@ fn test_prune() {
             .iter()
             .copied(),
         )
+        .unwrap();
+    assert_eq!(trie3.out_shard.len(), 0);
+    trie3
+        .prune_acc_reset_values(create_address!("0000000000000000000000000000000000000001"))
         .unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
 }
