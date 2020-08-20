@@ -1,5 +1,6 @@
 use super::{AccountTrieDiff, AccountWriteSetPartialTrie, TxTrieDiff, TxWriteSetPartialTrie};
 use alloc::format;
+use bitflags::bitflags;
 use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
@@ -7,16 +8,51 @@ use slimchain_common::{
     collections::HashMap,
     digest::Digestible,
     error::{bail, ensure, Result},
-    rw_set::{AccessFlags, AccountWriteData, TxWriteData},
+    rw_set::{AccountWriteData, TxWriteData},
 };
 use slimchain_merkle_trie::prelude::*;
+
+bitflags! {
+    #[derive(Default, Serialize, Deserialize)]
+    pub struct AccountTrieAccessFlags: u8 {
+        const NONCE = 0b001;
+        const CODE  = 0b010;
+        const STATE = 0b100;
+    }
+}
+
+impl AccountTrieAccessFlags {
+    pub fn get_nonce(self) -> bool {
+        self.contains(Self::NONCE)
+    }
+
+    pub fn get_code(self) -> bool {
+        self.contains(Self::CODE)
+    }
+
+    pub fn get_state(self) -> bool {
+        self.contains(Self::STATE)
+    }
+
+    pub fn set_nonce(&mut self, value: bool) {
+        self.set(Self::NONCE, value);
+    }
+
+    pub fn set_code(&mut self, value: bool) {
+        self.set(Self::CODE, value);
+    }
+
+    pub fn set_state(&mut self, value: bool) {
+        self.set(Self::STATE, value);
+    }
+}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AccountTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
     pub state_trie: PartialTrie,
-    pub access_flags: AccessFlags,
+    pub access_flags: AccountTrieAccessFlags,
     #[serde(skip)]
     acc_hash: AtomicCell<Option<H256>>,
 }
@@ -53,7 +89,7 @@ impl AccountTrie {
         nonce: Nonce,
         code_hash: H256,
         state_trie: PartialTrie,
-        access_flags: AccessFlags,
+        access_flags: AccountTrieAccessFlags,
     ) -> Self {
         Self {
             nonce,
@@ -149,7 +185,7 @@ impl AccountTrie {
             nonce,
             code_hash,
             state_trie,
-            AccessFlags::empty(),
+            AccountTrieAccessFlags::empty(),
         ))
     }
 
