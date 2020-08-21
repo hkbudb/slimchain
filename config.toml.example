@@ -1,5 +1,13 @@
 # vim: set ft=toml:
 
+# The role of the node.
+[role]
+# Possible values: client, miner, storage.
+role = "client"
+# Shard Id for storage node. Only valid when role = "storage".
+# shard_id = 0
+# shard_total = 1
+
 # Configure used in TEE. Used by storage nodes with TEE only.
 # Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
 [tee]
