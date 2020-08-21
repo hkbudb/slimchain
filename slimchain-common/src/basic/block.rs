@@ -28,6 +28,12 @@ impl Digestible for BlockHeight {
     }
 }
 
+impl BlockHeight {
+    pub fn next_height(&self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
 #[derive(
     Debug,
     Default,
