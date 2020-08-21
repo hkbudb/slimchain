@@ -10,3 +10,4 @@ im = { version = "15.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 slimchain-common = { path = "../slimchain-common" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
+slimchain-utils = { path = "../slimchain-utils" }
