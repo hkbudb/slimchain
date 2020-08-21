@@ -1,6 +1,64 @@
 use super::BlockHeightList;
 use serde::{Deserialize, Serialize};
-use slimchain_common::basic::{BlockHeight, StateKey};
+use slimchain_common::{
+    basic::{BlockHeight, StateKey},
+    rw_set::{AccountReadSet, AccountWriteData},
+};
+
+pub trait RevAccessItem {
+    fn nonce_conflicts_with(&self, block_height: BlockHeight) -> bool;
+    fn code_conflicts_with(&self, block_height: BlockHeight) -> bool;
+    fn reset_values_conflict_with(&self, block_height: BlockHeight) -> bool;
+    fn value_conflicts_with(&self, block_height: BlockHeight, key: StateKey) -> bool;
+
+    fn has_conflict_in_read_set(
+        &self,
+        block_height: BlockHeight,
+        acc_read: &AccountReadSet,
+    ) -> bool {
+        if acc_read.get_nonce() && self.nonce_conflicts_with(block_height) {
+            return true;
+        }
+
+        if acc_read.get_code() && self.code_conflicts_with(block_height) {
+            return true;
+        }
+
+        for &key in acc_read.value_iter() {
+            if self.value_conflicts_with(block_height, key) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn has_conflict_in_write_set(
+        &self,
+        block_height: BlockHeight,
+        acc_write: &AccountWriteData,
+    ) -> bool {
+        if acc_write.has_nonce() && self.nonce_conflicts_with(block_height) {
+            return true;
+        }
+
+        if acc_write.has_code() && self.code_conflicts_with(block_height) {
+            return true;
+        }
+
+        if acc_write.has_reset_values() && self.reset_values_conflict_with(block_height) {
+            return true;
+        }
+
+        for &key in acc_write.value_keys() {
+            if self.value_conflicts_with(block_height, key) {
+                return true;
+            }
+        }
+
+        false
+    }
+}
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ReadRevAccessItem {
@@ -47,6 +105,26 @@ impl ReadRevAccessItem {
             }
             im::hashmap::Entry::Vacant(_) => unreachable!(),
         }
+    }
+}
+
+impl RevAccessItem for ReadRevAccessItem {
+    fn nonce_conflicts_with(&self, block_height: BlockHeight) -> bool {
+        self.nonce.conflicts_with(block_height)
+    }
+
+    fn code_conflicts_with(&self, block_height: BlockHeight) -> bool {
+        self.code.conflicts_with(block_height)
+    }
+
+    fn reset_values_conflict_with(&self, block_height: BlockHeight) -> bool {
+        self.values.values().any(|l| l.conflicts_with(block_height))
+    }
+
+    fn value_conflicts_with(&self, block_height: BlockHeight, key: StateKey) -> bool {
+        self.values
+            .get(&key)
+            .map_or(false, |l| l.conflicts_with(block_height))
     }
 }
 
@@ -118,5 +196,33 @@ impl WriteRevAccessItem {
         }
 
         should_prune
+    }
+}
+
+impl RevAccessItem for WriteRevAccessItem {
+    fn nonce_conflicts_with(&self, block_height: BlockHeight) -> bool {
+        self.nonce.conflicts_with(block_height)
+    }
+
+    fn code_conflicts_with(&self, block_height: BlockHeight) -> bool {
+        self.code.conflicts_with(block_height)
+    }
+
+    fn reset_values_conflict_with(&self, block_height: BlockHeight) -> bool {
+        if self.reset_values.conflicts_with(block_height) {
+            return true;
+        }
+
+        self.values.values().any(|l| l.conflicts_with(block_height))
+    }
+
+    fn value_conflicts_with(&self, block_height: BlockHeight, key: StateKey) -> bool {
+        if self.reset_values.conflicts_with(block_height) {
+            return true;
+        }
+
+        self.values
+            .get(&key)
+            .map_or(false, |l| l.conflicts_with(block_height))
     }
 }

@@ -145,6 +145,10 @@ impl AccountReadSet {
         &self.values
     }
 
+    pub fn value_iter(&self) -> impl Iterator<Item = &'_ StateKey> {
+        self.values.iter()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.access_flags.is_empty() && self.values.is_empty()
     }
@@ -393,6 +397,22 @@ impl AccountWriteData {
         } else {
             self.values.extend(new.values.into_iter());
         }
+    }
+
+    pub fn has_nonce(&self) -> bool {
+        self.nonce.is_some()
+    }
+
+    pub fn has_code(&self) -> bool {
+        self.code.is_some()
+    }
+
+    pub fn has_reset_values(&self) -> bool {
+        self.reset_values
+    }
+
+    pub fn value_keys(&self) -> impl Iterator<Item = &'_ StateKey> {
+        self.values.keys()
     }
 }
 
