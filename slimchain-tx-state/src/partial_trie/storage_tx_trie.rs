@@ -139,14 +139,14 @@ impl StorageTxTrie {
                         ensure!(
                             self.in_shard.get_acc_state_root(acc_addr)?
                                 == acc_state_trie.root_hash(),
-                            "TxTrieWithSharding#apply_diff: Hash mismatched (address: {}).",
+                            "StorageTxTrie#apply_diff: Hash mismatched (address: {}).",
                             acc_addr
                         );
                     } else {
                         debug_assert_eq!(
                             self.in_shard.get_acc_state_root(acc_addr)?,
                             acc_state_trie.root_hash(),
-                            "TxTrieWithSharding#apply_diff: Hash mismatched (address: {}).",
+                            "StorageTxTrie#apply_diff: Hash mismatched (address: {}).",
                             acc_addr
                         );
                     }
@@ -205,7 +205,7 @@ impl StorageTxTrie {
                     debug_assert_eq!(
                         old_acc_data.acc_state_root,
                         acc_state.get_state_trie().root_hash(),
-                        "TxTrieWithSharding#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
+                        "StorageTxTrie#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
                         acc_addr
                     );
 
@@ -253,7 +253,7 @@ impl StorageTxTrie {
         let mut entry = match self.out_shard.entry(acc_addr) {
             im::hashmap::Entry::Occupied(o) => o,
             im::hashmap::Entry::Vacant(_) => {
-                bail!("TxTrieWithSharding#prune_helper: Account is already pruned");
+                bail!("StorageTxTrie#prune_helper: Account is already pruned");
             }
         };
 
