@@ -171,22 +171,16 @@ impl AccessMap {
 
             let entry = write_rev_entry.get_mut();
 
-            if write.get_nonce() {
-                if entry.remove_nonce(old_block_height) {
-                    pruning.add_nonce(acc_addr);
-                }
+            if write.get_nonce() && entry.remove_nonce(old_block_height) {
+                pruning.add_nonce(acc_addr);
             }
 
-            if write.get_code() {
-                if entry.remove_code(old_block_height) {
-                    pruning.add_code(acc_addr);
-                }
+            if write.get_code() && entry.remove_code(old_block_height) {
+                pruning.add_code(acc_addr);
             }
 
-            if write.get_reset_values() {
-                if entry.remove_reset_values(old_block_height) {
-                    pruning.add_reset_values(acc_addr);
-                }
+            if write.get_reset_values() && entry.remove_reset_values(old_block_height) {
+                pruning.add_reset_values(acc_addr);
             }
 
             for &key in write.value_iter() {
