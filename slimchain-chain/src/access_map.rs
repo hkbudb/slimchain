@@ -31,20 +31,18 @@ impl AccessMap {
         Self {
             max_blocks,
             block_height: 0.into(),
-            read_map: im::Vector::new(),
-            write_map: im::Vector::new(),
+            read_map: im::vector![ReadAccessItem::default()],
+            write_map: im::vector![WriteAccessItem::default()],
             read_rev_map: im::HashMap::new(),
             write_rev_map: im::HashMap::new(),
         }
     }
 
     pub fn latest_block_height(&self) -> BlockHeight {
-        assert!(!self.read_map.is_empty());
         self.block_height
     }
 
     pub fn oldest_block_height(&self) -> BlockHeight {
-        assert!(!self.read_map.is_empty());
         let dist = BlockDistance::from(self.read_map.len() as i64 - 1);
         self.block_height - dist
     }

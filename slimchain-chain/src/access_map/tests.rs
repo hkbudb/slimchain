@@ -32,8 +32,8 @@ fn test_access_map1() {
     map.alloc_new_block();
     map.add_read(&read_set);
     map.add_write(&write_set);
-    assert_eq!(map.read_map.len(), 1);
-    assert_eq!(map.write_map.len(), 1);
+    assert_eq!(map.read_map.len(), 2);
+    assert_eq!(map.write_map.len(), 2);
     assert_eq!(map.read_rev_map.len(), 2);
     assert_eq!(map.write_rev_map.len(), 2);
     let prune = map.remove_oldest_block();
