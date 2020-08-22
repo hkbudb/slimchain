@@ -1,7 +1,7 @@
 #[cfg(feature = "partial_trie")]
 pub use crate::partial_trie::{
     apply_diff, diff_missing_branches, merge_diff, prune_unused_key, prune_unused_keys,
-    PartialTrie, PartialTrieDiff,
+    update_missing_branches, PartialTrie, PartialTrieDiff,
 };
 #[cfg(feature = "read")]
 pub use crate::read::{read_trie, ReadTrieContext};
