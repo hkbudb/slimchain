@@ -327,6 +327,15 @@ pub fn apply_diff(
     Ok(PartialTrie::from_subtree(root))
 }
 
+pub fn update_missing_branches(
+    main: &PartialTrie,
+    fork: &PartialTrie,
+    fail_on_leaf_conflict: bool,
+) -> Result<PartialTrie> {
+    let diff = diff_missing_branches(main, fork, fail_on_leaf_conflict)?;
+    apply_diff(main, &diff, false)
+}
+
 fn merge_diff_subtree(lhs: &Arc<SubTree>, rhs: &Arc<SubTree>) -> Arc<SubTree> {
     match (lhs.as_ref(), rhs.as_ref()) {
         (_, SubTree::Hash(h)) => {
