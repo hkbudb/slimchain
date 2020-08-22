@@ -1,5 +1,5 @@
-pub mod write_set_partial_trie;
-pub use write_set_partial_trie::*;
+pub mod write_set_trie;
+pub use write_set_trie::*;
 
 pub mod tx_trie;
 pub use tx_trie::*;

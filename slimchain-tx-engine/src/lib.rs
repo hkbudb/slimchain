@@ -14,7 +14,7 @@ use slimchain_common::{
     tx::TxTrait,
     tx_req::SignedTxRequest,
 };
-use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetPartialTrie};
+use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetTrie};
 use std::{
     iter,
     sync::{
@@ -257,17 +257,13 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                     continue;
                 }
             };
-            let write_trie =
-                match TxWriteSetPartialTrie::new(state_view, root_address, tx.tx_writes()) {
-                    Ok(trie) => trie,
-                    Err(e) => {
-                        error!(
-                            "TxEngine: Failed to create TxWriteSetPartialTrie. Error: {}",
-                            e
-                        );
-                        continue;
-                    }
-                };
+            let write_trie = match TxWriteSetTrie::new(state_view, root_address, tx.tx_writes()) {
+                Ok(trie) => trie,
+                Err(e) => {
+                    error!("TxEngine: Failed to create TxWriteSetTrie. Error: {}", e);
+                    continue;
+                }
+            };
             self.result_queue.push(TxTaskOutput {
                 task_id,
                 tx_proposal: TxProposal::new(tx, write_trie),

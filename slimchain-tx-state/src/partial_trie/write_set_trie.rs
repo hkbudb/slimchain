@@ -14,13 +14,13 @@ use slimchain_common::{
 use slimchain_merkle_trie::prelude::*;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AccountWriteSetPartialTrie {
+pub struct AccountWriteSetTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
     pub state_trie: PartialTrie,
 }
 
-impl AccountWriteSetPartialTrie {
+impl AccountWriteSetTrie {
     pub fn acc_hash(&self) -> H256 {
         account_data_to_digest(
             self.nonce.to_digest(),
@@ -31,18 +31,18 @@ impl AccountWriteSetPartialTrie {
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct TxWriteSetPartialTrie {
+pub struct TxWriteSetTrie {
     pub main_trie: PartialTrie,
-    pub acc_tries: HashMap<Address, AccountWriteSetPartialTrie>,
+    pub acc_tries: HashMap<Address, AccountWriteSetTrie>,
 }
 
-impl TxWriteSetPartialTrie {
+impl TxWriteSetTrie {
     pub fn new(
         state_view: Arc<dyn TxStateView + Sync + Send>,
         root_address: H256,
         writes: &TxWriteData,
     ) -> Result<Self> {
-        let mut acc_tries: HashMap<Address, AccountWriteSetPartialTrie> = HashMap::new();
+        let mut acc_tries: HashMap<Address, AccountWriteSetTrie> = HashMap::new();
         let mut main_read_ctx =
             ReadTrieContext::new(AccountTrieView::new(Arc::clone(&state_view)), root_address);
 
@@ -64,7 +64,7 @@ impl TxWriteSetPartialTrie {
                 value_read_ctx.into_proof().into()
             };
 
-            let acc_proof = AccountWriteSetPartialTrie {
+            let acc_proof = AccountWriteSetTrie {
                 nonce: acc_data.map(|acc| acc.nonce).unwrap_or_default(),
                 code_hash: acc_data.map(|acc| acc.code.to_digest()).unwrap_or_default(),
                 state_trie: state_partial_trie,
@@ -86,7 +86,7 @@ impl TxWriteSetPartialTrie {
 
             ensure!(
                 main_trie_acc_hash == Some(acc_hash),
-                "TxWriteSetPartialTrie: Invalid account hash (address: {}, expect: {:?}, actual: {:?}).",
+                "TxWriteSetTrie: Invalid account hash (address: {}, expect: {:?}, actual: {:?}).",
                 acc_address,
                 main_trie_acc_hash,
                 Some(acc_hash)
@@ -96,7 +96,7 @@ impl TxWriteSetPartialTrie {
         let main_trie_root = self.main_trie.root_hash();
         ensure!(
             main_trie_root == state_root,
-            "TxWriteSetPartialTrie: Invalid state root (expect: {}, actual: {}).",
+            "TxWriteSetTrie: Invalid state root (expect: {}, actual: {}).",
             state_root,
             main_trie_root
         );

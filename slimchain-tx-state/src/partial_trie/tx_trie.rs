@@ -1,4 +1,4 @@
-use super::{AccountTrieDiff, AccountWriteSetPartialTrie, TxTrieDiff, TxWriteSetPartialTrie};
+use super::{AccountTrieDiff, AccountWriteSetTrie, TxTrieDiff, TxWriteSetTrie};
 use alloc::format;
 use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
@@ -79,10 +79,7 @@ impl AccountTrie {
         acc_hash
     }
 
-    pub fn diff_missing_branches(
-        &self,
-        fork: &AccountWriteSetPartialTrie,
-    ) -> Result<AccountTrieDiff> {
+    pub fn diff_missing_branches(&self, fork: &AccountWriteSetTrie) -> Result<AccountTrieDiff> {
         let state_trie_diff = diff_missing_branches(&self.state_trie, &fork.state_trie, true)?;
 
         Ok(AccountTrieDiff {
@@ -92,7 +89,7 @@ impl AccountTrie {
         })
     }
 
-    pub fn diff_from_empty(fork: &AccountWriteSetPartialTrie) -> AccountTrieDiff {
+    pub fn diff_from_empty(fork: &AccountWriteSetTrie) -> AccountTrieDiff {
         let nonce = if fork.nonce.is_zero() {
             None
         } else {
@@ -229,7 +226,7 @@ impl TxTrie {
         self.main_trie.root_hash()
     }
 
-    pub fn diff_missing_branches(&self, fork: &TxWriteSetPartialTrie) -> Result<TxTrieDiff> {
+    pub fn diff_missing_branches(&self, fork: &TxWriteSetTrie) -> Result<TxTrieDiff> {
         let main_trie_diff = diff_missing_branches(&self.main_trie, &fork.main_trie, false)?;
         let mut acc_trie_diffs = HashMap::new();
 
