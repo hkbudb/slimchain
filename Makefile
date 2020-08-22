@@ -48,3 +48,7 @@ fmt:
 	cargo fmt
 	$(MAKE) -C slimchain-tx-engine-tee-enclave fmt
 .PHONY: fmt
+
+loc:
+	tokei -e rust-sgx-sdk
+.PHONY: loc
