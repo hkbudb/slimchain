@@ -7,7 +7,7 @@ use slimchain_common::{
     tx_req::{caller_address_from_pk, TxRequest},
 };
 use slimchain_tx_engine::{TxEngine, TxTask, TxTaskOutput};
-use slimchain_tx_state::MemTxState;
+use slimchain_tx_state::{MemTxState, TxProposal};
 use slimchain_utils::{
     config::Config,
     contract::{contract_address, Contract, Token},
@@ -50,8 +50,11 @@ fn test() {
     );
     task_engine.push_task(task1);
     let TxTaskOutput {
-        tx_output: tx1,
-        write_trie: write_trie1,
+        tx_proposal:
+            TxProposal {
+                tx: tx1,
+                write_trie: write_trie1,
+            },
         ..
     } = task_engine.pop_or_wait_result();
     assert!(write_trie1.verify(states.state_root()).is_ok());
@@ -87,8 +90,11 @@ fn test() {
     );
     task_engine.push_task(task2);
     let TxTaskOutput {
-        tx_output: tx2,
-        write_trie: write_trie2,
+        tx_proposal:
+            TxProposal {
+                tx: tx2,
+                write_trie: write_trie2,
+            },
         ..
     } = task_engine.pop_or_wait_result();
     assert!(write_trie2.verify(states.state_root()).is_ok());

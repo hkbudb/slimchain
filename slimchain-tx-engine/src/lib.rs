@@ -14,7 +14,7 @@ use slimchain_common::{
     tx::TxTrait,
     tx_req::SignedTxRequest,
 };
-use slimchain_tx_state::{TxStateView, TxWriteSetPartialTrie};
+use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetPartialTrie};
 use std::{
     iter,
     sync::{
@@ -64,25 +64,24 @@ impl TxTask {
     }
 }
 
-pub struct TxTaskOutput<TxOutput: TxTrait> {
+pub struct TxTaskOutput<Tx: TxTrait> {
     pub task_id: TxTaskId,
-    pub tx_output: TxOutput,
-    pub write_trie: TxWriteSetPartialTrie,
+    pub tx_proposal: TxProposal<Tx>,
     pub exec_time: Duration,
 }
 
-pub struct TxEngine<TxOutput: TxTrait + 'static> {
+pub struct TxEngine<Tx: TxTrait + 'static> {
     task_queue: Arc<Injector<TxTask>>,
-    result_queue: Arc<SegQueue<TxTaskOutput<TxOutput>>>,
+    result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
     unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
     worker_threads: Vec<JoinHandle<()>>,
 }
 
-impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
+impl<Tx: TxTrait + 'static> TxEngine<Tx> {
     pub fn new(
         threads: usize,
-        worker_factory: impl Fn() -> Box<dyn TxEngineWorker<Output = TxOutput>>,
+        worker_factory: impl Fn() -> Box<dyn TxEngineWorker<Output = Tx>>,
     ) -> Self {
         info!("Spawning TxEngine workers in {} threads.", threads);
 
@@ -135,11 +134,11 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
         }
     }
 
-    pub fn pop_result(&self) -> Option<TxTaskOutput<TxOutput>> {
+    pub fn pop_result(&self) -> Option<TxTaskOutput<Tx>> {
         self.result_queue.pop().ok()
     }
 
-    pub fn pop_or_wait_result(&self) -> TxTaskOutput<TxOutput> {
+    pub fn pop_or_wait_result(&self) -> TxTaskOutput<Tx> {
         let backoff = Backoff::new();
         loop {
             if let Some(output) = self.pop_result() {
@@ -151,7 +150,7 @@ impl<TxOutput: TxTrait + 'static> TxEngine<TxOutput> {
     }
 }
 
-impl<TxOutput: TxTrait + 'static> Drop for TxEngine<TxOutput> {
+impl<Tx: TxTrait + 'static> Drop for TxEngine<Tx> {
     fn drop(&mut self) {
         self.shutdown_flag.store(true, Ordering::Release);
 
@@ -169,22 +168,22 @@ impl<TxOutput: TxTrait + 'static> Drop for TxEngine<TxOutput> {
     }
 }
 
-struct TxEngineWorkerInstance<TxOutput: TxTrait> {
+struct TxEngineWorkerInstance<Tx: TxTrait> {
     global_task_queue: Arc<Injector<TxTask>>,
     local_task_queue: Worker<TxTask>,
     stealers: Vec<Stealer<TxTask>>,
-    result_queue: Arc<SegQueue<TxTaskOutput<TxOutput>>>,
+    result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
     unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
-    worker: Box<dyn TxEngineWorker<Output = TxOutput>>,
+    worker: Box<dyn TxEngineWorker<Output = Tx>>,
 }
 
-impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
+impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
     fn new(
-        worker: Box<dyn TxEngineWorker<Output = TxOutput>>,
+        worker: Box<dyn TxEngineWorker<Output = Tx>>,
         global_task_queue: Arc<Injector<TxTask>>,
         stealer_num: usize,
-        result_queue: Arc<SegQueue<TxTaskOutput<TxOutput>>>,
+        result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
         unparker_queue: Arc<ArrayQueue<Unparker>>,
         shutdown_flag: Arc<AtomicBool>,
     ) -> Self {
@@ -251,7 +250,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
             let task_id = task.get_id();
             let state_view = task.state_view.clone();
             let root_address = task.state_root;
-            let tx_output = match self.worker.execute(task) {
+            let tx = match self.worker.execute(task) {
                 Ok(output) => output,
                 Err(e) => {
                     error!("TxEngine: Failed to execute task. Error: {}", e);
@@ -259,7 +258,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
                 }
             };
             let write_trie =
-                match TxWriteSetPartialTrie::new(state_view, root_address, tx_output.tx_writes()) {
+                match TxWriteSetPartialTrie::new(state_view, root_address, tx.tx_writes()) {
                     Ok(trie) => trie,
                     Err(e) => {
                         error!(
@@ -271,8 +270,7 @@ impl<TxOutput: TxTrait> TxEngineWorkerInstance<TxOutput> {
                 };
             self.result_queue.push(TxTaskOutput {
                 task_id,
-                tx_output,
-                write_trie,
+                tx_proposal: TxProposal::new(tx, write_trie),
                 exec_time: Instant::now() - begin,
             });
         }

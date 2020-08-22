@@ -9,3 +9,6 @@ pub use storage_tx_trie::*;
 
 pub mod diff;
 pub use diff::*;
+
+pub mod tx_proposal;
+pub use tx_proposal::*;
