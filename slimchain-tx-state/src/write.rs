@@ -18,6 +18,19 @@ pub struct TxStateUpdate {
     pub state_nodes: HashMap<Address, HashMap<H256, TrieNode<StateValue>>>,
 }
 
+impl TxStateUpdate {
+    pub fn merge(&mut self, other: TxStateUpdate) {
+        self.root = other.root;
+        self.acc_nodes.extend(other.acc_nodes.into_iter());
+        for (acc_addr, nodes) in other.state_nodes {
+            self.state_nodes
+                .entry(acc_addr)
+                .or_default()
+                .extend(nodes.into_iter());
+        }
+    }
+}
+
 pub fn update_tx_state(
     view: &impl TxStateView,
     old_root: H256,
