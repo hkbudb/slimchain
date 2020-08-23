@@ -275,6 +275,7 @@ fn test_tx_trie() {
 
     let mut client1 = TxTrie::default();
     let mut client2 = TxTrie::default();
+    let mut client3 = TxTrie::default();
 
     let write_set1_trie = TxWriteSetTrie::new(
         full_node_storage.state_view(),
@@ -309,6 +310,11 @@ fn test_tx_trie() {
     client2.main_trie = PartialTrie::from_root_hash(client2.root_hash());
     client2.acc_tries.clear();
 
+    client3.update_missing_branches(&write_set1_trie).unwrap();
+    client3.apply_writes(&write_set1).unwrap();
+    client3.main_trie = PartialTrie::from_root_hash(client3.root_hash());
+    client3.acc_tries.clear();
+
     assert_eq!(
         full_node_storage.state_root(),
         shard_node1_storage.state_root()
@@ -319,6 +325,7 @@ fn test_tx_trie() {
     );
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
+    assert_eq!(full_node_storage.state_root(), client3.root_hash());
 
     let write_set2_trie = TxWriteSetTrie::new(
         full_node_storage.state_view(),
@@ -334,6 +341,9 @@ fn test_tx_trie() {
 
     client2.apply_diff(&write_set2_diff, true).unwrap();
     client2.apply_writes(&write_set2).unwrap();
+
+    client3.update_missing_branches(&write_set2_trie).unwrap();
+    client3.apply_writes(&write_set2).unwrap();
 
     full_node.apply_diff(&write_set2_diff, true).unwrap();
     let update = full_node.apply_writes(&write_set2).unwrap();
@@ -357,6 +367,7 @@ fn test_tx_trie() {
     );
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
+    assert_eq!(full_node_storage.state_root(), client3.root_hash());
 
     let write_set3_trie = TxWriteSetTrie::new(
         full_node_storage.state_view(),
@@ -386,6 +397,11 @@ fn test_tx_trie() {
     client2.apply_writes(&write_set3).unwrap();
     client2.apply_writes(&write_set4).unwrap();
 
+    client3.update_missing_branches(&write_set3_trie).unwrap();
+    client3.update_missing_branches(&write_set4_trie).unwrap();
+    client3.apply_writes(&write_set3).unwrap();
+    client3.apply_writes(&write_set4).unwrap();
+
     full_node.apply_diff(&write_set34_diff, true).unwrap();
     let update = full_node.apply_writes(&write_set3).unwrap();
     full_node_storage.apply_update(update).unwrap();
@@ -414,6 +430,7 @@ fn test_tx_trie() {
     );
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
+    assert_eq!(full_node_storage.state_root(), client3.root_hash());
 }
 
 #[cfg(feature = "partial_trie")]

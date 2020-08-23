@@ -89,6 +89,19 @@ impl AccountTrie {
         })
     }
 
+    pub fn update_missing_branches(&mut self, fork: &AccountWriteSetTrie) -> Result<()> {
+        debug_assert_eq!(
+            self.nonce, fork.nonce,
+            "Invalid nonce in AccountWriteSetTrie."
+        );
+        debug_assert_eq!(
+            self.code_hash, fork.code_hash,
+            "Invalid code hash in AccountWriteSetTrie."
+        );
+        self.state_trie = update_missing_branches(&self.state_trie, &fork.state_trie, true)?;
+        Ok(())
+    }
+
     pub fn diff_from_empty(fork: &AccountWriteSetTrie) -> AccountTrieDiff {
         let nonce = if fork.nonce.is_zero() {
             None
@@ -109,6 +122,15 @@ impl AccountTrie {
             code_hash,
             state_trie_diff,
         }
+    }
+
+    pub fn create_from_empty(fork: &AccountWriteSetTrie) -> Self {
+        Self::new(
+            fork.nonce,
+            fork.code_hash,
+            fork.state_trie.clone(),
+            WriteAccessFlags::empty(),
+        )
     }
 
     pub fn apply_diff(&mut self, diff: &AccountTrieDiff, check_hash: bool) -> Result<()> {
@@ -266,6 +288,30 @@ impl TxTrie {
             main_trie_diff,
             acc_trie_diffs,
         })
+    }
+
+    pub fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()> {
+        self.main_trie = update_missing_branches(&self.main_trie, &fork.main_trie, false)?;
+
+        for (acc_addr, fork_acc_trie) in fork.acc_tries.iter() {
+            match self.acc_tries.entry(*acc_addr) {
+                im::hashmap::Entry::Occupied(mut o) => {
+                    o.get_mut().update_missing_branches(fork_acc_trie)?;
+                }
+                im::hashmap::Entry::Vacant(v) => {
+                    let acc_trie = AccountTrie::create_from_empty(fork_acc_trie);
+                    debug_assert_eq!(
+                        self.main_trie.value_hash(acc_addr),
+                        Some(acc_trie.acc_hash()),
+                        "TxTrie#update_missing_branches: Hash mismatched (address: {}).",
+                        acc_addr
+                    );
+                    v.insert(acc_trie);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()> {
