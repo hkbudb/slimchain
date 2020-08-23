@@ -273,6 +273,26 @@ fn test_tx_trie() {
         OutShardData::default(),
     );
 
+    let mut shard_node3_storage = MemTxState::new();
+    let mut shard_node3 = StorageTxTrie::new(
+        ShardId::new(0, 2),
+        InShardData::new(
+            shard_node3_storage.state_view(),
+            shard_node3_storage.state_root(),
+        ),
+        OutShardData::default(),
+    );
+
+    let mut shard_node4_storage = MemTxState::new();
+    let mut shard_node4 = StorageTxTrie::new(
+        ShardId::new(1, 2),
+        InShardData::new(
+            shard_node4_storage.state_view(),
+            shard_node4_storage.state_root(),
+        ),
+        OutShardData::default(),
+    );
+
     let mut client1 = TxTrie::default();
     let mut client2 = TxTrie::default();
     let mut client3 = TxTrie::default();
@@ -300,6 +320,20 @@ fn test_tx_trie() {
     shard_node2_storage.apply_update(update).unwrap();
     shard_node2.out_shard.0.clear();
 
+    shard_node3
+        .update_missing_branches(&write_set1_trie)
+        .unwrap();
+    let update = shard_node3.apply_writes(&write_set1).unwrap();
+    shard_node3_storage.apply_update(update).unwrap();
+    shard_node3.out_shard.0.clear();
+
+    shard_node4
+        .update_missing_branches(&write_set1_trie)
+        .unwrap();
+    let update = shard_node4.apply_writes(&write_set1).unwrap();
+    shard_node4_storage.apply_update(update).unwrap();
+    shard_node4.out_shard.0.clear();
+
     client1.apply_diff(&write_set1_diff, true).unwrap();
     client1.apply_writes(&write_set1).unwrap();
     client1.main_trie = PartialTrie::from_root_hash(client1.root_hash());
@@ -322,6 +356,14 @@ fn test_tx_trie() {
     assert_eq!(
         full_node_storage.state_root(),
         shard_node2_storage.state_root()
+    );
+    assert_eq!(
+        full_node_storage.state_root(),
+        shard_node3_storage.state_root()
+    );
+    assert_eq!(
+        full_node_storage.state_root(),
+        shard_node4_storage.state_root()
     );
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
@@ -357,6 +399,18 @@ fn test_tx_trie() {
     let update = shard_node2.apply_writes(&write_set2).unwrap();
     shard_node2_storage.apply_update(update).unwrap();
 
+    shard_node3
+        .update_missing_branches(&write_set2_trie)
+        .unwrap();
+    let update = shard_node3.apply_writes(&write_set2).unwrap();
+    shard_node3_storage.apply_update(update).unwrap();
+
+    shard_node4
+        .update_missing_branches(&write_set2_trie)
+        .unwrap();
+    let update = shard_node4.apply_writes(&write_set2).unwrap();
+    shard_node4_storage.apply_update(update).unwrap();
+
     assert_eq!(
         full_node_storage.state_root(),
         shard_node1_storage.state_root()
@@ -364,6 +418,14 @@ fn test_tx_trie() {
     assert_eq!(
         full_node_storage.state_root(),
         shard_node2_storage.state_root()
+    );
+    assert_eq!(
+        full_node_storage.state_root(),
+        shard_node3_storage.state_root()
+    );
+    assert_eq!(
+        full_node_storage.state_root(),
+        shard_node4_storage.state_root()
     );
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());
@@ -420,6 +482,28 @@ fn test_tx_trie() {
     let update = shard_node2.apply_writes(&write_set4).unwrap();
     shard_node2_storage.apply_update(update).unwrap();
 
+    shard_node3
+        .update_missing_branches(&write_set3_trie)
+        .unwrap();
+    shard_node3
+        .update_missing_branches(&write_set4_trie)
+        .unwrap();
+    let update = shard_node3.apply_writes(&write_set3).unwrap();
+    shard_node3_storage.apply_update(update).unwrap();
+    let update = shard_node3.apply_writes(&write_set4).unwrap();
+    shard_node3_storage.apply_update(update).unwrap();
+
+    shard_node4
+        .update_missing_branches(&write_set3_trie)
+        .unwrap();
+    shard_node4
+        .update_missing_branches(&write_set4_trie)
+        .unwrap();
+    let update = shard_node4.apply_writes(&write_set3).unwrap();
+    shard_node4_storage.apply_update(update).unwrap();
+    let update = shard_node4.apply_writes(&write_set4).unwrap();
+    shard_node4_storage.apply_update(update).unwrap();
+
     assert_eq!(
         full_node_storage.state_root(),
         shard_node1_storage.state_root()
@@ -427,6 +511,14 @@ fn test_tx_trie() {
     assert_eq!(
         full_node_storage.state_root(),
         shard_node2_storage.state_root()
+    );
+    assert_eq!(
+        full_node_storage.state_root(),
+        shard_node3_storage.state_root()
+    );
+    assert_eq!(
+        full_node_storage.state_root(),
+        shard_node4_storage.state_root()
     );
     assert_eq!(full_node_storage.state_root(), client1.root_hash());
     assert_eq!(full_node_storage.state_root(), client2.root_hash());

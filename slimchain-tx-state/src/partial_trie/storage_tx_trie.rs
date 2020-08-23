@@ -1,4 +1,4 @@
-use super::TxTrieDiff;
+use super::{TxTrieDiff, TxWriteSetTrie};
 use crate::{
     view::{
         trie_view_sync::{AccountTrieView, StateTrieView},
@@ -116,6 +116,37 @@ impl StorageTxTrie {
 
     pub fn get_out_shard_data(&self) -> &OutShardData {
         &self.out_shard
+    }
+
+    pub fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()> {
+        for (&acc_addr, fork_acc_trie) in fork.acc_tries.iter() {
+            if self.shard_id.contains(acc_addr) {
+                continue;
+            }
+
+            match self.out_shard.entry(acc_addr) {
+                im::hashmap::Entry::Occupied(mut o) => {
+                    let acc_state_trie = update_missing_branches(
+                        o.get().get_state_trie(),
+                        &fork_acc_trie.state_trie,
+                        true,
+                    )?;
+                    o.get_mut().set_state_trie(acc_state_trie);
+                }
+                im::hashmap::Entry::Vacant(v) => {
+                    let acc_state_trie = fork_acc_trie.state_trie.clone();
+                    debug_assert_eq!(
+                        self.in_shard.get_acc_state_root(acc_addr)?,
+                        acc_state_trie.root_hash(),
+                        "StorageTxTrie#update_missing_branches: Hash mismatched (address: {}).",
+                        acc_addr
+                    );
+                    v.insert(StorageAccountTrie::create_from_state_trie(acc_state_trie));
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()> {
