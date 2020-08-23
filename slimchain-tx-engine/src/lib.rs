@@ -257,7 +257,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                     continue;
                 }
             };
-            let write_trie = match TxWriteSetTrie::new(state_view, root_address, tx.tx_writes()) {
+            let write_trie = match TxWriteSetTrie::new(&state_view, root_address, tx.tx_writes()) {
                 Ok(trie) => trie,
                 Err(e) => {
                     error!("TxEngine: Failed to create TxWriteSetTrie. Error: {}", e);

@@ -15,7 +15,7 @@ pub trait TxStateView {
     ) -> Result<TrieNode<StateValue>>;
 }
 
-impl<T: TxStateView> TxStateView for Arc<T> {
+impl<T: TxStateView + ?Sized> TxStateView for Arc<T> {
     fn account_trie_node(&self, node_address: H256) -> Result<TrieNode<AccountData>> {
         self.as_ref().account_trie_node(node_address)
     }

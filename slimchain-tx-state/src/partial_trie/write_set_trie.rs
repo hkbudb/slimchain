@@ -1,8 +1,8 @@
 use crate::view::{
-    trie_view_sync::{AccountTrieView, StateTrieView},
+    trie_view::{AccountTrieView, StateTrieView},
     TxStateView,
 };
-use alloc::{format, sync::Arc};
+use alloc::format;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{account_data_to_digest, Address, Nonce, H256},
@@ -38,13 +38,13 @@ pub struct TxWriteSetTrie {
 
 impl TxWriteSetTrie {
     pub fn new(
-        state_view: Arc<dyn TxStateView + Sync + Send>,
+        state_view: &impl TxStateView,
         root_address: H256,
         writes: &TxWriteData,
     ) -> Result<Self> {
         let mut acc_tries: HashMap<Address, AccountWriteSetTrie> = HashMap::new();
         let mut main_read_ctx =
-            ReadTrieContext::new(AccountTrieView::new(Arc::clone(&state_view)), root_address);
+            ReadTrieContext::new(AccountTrieView::new(state_view), root_address);
 
         for (acc_address, acc_write) in writes.iter() {
             let acc_data = main_read_ctx.read(acc_address)?;
@@ -53,7 +53,7 @@ impl TxWriteSetTrie {
                 PartialTrie::from_root_hash(acc_state_root)
             } else {
                 let mut value_read_ctx = ReadTrieContext::new(
-                    StateTrieView::new(Arc::clone(&state_view), *acc_address),
+                    StateTrieView::new(state_view, *acc_address),
                     acc_state_root,
                 );
 

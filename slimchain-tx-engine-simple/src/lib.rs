@@ -8,18 +8,17 @@ use slimchain_merkle_trie::prelude::*;
 use slimchain_tx_engine::{TxEngineWorker, TxTask};
 use slimchain_tx_executor::execute_tx;
 use slimchain_tx_state::{
-    trie_view_sync::{AccountTrieView, StateTrieView},
+    trie_view::{AccountTrieView, StateTrieView},
     TxStateView,
 };
-use std::sync::Arc;
 
-struct ExecutorBackend {
-    state_view: Arc<dyn TxStateView + Send + Sync>,
+struct ExecutorBackend<'a, StateView: TxStateView + ?Sized> {
+    state_view: &'a StateView,
     state_root: H256,
 }
 
-impl ExecutorBackend {
-    fn new(state_view: Arc<dyn TxStateView + Send + Sync>, state_root: H256) -> Self {
+impl<'a, StateView: TxStateView + ?Sized> ExecutorBackend<'a, StateView> {
+    fn new(state_view: &'a StateView, state_root: H256) -> Self {
         Self {
             state_view,
             state_root,
@@ -32,16 +31,15 @@ impl ExecutorBackend {
         default: impl FnOnce() -> T,
         f: impl FnOnce(&AccountData) -> T,
     ) -> Result<T> {
-        let view = AccountTrieView {
-            state_view: self.state_view.clone(),
-        };
-
+        let view = AccountTrieView::new(self.state_view);
         let acc_data = read_trie(&view, self.state_root, &acc_address)?.0;
         Ok(acc_data.as_ref().map_or_else(default, f))
     }
 }
 
-impl slimchain_tx_executor::Backend for ExecutorBackend {
+impl<'a, StateView: TxStateView + ?Sized> slimchain_tx_executor::Backend
+    for ExecutorBackend<'a, StateView>
+{
     fn get_nonce(&self, acc_address: Address) -> Result<Nonce> {
         self.map_acc_data(acc_address, Default::default, |d| d.nonce)
     }
@@ -53,11 +51,7 @@ impl slimchain_tx_executor::Backend for ExecutorBackend {
     fn get_value(&self, acc_address: Address, key: StateKey) -> Result<StateValue> {
         let acc_state_root = self.map_acc_data(acc_address, H256::zero, |d| d.acc_state_root)?;
 
-        let view = StateTrieView {
-            state_view: self.state_view.clone(),
-            acc_address,
-        };
-
+        let view = StateTrieView::new(self.state_view, acc_address);
         let value = read_trie(&view, acc_state_root, &key)?
             .0
             .unwrap_or_default();
@@ -73,7 +67,7 @@ impl TxEngineWorker for SimpleTxEngineWorker {
     type Output = SignedTx;
 
     fn execute(&self, task: TxTask) -> Result<Self::Output> {
-        let backend = ExecutorBackend::new(task.state_view, task.state_root);
+        let backend = ExecutorBackend::new(task.state_view.as_ref(), task.state_root);
         let output = execute_tx(task.signed_tx_req, &backend)?;
 
         let raw_tx = RawTx {
