@@ -6,7 +6,7 @@ use slimchain_common::{
 use slimchain_merkle_trie::storage::{NodeLoader, TrieNode};
 
 pub struct AccountTrieView<'a, View: TxStateView + ?Sized> {
-    pub state_view: &'a View,
+    state_view: &'a View,
 }
 
 impl<'a, View: TxStateView + ?Sized> AccountTrieView<'a, View> {
@@ -22,8 +22,8 @@ impl<'a, View: TxStateView + ?Sized> NodeLoader<AccountData> for AccountTrieView
 }
 
 pub struct StateTrieView<'a, View: TxStateView + ?Sized> {
-    pub state_view: &'a View,
-    pub acc_address: Address,
+    state_view: &'a View,
+    acc_address: Address,
 }
 
 impl<'a, View: TxStateView + ?Sized> StateTrieView<'a, View> {

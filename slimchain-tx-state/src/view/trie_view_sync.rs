@@ -7,7 +7,7 @@ use slimchain_common::{
 use slimchain_merkle_trie::storage::{NodeLoader, TrieNode};
 
 pub struct AccountTrieView {
-    pub state_view: Arc<dyn TxStateView + Sync + Send>,
+    state_view: Arc<dyn TxStateView + Sync + Send>,
 }
 
 impl AccountTrieView {
@@ -23,8 +23,8 @@ impl NodeLoader<AccountData> for AccountTrieView {
 }
 
 pub struct StateTrieView {
-    pub state_view: Arc<dyn TxStateView + Sync + Send>,
-    pub acc_address: Address,
+    state_view: Arc<dyn TxStateView + Sync + Send>,
+    acc_address: Address,
 }
 
 impl StateTrieView {
