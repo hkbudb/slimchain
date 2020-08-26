@@ -9,7 +9,7 @@ use crate::{
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
-pub trait TxTrait: Digestible + Send + Sync {
+pub trait TxTrait: Digestible + Sized + Send + Sync {
     fn tx_caller(&self) -> Address;
     fn tx_input(&self) -> &TxRequest;
     fn tx_block_height(&self) -> BlockHeight;

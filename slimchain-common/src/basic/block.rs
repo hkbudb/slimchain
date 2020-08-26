@@ -29,8 +29,17 @@ impl Digestible for BlockHeight {
 }
 
 impl BlockHeight {
+    pub fn prev_height(self) -> Self {
+        debug_assert!(!self.is_zero());
+        Self(self.0 - 1)
+    }
+
     pub fn next_height(self) -> Self {
         Self(self.0 + 1)
+    }
+
+    pub fn is_zero(self) -> bool {
+        self.0 == 0
     }
 }
 

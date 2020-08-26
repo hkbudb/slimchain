@@ -114,6 +114,10 @@ impl StorageTxTrie {
         self.shard_id
     }
 
+    pub fn get_state_root(&self) -> H256 {
+        self.in_shard.root
+    }
+
     pub fn get_out_shard_data(&self) -> &OutShardData {
         &self.out_shard
     }

@@ -322,14 +322,14 @@ impl TxWriteData {
             .or_default() = value;
     }
 
-    pub fn merge(&mut self, new: TxWriteData) {
-        for (k, v) in new.0.into_iter() {
+    pub fn merge(&mut self, new: &TxWriteData) {
+        for (&k, v) in new.0.iter() {
             match self.entry(k) {
                 Entry::Occupied(mut e) => {
                     e.get_mut().merge(v);
                 }
                 Entry::Vacant(e) => {
-                    e.insert(v);
+                    e.insert(v.clone());
                 }
             }
         }
@@ -382,20 +382,20 @@ impl Digestible for AccountWriteData {
 }
 
 impl AccountWriteData {
-    pub fn merge(&mut self, new: AccountWriteData) {
+    pub fn merge(&mut self, new: &AccountWriteData) {
         if new.nonce.is_some() {
             self.nonce = new.nonce;
         }
 
         if new.code.is_some() {
-            self.code = new.code;
+            self.code = new.code.clone();
         }
 
         if new.reset_values {
             self.reset_values = true;
-            self.values = new.values;
+            self.values = new.values.clone();
         } else {
-            self.values.extend(new.values.into_iter());
+            self.values.extend(new.values.iter());
         }
     }
 
@@ -631,7 +631,7 @@ mod tests {
                 }
             },
         };
-        write1.merge(write2);
+        write1.merge(&write2);
         assert_eq!(write1, write3);
     }
 }

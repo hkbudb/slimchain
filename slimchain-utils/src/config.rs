@@ -1,7 +1,7 @@
 use hex::{FromHex, FromHexError};
 use serde::{de::Error as SerdeError, Deserialize, Deserializer};
 use slimchain_common::error::{anyhow, Error, Result};
-use std::{fs, path::Path};
+use std::{fs, path::Path, time::Duration};
 use toml::Value as TomlValue;
 
 pub const CONFIG_FILE_NAME: &str = "config.toml";
@@ -48,4 +48,12 @@ where
 {
     let encoded_hex = String::deserialize(deserializer)?;
     T::from_hex(encoded_hex).map_err(SerdeError::custom)
+}
+
+pub fn deserialize_duration_from_secs<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let secs = u64::deserialize(deserializer)?;
+    Ok(Duration::from_secs(secs))
 }
