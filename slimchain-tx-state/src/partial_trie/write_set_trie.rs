@@ -14,7 +14,7 @@ use slimchain_common::{
 use slimchain_merkle_trie::prelude::*;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AccountWriteSetTrie {
+pub(crate) struct AccountWriteSetTrie {
     pub nonce: Nonce,
     pub code_hash: H256,
     pub state_trie: PartialTrie,
@@ -32,8 +32,8 @@ impl AccountWriteSetTrie {
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxWriteSetTrie {
-    pub main_trie: PartialTrie,
-    pub acc_tries: HashMap<Address, AccountWriteSetTrie>,
+    pub(crate) main_trie: PartialTrie,
+    pub(crate) acc_tries: HashMap<Address, AccountWriteSetTrie>,
 }
 
 impl TxWriteSetTrie {

@@ -6,25 +6,25 @@ use slimchain_common::{
 use slimchain_merkle_trie::prelude::*;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct AccountTrieDiff {
-    pub nonce: Option<Nonce>,
-    pub code_hash: Option<H256>,
-    pub state_trie_diff: PartialTrieDiff,
+pub(crate) struct AccountTrieDiff {
+    pub(crate) nonce: Option<Nonce>,
+    pub(crate) code_hash: Option<H256>,
+    pub(crate) state_trie_diff: PartialTrieDiff,
 }
 
 impl AccountTrieDiff {
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.nonce.is_none() && self.code_hash.is_none() && self.state_trie_diff.is_empty()
     }
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxTrieDiff {
-    pub main_trie_diff: PartialTrieDiff,
-    pub acc_trie_diffs: HashMap<Address, AccountTrieDiff>,
+    pub(crate) main_trie_diff: PartialTrieDiff,
+    pub(crate) acc_trie_diffs: HashMap<Address, AccountTrieDiff>,
 }
 
-pub fn merge_acc_trie_diff(lhs: &AccountTrieDiff, rhs: &AccountTrieDiff) -> AccountTrieDiff {
+fn merge_acc_trie_diff(lhs: &AccountTrieDiff, rhs: &AccountTrieDiff) -> AccountTrieDiff {
     debug_assert_eq!(lhs.nonce, rhs.nonce);
     debug_assert_eq!(lhs.code_hash, rhs.code_hash);
     let state_trie_diff = merge_diff(&lhs.state_trie_diff, &rhs.state_trie_diff);

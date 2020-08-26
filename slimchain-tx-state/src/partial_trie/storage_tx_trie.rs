@@ -1,4 +1,4 @@
-use super::{TxTrieDiff, TxWriteSetTrie};
+use super::{TxTrieDiff, TxTrieTrait, TxWriteSetTrie};
 use crate::{
     view::{
         trie_view_sync::{AccountTrieView, StateTrieView},
@@ -122,7 +122,38 @@ impl StorageTxTrie {
         &self.out_shard
     }
 
-    pub fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()> {
+    fn prune_helper(
+        &mut self,
+        acc_addr: Address,
+        callback: impl FnOnce(&mut StorageAccountTrie) -> Result<()>,
+    ) -> Result<()> {
+        if self.shard_id.contains(acc_addr) {
+            return Ok(());
+        }
+
+        let mut entry = match self.out_shard.entry(acc_addr) {
+            im::hashmap::Entry::Occupied(o) => o,
+            im::hashmap::Entry::Vacant(_) => {
+                bail!("StorageTxTrie#prune_helper: Account is already pruned");
+            }
+        };
+
+        callback(entry.get_mut())?;
+
+        if entry.get().can_be_pruned() {
+            entry.remove();
+        }
+
+        Ok(())
+    }
+}
+
+impl TxTrieTrait for StorageTxTrie {
+    fn root_hash(&self) -> H256 {
+        self.in_shard.root
+    }
+
+    fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()> {
         for (&acc_addr, fork_acc_trie) in fork.acc_tries.iter() {
             if self.shard_id.contains(acc_addr) {
                 continue;
@@ -153,7 +184,7 @@ impl StorageTxTrie {
         Ok(())
     }
 
-    pub fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()> {
+    fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()> {
         for (&acc_addr, acc_trie_diff) in diff.acc_trie_diffs.iter() {
             if self.shard_id.contains(acc_addr) {
                 continue;
@@ -193,7 +224,7 @@ impl StorageTxTrie {
         Ok(())
     }
 
-    pub fn apply_writes(&mut self, writes: &TxWriteData) -> Result<TxStateUpdate> {
+    fn apply_writes(&mut self, writes: &TxWriteData) -> Result<TxStateUpdate> {
         let mut updates = TxStateUpdate::default();
         let mut acc_write_ctx = WriteTrieContext::<Address, _, _>::new(
             self.in_shard.get_acc_trie_view(),
@@ -276,32 +307,15 @@ impl StorageTxTrie {
         Ok(updates)
     }
 
-    fn prune_helper(
-        &mut self,
-        acc_addr: Address,
-        callback: impl FnOnce(&mut StorageAccountTrie) -> Result<()>,
-    ) -> Result<()> {
-        if self.shard_id.contains(acc_addr) {
-            return Ok(());
-        }
-
-        let mut entry = match self.out_shard.entry(acc_addr) {
-            im::hashmap::Entry::Occupied(o) => o,
-            im::hashmap::Entry::Vacant(_) => {
-                bail!("StorageTxTrie#prune_helper: Account is already pruned");
-            }
-        };
-
-        callback(entry.get_mut())?;
-
-        if entry.get().can_be_pruned() {
-            entry.remove();
-        }
-
+    fn prune_acc_nonce(&mut self, _acc_addr: Address) -> Result<()> {
         Ok(())
     }
 
-    pub fn prune_acc_state_key(&mut self, acc_addr: Address, key: StateKey) -> Result<()> {
+    fn prune_acc_code(&mut self, _acc_addr: Address) -> Result<()> {
+        Ok(())
+    }
+
+    fn prune_acc_state_key(&mut self, acc_addr: Address, key: StateKey) -> Result<()> {
         self.prune_helper(acc_addr, |acc_state| {
             let state_trie = prune_unused_key(acc_state.get_state_trie(), &key)?;
             acc_state.set_state_trie(state_trie);
@@ -309,7 +323,7 @@ impl StorageTxTrie {
         })
     }
 
-    pub fn prune_acc_state_keys(
+    fn prune_acc_state_keys(
         &mut self,
         acc_addr: Address,
         keys: impl Iterator<Item = StateKey>,
@@ -321,7 +335,7 @@ impl StorageTxTrie {
         })
     }
 
-    pub fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()> {
+    fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()> {
         self.prune_helper(acc_addr, move |acc_state| {
             acc_state.set_reset_values(false);
             Ok(())

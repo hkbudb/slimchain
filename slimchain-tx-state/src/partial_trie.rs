@@ -1,6 +1,9 @@
 pub mod write_set_trie;
 pub use write_set_trie::*;
 
+pub mod tx_trie_trait;
+pub use tx_trie_trait::*;
+
 pub mod tx_trie;
 pub use tx_trie::*;
 

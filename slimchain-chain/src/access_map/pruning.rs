@@ -3,7 +3,7 @@ use slimchain_common::{
     collections::{HashMap, HashSet},
     error::Result,
 };
-use slimchain_tx_state::{StorageTxTrie, TxTrie};
+use slimchain_tx_state::TxTrieTrait;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct PruningData {
@@ -30,7 +30,7 @@ impl PruningData {
         self.values.entry(acc_addr).or_default().insert(key);
     }
 
-    pub fn prune_tx_trie(&self, tx_trie: &mut TxTrie) -> Result<()> {
+    pub fn prune_tx_trie(&self, tx_trie: &mut impl TxTrieTrait) -> Result<()> {
         for &acc_addr in &self.nonce {
             tx_trie.prune_acc_nonce(acc_addr)?;
         }
@@ -39,18 +39,6 @@ impl PruningData {
             tx_trie.prune_acc_code(acc_addr)?;
         }
 
-        for &acc_addr in &self.reset_values {
-            tx_trie.prune_acc_reset_values(acc_addr)?;
-        }
-
-        for (&acc_addr, keys) in &self.values {
-            tx_trie.prune_acc_state_keys(acc_addr, keys.iter().copied())?;
-        }
-
-        Ok(())
-    }
-
-    pub fn prune_storage_tx_trie(&self, tx_trie: &mut StorageTxTrie) -> Result<()> {
         for &acc_addr in &self.reset_values {
             tx_trie.prune_acc_reset_values(acc_addr)?;
         }

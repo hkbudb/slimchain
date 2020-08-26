@@ -15,7 +15,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::{
-    merge_tx_trie_diff, TxProposal, TxStateView, TxTrie, TxTrieDiff, TxWriteSetTrie,
+    merge_tx_trie_diff, TxProposal, TxStateView, TxTrie, TxTrieDiff, TxTrieTrait, TxWriteSetTrie,
 };
 use std::time::{Duration, Instant};
 use tokio::time::timeout_at;
