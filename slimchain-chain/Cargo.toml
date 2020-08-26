@@ -6,8 +6,14 @@ edition = "2018"
 publish = false
 
 [dependencies]
+arc-swap = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
 im = { version = "15.0", features = ["serde"] }
+itertools = "0.9"
+log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 slimchain-common = { path = "../slimchain-common" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
 slimchain-utils = { path = "../slimchain-utils" }
+tokio = { version = "0.2", features = ["full"] }

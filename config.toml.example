@@ -8,6 +8,26 @@ role = "client"
 # shard_id = 0
 # shard_total = 1
 
+# Chain configure.
+[chain]
+# Possible values: ssi, occ.
+conflict_check = "ssi"
+# The number of blocks in the temp state.
+state_len = 8
+
+# Configure for miners.
+[miner]
+# The following three configures control when to create a new block.
+# A block is created if:
+#   (len(txs) >= min_tx && time_since_last_block >= max_block_interval) || len(txs) == max_txs
+
+# Max number of txs in one block.
+max_txs = 8
+# Min number of txs in one block.
+min_txs = 0
+# Max time span between blocks in seconds.
+max_block_interval = 15
+
 # Configure used in TEE. Used by storage nodes with TEE only.
 # Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
 [tee]
