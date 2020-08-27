@@ -6,7 +6,7 @@ use slimchain_common::{
     rw_set::TxWriteData,
 };
 
-pub trait TxTrieTrait {
+pub trait TxTrieTrait: Clone + Send + Sync {
     fn root_hash(&self) -> H256;
     fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()>;
     fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()>;

@@ -12,3 +12,4 @@ pub mod config;
 pub mod conflict_check;
 pub mod loader;
 pub mod role;
+pub mod snapshot;

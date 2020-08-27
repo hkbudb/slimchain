@@ -72,7 +72,7 @@ impl<Block: BlockTrait, Tx: TxTrait> BlockProposal<Block, Tx> {
     }
 }
 
-impl<Block: BlockTrait + Clone + Serialize, Tx: TxTrait + Serialize> Serialize
+impl<Block: BlockTrait + Serialize, Tx: TxTrait + Serialize> Serialize
     for BlockProposal<Block, Tx>
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        #[derive(Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+        #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
         struct DummyTx;
 
         impl Digestible for DummyTx {
