@@ -5,6 +5,7 @@
 extern crate log;
 
 pub mod access_map;
+pub mod behavior;
 pub mod block;
 pub mod block_proposal;
 pub mod config;

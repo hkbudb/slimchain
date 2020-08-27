@@ -97,7 +97,9 @@ impl BlockTxList {
 
 pub trait BlockTrait: Digestible + Sized + Send + Sync {
     fn block_header(&self) -> &BlockHeader;
+    fn block_header_mut(&mut self) -> &mut BlockHeader;
     fn tx_list(&self) -> &BlockTxList;
+    fn tx_list_mut(&mut self) -> &mut BlockTxList;
 
     fn block_height(&self) -> BlockHeight {
         self.block_header().height
