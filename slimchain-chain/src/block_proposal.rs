@@ -15,7 +15,7 @@ use slimchain_common::{
 use slimchain_tx_state::{TxStateView, TxTrieDiff, TxWriteSetTrie};
 use std::{fmt, iter::FromIterator, marker::PhantomData};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BlockProposal<Block: BlockTrait, Tx: TxTrait> {
     block: Block,
     txs: Vec<Tx>,
@@ -188,8 +188,95 @@ impl<'de, Block: BlockTrait + Deserialize<'de>, Tx: TxTrait + Deserialize<'de>> 
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum BlockProposalTrie {
     Trie(TxWriteSetTrie),
     Diff(TxTrieDiff),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::block::BlockHeader;
+    use slimchain_common::{
+        basic::{Address, BlockHeight, H256},
+        digest::Digestible,
+        rw_set::{TxReadSet, TxWriteData},
+        tx::TxTrait,
+        tx_req::TxRequest,
+    };
+
+    #[test]
+    fn test_serde() {
+        #[derive(Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+        struct DummyTx;
+
+        impl Digestible for DummyTx {
+            fn to_digest(&self) -> H256 {
+                H256::zero()
+            }
+        }
+
+        impl TxTrait for DummyTx {
+            fn tx_caller(&self) -> Address {
+                unreachable!();
+            }
+            fn tx_input(&self) -> &TxRequest {
+                unreachable!();
+            }
+            fn tx_block_height(&self) -> BlockHeight {
+                unreachable!();
+            }
+            fn tx_state_root(&self) -> H256 {
+                unreachable!();
+            }
+            fn tx_reads(&self) -> &TxReadSet {
+                unreachable!();
+            }
+            fn tx_writes(&self) -> &TxWriteData {
+                unreachable!();
+            }
+            fn verify_sig(&self) -> Result<()> {
+                unreachable!();
+            }
+        }
+
+        #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+        struct DummyBlock {
+            tx_list: BlockTxList,
+        }
+
+        impl Digestible for DummyBlock {
+            fn to_digest(&self) -> H256 {
+                self.tx_list.to_digest()
+            }
+        }
+
+        impl BlockTrait for DummyBlock {
+            fn block_header(&self) -> &BlockHeader {
+                unreachable!();
+            }
+            fn block_header_mut(&mut self) -> &mut BlockHeader {
+                unreachable!();
+            }
+            fn tx_list(&self) -> &BlockTxList {
+                &self.tx_list
+            }
+            fn tx_list_mut(&mut self) -> &mut BlockTxList {
+                &mut self.tx_list
+            }
+        }
+
+        let tx = DummyTx::default();
+        let tx_list = BlockTxList::from_iter(std::iter::once(&tx));
+        let block = DummyBlock { tx_list };
+        let proposal =
+            BlockProposal::new(block, vec![tx], BlockProposalTrie::Diff(Default::default()));
+
+        let bin = postcard::to_allocvec(&proposal).unwrap();
+        assert_eq!(proposal, postcard::from_bytes(&bin[..]).unwrap());
+
+        let json = serde_json::to_string(&proposal).unwrap();
+        assert_eq!(proposal, serde_json::from_str(&json).unwrap());
+    }
 }
