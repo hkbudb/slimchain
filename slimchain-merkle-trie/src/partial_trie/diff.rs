@@ -251,25 +251,8 @@ pub fn apply_diff(
         let mut cur_ptr = &root;
         let mut temp_nodes: Vec<TempNode> = Vec::new();
 
-        loop {
+        while !cur_nibbles.is_empty() {
             match cur_ptr.as_ref() {
-                SubTree::Hash(h) if cur_nibbles.is_empty() => {
-                    debug_assert!(!h.is_zero());
-                    if check_hash {
-                        ensure!(
-                            trie.to_digest() == *h,
-                            "Hash mismatched when applying diff."
-                        );
-                    } else {
-                        debug_assert_eq!(
-                            trie.to_digest(),
-                            *h,
-                            "Hash mismatched when applying diff."
-                        );
-                    }
-                    temp_nodes.push(TempNode::SubTree(trie.clone()));
-                    break;
-                }
                 SubTree::Hash(_) => bail!("Invalid diff."),
                 SubTree::Extension(n) => {
                     if let Some(remaining) = cur_nibbles.strip_prefix(&n.nibbles) {
@@ -306,6 +289,21 @@ pub fn apply_diff(
                 SubTree::Leaf(_) => bail!("Invalid diff."),
             }
         }
+
+        debug_assert!(!cur_ptr.to_digest().is_zero());
+        if check_hash {
+            ensure!(
+                trie.to_digest() == cur_ptr.to_digest(),
+                "Hash mismatched when applying diff."
+            );
+        } else {
+            debug_assert_eq!(
+                trie.to_digest(),
+                cur_ptr.to_digest(),
+                "Hash mismatched when applying diff."
+            );
+        }
+        temp_nodes.push(TempNode::SubTree(trie.clone()));
 
         for node in temp_nodes.into_iter().rev() {
             debug_assert!(!root.to_digest().is_zero());
