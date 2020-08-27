@@ -63,8 +63,8 @@ pub struct OutShardData(pub im::HashMap<Address, StorageAccountTrie>);
 
 #[derive(Clone)]
 pub struct InShardData {
-    pub root: H256,
-    pub state_view: Arc<dyn TxStateView + Sync + Send>,
+    root: H256,
+    state_view: Arc<dyn TxStateView + Sync + Send>,
 }
 
 impl InShardData {
@@ -96,9 +96,9 @@ impl InShardData {
 
 #[derive(Clone)]
 pub struct StorageTxTrie {
-    pub shard_id: ShardId,
-    pub in_shard: InShardData,
-    pub out_shard: OutShardData,
+    pub(crate) shard_id: ShardId,
+    pub(crate) in_shard: InShardData,
+    pub(crate) out_shard: OutShardData,
 }
 
 impl StorageTxTrie {
