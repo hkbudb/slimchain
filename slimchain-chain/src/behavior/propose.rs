@@ -9,11 +9,11 @@ use futures::prelude::*;
 use itertools::Itertools;
 use slimchain_common::{
     digest::Digestible,
-    error::{Context as _, Result},
+    error::{ensure, Context as _, Result},
     tx::TxTrait,
 };
 use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieTrait, TxWriteSetTrie};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::time::timeout_at;
 
 pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
@@ -22,7 +22,7 @@ pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
     snapshot: &mut Snapshot<Block, TxTrie>,
     tx_proposals: &mut TxStream,
     new_block_fn: NewBlockFn,
-) -> Result<(Option<BlockProposal<Block, Tx>>, Duration)>
+) -> Result<BlockProposal<Block, Tx>>
 where
     Tx: TxTrait,
     Block: BlockTrait,
@@ -105,9 +105,7 @@ where
         tx_write_tries.push(write_trie);
     }
 
-    if txs.len() < miner_cfg.min_txs {
-        return Ok((None, Instant::now() - begin));
-    }
+    ensure!(txs.len() >= miner_cfg.min_txs, "Not enough txs.");
 
     let tx_trie_diff = tx_write_tries
         .iter()
@@ -140,6 +138,7 @@ where
     let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(tx_trie_diff));
 
     snapshot.remove_oldest_block()?;
+    snapshot.commit_block(blk_proposal.get_block().clone());
 
-    Ok((Some(blk_proposal), Instant::now() - begin))
+    Ok(blk_proposal)
 }

@@ -134,6 +134,10 @@ pub trait BlockTrait: Digestible + Clone + Sized + Send + Sync {
             self.time_stamp() <= Utc::now() + chrono::Duration::seconds(30),
             "Future timestamp is not allowed."
         );
+        ensure!(
+            self.tx_root() == self.tx_list().to_digest(),
+            "Invalid tx root."
+        );
         Ok(())
     }
 }

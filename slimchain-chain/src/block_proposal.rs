@@ -70,6 +70,10 @@ impl<Block: BlockTrait, Tx: TxTrait> BlockProposal<Block, Tx> {
     pub fn get_trie(&self) -> &BlockProposalTrie {
         &self.trie
     }
+
+    pub fn unpack(self) -> (Block, Vec<Tx>) {
+        (self.block, self.txs)
+    }
 }
 
 impl<Block: BlockTrait + Serialize, Tx: TxTrait + Serialize> Serialize
