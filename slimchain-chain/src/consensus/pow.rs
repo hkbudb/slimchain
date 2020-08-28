@@ -2,7 +2,7 @@ use crate::block::{BlockHeader, BlockTrait, BlockTxList};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
-    basic::{Nonce, H256, U256, U512},
+    basic::{Nonce, H256, U256},
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
     error::{ensure, Result},
 };
@@ -54,6 +54,7 @@ impl BlockTrait for Block {
 // Ref:
 // https://ethereum.stackexchange.com/a/1910
 // https://ethereum.github.io/yellowpaper/paper.pdf
+#[inline]
 fn compute_diff(time_stamp: DateTime<Utc>, prev_blk: &Block) -> u64 {
     let prev_diff = prev_blk.diff as i64;
     let delta = prev_diff / 2048;
@@ -62,11 +63,10 @@ fn compute_diff(time_stamp: DateTime<Utc>, prev_blk: &Block) -> u64 {
     (prev_diff + delta * coeff) as u64
 }
 
-fn diff_to_h256(diff: u64) -> H256 {
-    let num = (U512::from(U256::MAX) + U512::from(1)) / diff;
-    let mut bytes = [0u8; 64];
-    num.to_big_endian(&mut bytes);
-    H256::from_slice(&bytes[32..])
+#[inline]
+fn nonce_is_valid(blk: &Block) -> bool {
+    let hash = U256::from(blk.to_digest().to_fixed_bytes());
+    hash <= U256::MAX / blk.diff
 }
 
 pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
@@ -74,10 +74,10 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
     let mut blk = Block {
         header,
         diff,
-        nonce: 0.into(),
+        nonce: Nonce::zero(),
     };
 
-    while blk.to_digest() > diff_to_h256(blk.diff) {
+    while !nonce_is_valid(&blk) {
         blk.header.time_stamp = Utc::now();
         blk.diff = compute_diff(blk.header.time_stamp, prev_blk);
         blk.nonce += 1.into();
@@ -91,7 +91,7 @@ pub fn verify_consensus(blk: &Block, prev_blk: &Block) -> Result<()> {
         blk.diff == compute_diff(blk.header.time_stamp, prev_blk),
         "Invalid difficult."
     );
-    ensure!(blk.to_digest() <= diff_to_h256(blk.diff), "Invalid nonce");
+    ensure!(nonce_is_valid(blk), "Invalid nonce");
 
     Ok(())
 }
