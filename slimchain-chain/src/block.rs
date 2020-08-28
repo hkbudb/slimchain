@@ -16,7 +16,7 @@ pub struct BlockHeader {
     pub prev_blk_hash: H256,
     #[serde(with = "chrono::serde::ts_milliseconds")]
     pub time_stamp: DateTime<Utc>,
-    pub tx_root: H256,
+    pub tx_list: BlockTxList,
     pub state_root: H256,
 }
 
@@ -26,7 +26,7 @@ impl Digestible for BlockHeader {
         hash_state.update(self.height.to_digest().as_bytes());
         hash_state.update(self.prev_blk_hash.as_bytes());
         hash_state.update(self.time_stamp.timestamp_millis().to_digest().as_bytes());
-        hash_state.update(self.tx_root.as_bytes());
+        hash_state.update(self.tx_list.to_digest().as_bytes());
         hash_state.update(self.state_root.as_bytes());
         let hash = hash_state.finalize();
         blake2b_hash_to_h256(hash)
@@ -38,14 +38,14 @@ impl BlockHeader {
         height: BlockHeight,
         prev_blk_hash: H256,
         time_stamp: DateTime<Utc>,
-        tx_root: H256,
+        tx_list: BlockTxList,
         state_root: H256,
     ) -> Self {
         Self {
             height,
             prev_blk_hash,
             time_stamp,
-            tx_root,
+            tx_list,
             state_root,
         }
     }
@@ -99,8 +99,6 @@ pub trait BlockTrait: Digestible + Clone + Sized + Send + Sync {
     fn genesis_block() -> Self;
     fn block_header(&self) -> &BlockHeader;
     fn block_header_mut(&mut self) -> &mut BlockHeader;
-    fn tx_list(&self) -> &BlockTxList;
-    fn tx_list_mut(&mut self) -> &mut BlockTxList;
 
     fn block_height(&self) -> BlockHeight {
         self.block_header().height
@@ -112,7 +110,13 @@ pub trait BlockTrait: Digestible + Clone + Sized + Send + Sync {
         self.block_header().time_stamp
     }
     fn tx_root(&self) -> H256 {
-        self.block_header().tx_root
+        self.block_header().tx_list.to_digest()
+    }
+    fn tx_list(&self) -> &BlockTxList {
+        &self.block_header().tx_list
+    }
+    fn tx_list_mut(&mut self) -> &mut BlockTxList {
+        &mut self.block_header_mut().tx_list
     }
     fn state_root(&self) -> H256 {
         self.block_header().state_root
@@ -134,10 +138,6 @@ pub trait BlockTrait: Digestible + Clone + Sized + Send + Sync {
         ensure!(
             self.time_stamp() <= Utc::now() + chrono::Duration::seconds(30),
             "Future timestamp is not allowed."
-        );
-        ensure!(
-            self.tx_root() == self.tx_list().to_digest(),
-            "Invalid tx root."
         );
         Ok(())
     }

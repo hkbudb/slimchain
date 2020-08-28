@@ -10,15 +10,12 @@ use slimchain_common::{
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Block {
     header: BlockHeader,
-    tx_list: BlockTxList,
     diff: u64,
     nonce: Nonce,
 }
 
 impl Digestible for Block {
     fn to_digest(&self) -> H256 {
-        debug_assert_eq!(self.header.tx_root, self.tx_list.to_digest());
-
         let mut hash_state = default_blake2().to_state();
         hash_state.update(self.header.to_digest().as_bytes());
         hash_state.update(self.diff.to_digest().as_bytes());
@@ -37,10 +34,9 @@ impl BlockTrait for Block {
                 time_stamp: DateTime::parse_from_rfc3339("2020-08-01T00:00:00Z")
                     .expect("Failed to parse the timestamp.")
                     .with_timezone(&Utc),
-                tx_root: H256::zero(),
+                tx_list: BlockTxList::default(),
                 state_root: H256::zero(),
             },
-            tx_list: BlockTxList::default(),
             diff: 0x10000,
             nonce: Nonce::zero(),
         }
@@ -52,14 +48,6 @@ impl BlockTrait for Block {
 
     fn block_header_mut(&mut self) -> &mut BlockHeader {
         &mut self.header
-    }
-
-    fn tx_list(&self) -> &BlockTxList {
-        &self.tx_list
-    }
-
-    fn tx_list_mut(&mut self) -> &mut BlockTxList {
-        &mut self.tx_list
     }
 }
 
@@ -81,11 +69,10 @@ fn diff_to_h256(diff: u64) -> H256 {
     H256::from_slice(&bytes[32..])
 }
 
-pub fn create_new_block(header: BlockHeader, tx_list: BlockTxList, prev_blk: &Block) -> Block {
+pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
     let diff = compute_diff(header.time_stamp, prev_blk);
     let mut blk = Block {
         header,
-        tx_list,
         diff,
         nonce: 0.into(),
     };

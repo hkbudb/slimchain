@@ -8,7 +8,6 @@ use chrono::Utc;
 use futures::prelude::*;
 use itertools::Itertools;
 use slimchain_common::{
-    digest::Digestible,
     error::{ensure, Context as _, Result},
     tx::TxTrait,
 };
@@ -27,7 +26,7 @@ where
     Tx: TxTrait,
     Block: BlockTrait,
     TxStream: Stream<Item = TxProposal<Tx>> + Unpin,
-    NewBlockFn: Fn(BlockHeader, BlockTxList, &Block) -> Block,
+    NewBlockFn: Fn(BlockHeader, &Block) -> Block,
 {
     let begin = Instant::now();
     let deadline = begin + miner_cfg.max_block_interval;
@@ -131,10 +130,10 @@ where
         last_block_height.next_height(),
         last_block.prev_blk_hash(),
         Utc::now(),
-        tx_list.to_digest(),
+        tx_list,
         new_state_root,
     );
-    let new_blk = new_block_fn(block_header, tx_list, last_block);
+    let new_blk = new_block_fn(block_header, last_block);
     let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(tx_trie_diff));
 
     snapshot.remove_oldest_block()?;
