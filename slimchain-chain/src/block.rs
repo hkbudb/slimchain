@@ -96,6 +96,7 @@ impl BlockTxList {
 }
 
 pub trait BlockTrait: Digestible + Clone + Sized + Send + Sync {
+    fn genesis_block() -> Self;
     fn block_header(&self) -> &BlockHeader;
     fn block_header_mut(&mut self) -> &mut BlockHeader;
     fn tx_list(&self) -> &BlockTxList;

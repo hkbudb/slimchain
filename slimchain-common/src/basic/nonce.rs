@@ -1,5 +1,6 @@
 use crate::basic::{H256, U256};
 use crate::digest::Digestible;
+use core::ops::{Add, AddAssign, Sub, SubAssign};
 
 #[derive(
     Debug,
@@ -49,5 +50,33 @@ impl_nonce_from!(isize);
 impl Nonce {
     pub fn zero() -> Self {
         Self(U256::zero())
+    }
+}
+
+impl Add for Nonce {
+    type Output = Nonce;
+
+    fn add(self, rhs: Nonce) -> Self::Output {
+        Nonce::from(self.0 + rhs.0)
+    }
+}
+
+impl AddAssign for Nonce {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0
+    }
+}
+
+impl Sub for Nonce {
+    type Output = Nonce;
+
+    fn sub(self, rhs: Nonce) -> Self::Output {
+        Nonce::from(self.0 - rhs.0)
+    }
+}
+
+impl SubAssign for Nonce {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0
     }
 }

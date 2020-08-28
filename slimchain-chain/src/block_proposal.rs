@@ -257,6 +257,9 @@ mod tests {
         }
 
         impl BlockTrait for DummyBlock {
+            fn genesis_block() -> Self {
+                unreachable!();
+            }
             fn block_header(&self) -> &BlockHeader {
                 unreachable!();
             }

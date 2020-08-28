@@ -10,13 +10,12 @@ pub trait TxLoaderTrait<Tx: TxTrait> {
 }
 
 pub trait BlockLoaderTrait<Block: BlockTrait> {
-    fn genesis_block() -> Block;
     fn latest_block_height(&self) -> BlockHeight;
     fn get_non_genesis_block(&self, height: BlockHeight) -> Result<Block>;
 
     fn get_block(&self, height: BlockHeight) -> Result<Block> {
         if height.is_zero() {
-            Ok(Self::genesis_block())
+            Ok(Block::genesis_block())
         } else {
             self.get_non_genesis_block(height)
         }
