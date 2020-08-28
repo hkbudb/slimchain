@@ -183,7 +183,7 @@ impl<'de, Block: BlockTrait + Deserialize<'de>, Tx: TxTrait + Deserialize<'de>> 
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["block", "txs", "trie"];
+        const FIELDS: &[&str] = &["block", "txs", "trie"];
         deserializer.deserialize_struct(
             "BlockProposal",
             FIELDS,
