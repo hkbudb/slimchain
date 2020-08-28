@@ -10,6 +10,22 @@ pub struct Snapshot<Block: BlockTrait, TxTrie: TxTrieTrait> {
 }
 
 impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
+    pub fn new(recent_blocks: im::Vector<Block>, tx_trie: TxTrie, access_map: AccessMap) -> Self {
+        Self {
+            recent_blocks,
+            tx_trie,
+            access_map,
+        }
+    }
+
+    pub fn genesis_snapshot(tx_trie: TxTrie, genesis_block: Block, state_len: usize) -> Self {
+        Self {
+            recent_blocks: im::vector![genesis_block],
+            tx_trie,
+            access_map: AccessMap::new(state_len),
+        }
+    }
+
     pub fn current_height(&self) -> BlockHeight {
         self.access_map.latest_block_height()
     }

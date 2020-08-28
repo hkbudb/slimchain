@@ -27,7 +27,7 @@ where
     Tx: TxTrait,
     Block: BlockTrait,
     TxStream: Stream<Item = TxProposal<Tx>> + Unpin,
-    NewBlockFn: Fn(BlockHeader, BlockTxList, &Block) -> Result<Block>,
+    NewBlockFn: Fn(BlockHeader, BlockTxList, &Block) -> Block,
 {
     let begin = Instant::now();
     let deadline = begin + miner_cfg.max_block_interval;
@@ -134,7 +134,7 @@ where
         tx_list.to_digest(),
         new_state_root,
     );
-    let new_blk = new_block_fn(block_header, tx_list, last_block)?;
+    let new_blk = new_block_fn(block_header, tx_list, last_block);
     let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(tx_trie_diff));
 
     snapshot.remove_oldest_block()?;

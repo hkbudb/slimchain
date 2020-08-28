@@ -14,6 +14,8 @@ role = "client"
 conflict_check = "ssi"
 # The number of blocks in the temp state.
 state_len = 8
+# Consensus method. Possible values: pow, raft.
+consensus = "pow"
 
 # Configure for miners.
 [miner]

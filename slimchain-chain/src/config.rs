@@ -1,4 +1,4 @@
-use crate::conflict_check::ConflictCheck;
+use crate::{conflict_check::ConflictCheck, consensus::Consensus};
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -8,6 +8,8 @@ pub struct ChainConfig {
     pub conflict_check: ConflictCheck,
     /// The number of blocks in the temp state.
     pub state_len: usize,
+    /// Consensus method. Possible values: pow, raft.
+    pub consensus: Consensus,
 }
 
 #[derive(Debug, Clone, Deserialize)]
