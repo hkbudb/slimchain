@@ -9,12 +9,12 @@ build = "build.rs"
 [dependencies]
 base64 = "0.12"
 chrono = "0.4"
-log = "0.4"
 pem = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
 slimchain-common = { path = "../slimchain-common" }
+tracing = "0.1"
 webpki = "0.21"
 x509-parser = "0.7"
 
