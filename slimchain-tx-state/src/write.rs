@@ -41,9 +41,9 @@ pub fn update_tx_state(
         WriteTrieContext::<Address, _, _>::new(AccountTrieView::new(view), old_root);
 
     for (&acc_addr, acc_data) in writes.iter() {
-        let old_acc_data = read_trie(&AccountTrieView::new(view), old_root, &acc_addr)?
-            .0
-            .unwrap_or_default();
+        let old_acc_data =
+            read_trie_without_proof(&AccountTrieView::new(view), old_root, &acc_addr)?
+                .unwrap_or_default();
 
         let acc_state_root = if acc_data.reset_values {
             H256::zero()

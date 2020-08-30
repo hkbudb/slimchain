@@ -32,7 +32,7 @@ impl<'a, StateView: TxStateView + ?Sized> ExecutorBackend<'a, StateView> {
         f: impl FnOnce(&AccountData) -> T,
     ) -> Result<T> {
         let view = AccountTrieView::new(self.state_view);
-        let acc_data = read_trie(&view, self.state_root, &acc_address)?.0;
+        let acc_data = read_trie_without_proof(&view, self.state_root, &acc_address)?;
         Ok(acc_data.as_ref().map_or_else(default, f))
     }
 }
@@ -52,9 +52,7 @@ impl<'a, StateView: TxStateView + ?Sized> slimchain_tx_executor::Backend
         let acc_state_root = self.map_acc_data(acc_address, H256::zero, |d| d.acc_state_root)?;
 
         let view = StateTrieView::new(self.state_view, acc_address);
-        let value = read_trie(&view, acc_state_root, &key)?
-            .0
-            .unwrap_or_default();
+        let value = read_trie_without_proof(&view, acc_state_root, &key)?.unwrap_or_default();
         Ok(value)
     }
 }

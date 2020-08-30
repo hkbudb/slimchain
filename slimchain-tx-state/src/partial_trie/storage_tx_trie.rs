@@ -73,7 +73,7 @@ impl InShardData {
     }
 
     pub fn get_account(&self, acc_addr: Address) -> Result<AccountData> {
-        let (acc_data, _) = read_trie(
+        let acc_data = read_trie_without_proof(
             &AccountTrieView::new(Arc::clone(&self.state_view)),
             self.root,
             &acc_addr,
