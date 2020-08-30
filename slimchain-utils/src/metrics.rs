@@ -89,13 +89,11 @@ pub fn init_metrics_subscriber_using_file(file: impl AsRef<Path>) -> Result<()> 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::time::Duration;
 
     #[test]
     fn test() {
-        let _ = tracing_subscriber::fmt::try_init();
-        let _ = init_metrics_subscriber(std::io::stdout());
+        crate::init_tracing_for_test();
 
         let time = Duration::from_millis(2200);
         record_time!(label: "test_time", time);
