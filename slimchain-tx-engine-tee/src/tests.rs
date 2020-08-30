@@ -11,14 +11,13 @@ use slimchain_tx_state::{MemTxState, TxProposal};
 use slimchain_utils::{
     config::Config,
     contract::{contract_address, Contract, Token},
-    metrics::init_metrics_subscriber,
+    init_tracing_for_test,
 };
 use std::path::PathBuf;
 
 #[test]
 fn test() {
-    let _ = tracing_subscriber::fmt::try_init();
-    let _ = init_metrics_subscriber(std::io::stdout());
+    init_tracing_for_test();
 
     let mut states = MemTxState::new();
 
