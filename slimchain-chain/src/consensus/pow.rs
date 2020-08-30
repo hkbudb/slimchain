@@ -59,7 +59,7 @@ fn compute_diff(time_stamp: DateTime<Utc>, prev_blk: &Block) -> u64 {
     let prev_diff = prev_blk.diff as i64;
     let delta = prev_diff / 2048;
     let time_span = (time_stamp - prev_blk.header.time_stamp).num_seconds() as i64;
-    let coeff = core::cmp::max(1 - time_span / 9, -99);
+    let coeff = core::cmp::max(1 - time_span / 10, -99);
     (prev_diff + delta * coeff) as u64
 }
 
@@ -94,4 +94,25 @@ pub fn verify_consensus(blk: &Block, prev_blk: &Block) -> Result<()> {
     ensure!(nonce_is_valid(blk), "Invalid nonce");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn test_pow() {
+        let mut blk = Block::genesis_block();
+
+        for _ in 0..30 {
+            let mut header = blk.header.clone();
+            header.time_stamp = Utc::now();
+            let new_blk = create_new_block(header, &blk);
+            println!("diff = {}", new_blk.diff);
+            println!("time = {}", new_blk.time_stamp() - blk.time_stamp());
+            println!("---------------------");
+            blk = new_blk;
+        }
+    }
 }
