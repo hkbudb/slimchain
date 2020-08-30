@@ -23,6 +23,9 @@ macro_rules! use_metrics_subscriber {
 #[macro_export]
 macro_rules! record_time {
     (label: $label:literal, $time:expr) => {
+        $crate::record_time!(label: $label, $time, );
+    };
+    (label: $label:literal, $time:expr, $($fields:tt)*) => {
         match $time {
             t => {
                 $crate::use_metrics_subscriber! {{
@@ -30,6 +33,7 @@ macro_rules! record_time {
                         kind = "time",
                         label = $label,
                         time_ms = (t.as_millis() as u64),
+                        $($fields)*
                     );
                 }};
             }
@@ -39,21 +43,20 @@ macro_rules! record_time {
 
 #[macro_export]
 macro_rules! record_event {
-    (label: $label:literal, id: $id:expr) => {
-        match $id {
-            id => {
-                $crate::use_metrics_subscriber! {{
-                    $crate::tracing::trace!(
-                        kind = "event",
-                        label = $label,
-                        id = id,
-                        timestamp = $crate::chrono::Utc::now()
-                            .to_rfc3339_opts($crate::chrono::SecondsFormat::Millis, true)
-                            .as_str(),
-                    );
-                }};
-            }
-        }
+    (label: $label:literal) => {
+        $crate::record_event!(label: $label,);
+    };
+    (label: $label:literal, $($fields:tt)*) => {
+        $crate::use_metrics_subscriber! {{
+            $crate::tracing::trace!(
+                kind = "event",
+                label = $label,
+                timestamp = $crate::chrono::Utc::now()
+                    .to_rfc3339_opts($crate::chrono::SecondsFormat::Millis, true)
+                    .as_str(),
+                $($fields)*
+            );
+        }};
     };
 }
 
@@ -97,7 +100,8 @@ mod tests {
 
         let time = Duration::from_millis(2200);
         record_time!(label: "test_time", time);
-        record_event!(label: "test_event", id: 1);
+        record_time!(label: "test_time", time, foo = 1);
+        record_event!(label: "test_event", id = 1);
         tracing::error!("An error");
         tracing::info!("An info");
     }
