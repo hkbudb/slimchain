@@ -101,11 +101,17 @@ mod tests {
     };
     use slimchain_tx_engine::{TxEngine, TxTask, TxTaskOutput};
     use slimchain_tx_state::{MemTxState, TxProposal};
-    use slimchain_utils::contract::{contract_address, Contract, Token};
+    use slimchain_utils::{
+        contract::{contract_address, Contract, Token},
+        metrics::init_metrics_subscriber,
+    };
     use std::path::PathBuf;
 
     #[test]
     fn test() {
+        let _ = tracing_subscriber::fmt::try_init();
+        let _ = init_metrics_subscriber(std::io::stdout());
+
         let mut states = MemTxState::new();
 
         let contract_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

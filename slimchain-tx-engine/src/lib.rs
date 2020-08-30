@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use crossbeam::{
     deque::{Injector, Stealer, Worker},
@@ -15,6 +15,7 @@ use slimchain_common::{
     tx_req::SignedTxRequest,
 };
 use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetTrie};
+use slimchain_utils::record_time;
 use std::{
     iter,
     sync::{
@@ -67,7 +68,6 @@ impl TxTask {
 pub struct TxTaskOutput<Tx: TxTrait> {
     pub task_id: TxTaskId,
     pub tx_proposal: TxProposal<Tx>,
-    pub exec_time: Duration,
 }
 
 pub struct TxEngine<Tx: TxTrait + 'static> {
@@ -79,6 +79,7 @@ pub struct TxEngine<Tx: TxTrait + 'static> {
 }
 
 impl<Tx: TxTrait + 'static> TxEngine<Tx> {
+    #[tracing::instrument(name = "tx_engine_init", skip(threads, worker_factory))]
     pub fn new(
         threads: usize,
         worker_factory: impl Fn() -> Box<dyn TxEngineWorker<Output = Tx>>,
@@ -151,6 +152,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
 }
 
 impl<Tx: TxTrait + 'static> Drop for TxEngine<Tx> {
+    #[tracing::instrument(name = "tx_engine_drop", skip(self))]
     fn drop(&mut self) {
         self.shutdown_flag.store(true, Ordering::Release);
 
@@ -246,6 +248,9 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
 
     fn run(&self) {
         while let Some(task) = self.wait_until_task() {
+            let span = debug_span!("execute_task", id = task.id.0);
+            let _enter = span.enter();
+
             let begin = Instant::now();
             let task_id = task.get_id();
             let state_view = task.state_view.clone();
@@ -253,21 +258,21 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
             let tx = match self.worker.execute(task) {
                 Ok(output) => output,
                 Err(e) => {
-                    error!("TxEngine: Failed to execute task. Error: {}", e);
+                    error!("Failed to execute task. Error: {}", e);
                     continue;
                 }
             };
             let write_trie = match TxWriteSetTrie::new(&state_view, root_address, tx.tx_writes()) {
                 Ok(trie) => trie,
                 Err(e) => {
-                    error!("TxEngine: Failed to create TxWriteSetTrie. Error: {}", e);
+                    error!("Failed to create TxWriteSetTrie. Error: {}", e);
                     continue;
                 }
             };
+            record_time!(label: "exec_time", Instant::now() - begin);
             self.result_queue.push(TxTaskOutput {
                 task_id,
                 tx_proposal: TxProposal::new(tx, write_trie),
-                exec_time: Instant::now() - begin,
             });
         }
     }
