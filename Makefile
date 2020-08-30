@@ -18,11 +18,11 @@ build-contracts:
 .PHONY: build-contracts
 
 test:
-	RUST_LOG=info cargo test -- --nocapture
+	cargo test -- --nocapture
 .PHONY: test
 
 test-release:
-	RUST_LOG=info cargo test --release -- --nocapture
+	cargo test --release -- --nocapture
 .PHONY: test-release
 
 clean:
