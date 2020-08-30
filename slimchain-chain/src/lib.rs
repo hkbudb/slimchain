@@ -2,7 +2,7 @@
 #![feature(str_strip)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 pub mod access_map;
 pub mod behavior;

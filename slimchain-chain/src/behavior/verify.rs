@@ -11,6 +11,7 @@ use slimchain_common::{
 };
 use slimchain_tx_state::{TxStateUpdate, TxTrie, TxTrieTrait};
 
+#[tracing::instrument(skip(chain_cfg, snapshot, blk_proposal, verify_consensus_fn), fields(height = blk_proposal.get_block().block_height().0), err)]
 pub async fn verify_block<Tx, Block, VerifyConsensusFn>(
     chain_cfg: &ChainConfig,
     snapshot: &mut Snapshot<Block, TxTrie>,

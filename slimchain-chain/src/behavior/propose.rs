@@ -12,9 +12,11 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieTrait, TxWriteSetTrie};
+use slimchain_utils::record_time;
 use std::time::Instant;
 use tokio::time::timeout_at;
 
+#[tracing::instrument(skip(chain_cfg, miner_cfg, snapshot, tx_proposals, new_block_fn), fields(height = snapshot.current_height().0), err)]
 pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
     chain_cfg: &ChainConfig,
     miner_cfg: &MinerConfig,
@@ -139,5 +141,6 @@ where
     snapshot.remove_oldest_block()?;
     snapshot.commit_block(blk_proposal.get_block().clone());
 
+    record_time!(label: "propose-block", Instant::now() - begin);
     Ok(blk_proposal)
 }

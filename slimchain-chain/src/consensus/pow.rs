@@ -6,6 +6,8 @@ use slimchain_common::{
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
     error::{ensure, Result},
 };
+use slimchain_utils::record_time;
+use std::time::Instant;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Block {
@@ -69,7 +71,9 @@ fn nonce_is_valid(blk: &Block) -> bool {
     hash <= U256::MAX / blk.diff
 }
 
+#[tracing::instrument(skip(header, prev_blk), fields(height = header.height.0))]
 pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
+    let begin = Instant::now();
     let diff = compute_diff(header.time_stamp, prev_blk);
     let mut blk = Block {
         header,
@@ -83,6 +87,7 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
         blk.nonce += 1.into();
     }
 
+    record_time!(label: "mining", Instant::now() - begin, height = blk.header.height.0);
     blk
 }
 
@@ -103,10 +108,13 @@ mod tests {
     #[test]
     #[ignore]
     fn test_pow() {
+        slimchain_utils::init_tracing_for_test();
+
         let mut blk = Block::genesis_block();
 
         for _ in 0..30 {
             let mut header = blk.header.clone();
+            header.height = header.height.next_height();
             header.time_stamp = Utc::now();
             let new_blk = create_new_block(header, &blk);
             println!("diff = {}", new_blk.diff);
