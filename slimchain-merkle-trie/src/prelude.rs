@@ -4,7 +4,7 @@ pub use crate::partial_trie::{
     update_missing_branches, PartialTrie, PartialTrieDiff,
 };
 #[cfg(feature = "read")]
-pub use crate::read::{read_trie, ReadTrieContext};
+pub use crate::read::{read_trie, read_trie_without_proof, ReadTrieContext};
 #[cfg(all(feature = "partial_trie", feature = "write"))]
 pub use crate::write::WritePartialTrieContext;
 #[cfg(feature = "write")]

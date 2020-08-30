@@ -11,6 +11,62 @@ use slimchain_common::{
     error::Result,
 };
 
+pub fn read_trie_without_proof<K: Key, V: Value>(
+    trie_node_loader: &impl NodeLoader<V>,
+    root_address: H256,
+    key: &K,
+) -> Result<Option<V>> {
+    let root_node = match trie_node_loader.check_address_and_load_node(root_address)? {
+        Some(n) => n,
+        None => return Ok(None),
+    };
+
+    let mut cur_node = root_node;
+    let mut cur_key = key.as_nibbles();
+
+    let value = loop {
+        match &cur_node {
+            crate::TrieNode::Extension(n) => {
+                if let Some(remaining) = cur_key.strip_prefix(&n.nibbles) {
+                    if let Some(sub_node) = trie_node_loader.check_address_and_load_node(n.child)? {
+                        cur_node = sub_node;
+                        cur_key = remaining;
+                        continue;
+                    }
+                }
+
+                break None;
+            }
+            crate::TrieNode::Branch(n) => {
+                if let Some((child_idx, remaining)) = cur_key.split_first() {
+                    if let Some(child) = n.get_child(child_idx) {
+                        if let Some(sub_node) =
+                            trie_node_loader.check_address_and_load_node(child)?
+                        {
+                            cur_node = sub_node;
+                            cur_key = remaining;
+                            continue;
+                        }
+                    }
+                } else {
+                    panic!("Invalid key. Branch node does not store value.");
+                }
+
+                break None;
+            }
+            crate::TrieNode::Leaf(n) => {
+                if cur_key == n.nibbles.as_nibbles() {
+                    break Some(n.value.clone());
+                } else {
+                    break None;
+                };
+            }
+        }
+    };
+
+    Ok(value)
+}
+
 fn inner_read_trie<V: Value>(
     trie_node_loader: &impl NodeLoader<V>,
     root_node: TrieNode<V>,

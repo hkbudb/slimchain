@@ -148,45 +148,61 @@ fn build_test_trie() -> TestTrie {
 #[test]
 fn test_trie_read() {
     let empty_trie = TestTrie::default();
+    let v = read_trie_without_proof(&empty_trie, H256::zero(), &key!("12345678")).unwrap();
+    assert_eq!(None, v);
     let (v, p) = read_trie(&empty_trie, H256::zero(), &key!("12345678")).unwrap();
     assert_eq!(None, v);
     assert_eq!(H256::zero(), p.root_hash());
     assert!(p.value_hash(&key!("12345678")).unwrap().is_zero());
 
     let trie = build_test_trie();
+    let v = read_trie_without_proof(&trie, trie.root, &key!("12345678")).unwrap();
+    assert_eq!(None, v);
     let (v, p) = read_trie(&trie, trie.root, &key!("12345678")).unwrap();
     assert_eq!(None, v);
     assert_eq!(trie.root, p.root_hash());
     assert!(p.value_hash(&key!("12345678")).unwrap().is_zero());
     assert_eq!(None, p.value_hash(&key!("0a711355")));
 
+    let v = read_trie_without_proof(&trie, trie.root, &key!("0a705678")).unwrap();
+    assert_eq!(None, v);
     let (v, p) = read_trie(&trie, trie.root, &key!("0a705678")).unwrap();
     assert_eq!(None, v);
     assert_eq!(trie.root, p.root_hash());
     assert!(p.value_hash(&key!("0a705678")).unwrap().is_zero());
     assert_eq!(None, p.value_hash(&key!("0a711355")));
 
+    let v = read_trie_without_proof(&trie, trie.root, &key!("0a715678")).unwrap();
+    assert_eq!(None, v);
     let (v, p) = read_trie(&trie, trie.root, &key!("0a715678")).unwrap();
     assert_eq!(None, v);
     assert_eq!(trie.root, p.root_hash());
     assert!(p.value_hash(&key!("0a715678")).unwrap().is_zero());
 
+    let v = read_trie_without_proof(&trie, trie.root, &key!("0a711355")).unwrap();
+    assert_eq!(Some(1.into()), v);
     let (v, p) = read_trie(&trie, trie.root, &key!("0a711355")).unwrap();
     assert_eq!(Some(1.into()), v);
     assert_eq!(trie.root, p.root_hash());
     assert_eq!(Some(1.to_digest()), p.value_hash(&key!("0a711355")));
 
+    let v = read_trie_without_proof(&trie, trie.root, &key!("0a77d337")).unwrap();
+    assert_eq!(Some(2.into()), v);
     let (v, p) = read_trie(&trie, trie.root, &key!("0a77d337")).unwrap();
     assert_eq!(Some(2.into()), v);
     assert_eq!(trie.root, p.root_hash());
     assert_eq!(Some(2.to_digest()), p.value_hash(&key!("0a77d337")));
     assert_eq!(None, p.value_hash(&key!("0a77d397")));
 
+    let v = read_trie_without_proof(&trie, trie.root, &key!("0a7f9365")).unwrap();
+    assert_eq!(Some(3.into()), v);
     let (v, p) = read_trie(&trie, trie.root, &key!("0a7f9365")).unwrap();
     assert_eq!(Some(3.into()), v);
     assert_eq!(trie.root, p.root_hash());
     assert_eq!(Some(3.to_digest()), p.value_hash(&key!("0a7f9365")));
 
+    let v = read_trie_without_proof(&trie, trie.root, &key!("0a77d397")).unwrap();
+    assert_eq!(Some(4.into()), v);
     let (v, p) = read_trie(&trie, trie.root, &key!("0a77d397")).unwrap();
     assert_eq!(Some(4.into()), v);
     assert_eq!(trie.root, p.root_hash());
