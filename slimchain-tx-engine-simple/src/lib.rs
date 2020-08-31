@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test() {
-        init_tracing_for_test();
+        let _guard = init_tracing_for_test();
 
         let mut states = MemTxState::new();
 

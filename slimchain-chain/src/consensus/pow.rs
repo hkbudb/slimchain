@@ -108,7 +108,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_pow() {
-        slimchain_utils::init_tracing_for_test();
+        let _guard = slimchain_utils::init_tracing_for_test();
 
         let mut blk = Block::genesis_block();
 

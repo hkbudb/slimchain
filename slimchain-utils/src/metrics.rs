@@ -9,12 +9,12 @@ use tracing::{Dispatch, Level};
 use tracing_appender::non_blocking::WorkerGuard as TracingLoggerGuard;
 
 static METRICS_DISPATCH_INIT: AtomicBool = AtomicBool::new(false);
-pub static mut METRICS_DISPATCH: Option<(Dispatch, TracingLoggerGuard)> = None;
+pub static mut METRICS_DISPATCH: Option<Dispatch> = None;
 
 #[macro_export]
 macro_rules! use_metrics_subscriber {
     ($x:tt) => {
-        if let Some((dispatch, _)) = unsafe { $crate::metrics::METRICS_DISPATCH.as_ref() } {
+        if let Some(dispatch) = unsafe { $crate::metrics::METRICS_DISPATCH.as_ref() } {
             $crate::tracing::dispatcher::with_default(dispatch, || $x)
         }
     };
@@ -60,7 +60,9 @@ macro_rules! record_event {
     };
 }
 
-pub fn init_metrics_subscriber(writer: impl Write + Send + Sync + 'static) -> Result<()> {
+pub fn init_metrics_subscriber(
+    writer: impl Write + Send + Sync + 'static,
+) -> Result<TracingLoggerGuard> {
     ensure!(
         !METRICS_DISPATCH_INIT.compare_and_swap(false, true, Ordering::SeqCst),
         "Metrics subscriber already init."
@@ -75,13 +77,13 @@ pub fn init_metrics_subscriber(writer: impl Write + Send + Sync + 'static) -> Re
         .finish();
 
     unsafe {
-        METRICS_DISPATCH = Some((Dispatch::new(subscriber), guard));
+        METRICS_DISPATCH = Some(Dispatch::new(subscriber));
     }
 
-    Ok(())
+    Ok(guard)
 }
 
-pub fn init_metrics_subscriber_using_file(file: impl AsRef<Path>) -> Result<()> {
+pub fn init_metrics_subscriber_using_file(file: impl AsRef<Path>) -> Result<TracingLoggerGuard> {
     let f = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -96,7 +98,7 @@ mod tests {
 
     #[test]
     fn test() {
-        crate::init_tracing_for_test();
+        let _guard = crate::init_tracing_for_test();
 
         let time = Duration::from_millis(2200);
         record_time!(label: "test_time", time);

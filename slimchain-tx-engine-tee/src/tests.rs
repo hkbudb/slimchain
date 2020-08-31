@@ -17,7 +17,7 @@ use std::path::PathBuf;
 
 #[test]
 fn test() {
-    init_tracing_for_test();
+    let _guard = init_tracing_for_test();
 
     let mut states = MemTxState::new();
 
