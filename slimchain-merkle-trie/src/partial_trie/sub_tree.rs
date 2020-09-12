@@ -80,9 +80,6 @@ impl SubTree {
     }
 
     pub(crate) fn can_be_pruned(&self) -> bool {
-        match self {
-            Self::Hash(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Hash(_))
     }
 }

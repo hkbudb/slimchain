@@ -62,7 +62,7 @@ pub fn update_tx_state(
         let state_apply = state_write_ctx.changes();
         let acc_data = AccountData {
             nonce: acc_data.nonce.unwrap_or(old_acc_data.nonce),
-            code: acc_data.code.clone().unwrap_or_else(|| old_acc_data.code),
+            code: acc_data.code.clone().unwrap_or(old_acc_data.code),
             acc_state_root: state_apply.root,
         };
 

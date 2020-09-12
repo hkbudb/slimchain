@@ -111,10 +111,7 @@ impl BranchNode {
         self.children
             .iter()
             .filter(|c| match c {
-                Some(sub) => match sub.as_ref() {
-                    SubTree::Hash(_) => false,
-                    _ => true,
-                },
+                Some(sub) => !matches!(sub.as_ref(), SubTree::Hash(_)),
                 None => false,
             })
             .count()
