@@ -16,7 +16,7 @@ sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
 slimchain-common = { path = "../slimchain-common" }
 tracing = "0.1"
 webpki = "0.21"
-x509-parser = "0.7"
+x509-parser = "0.8"
 
 [build-dependencies]
 webpki = "0.21"

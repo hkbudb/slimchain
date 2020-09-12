@@ -29,11 +29,11 @@ apt-get update -y
 apt-get install -y libsgx-uae-service libsgx-urts sgx-aesm-service
 apt-get install -y nodejs
 
-curl -L https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.10.100.2.bin -o /tmp/sgx_linux_x64_sdk.bin
+curl -L https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.11.100.2.bin -o /tmp/sgx_linux_x64_sdk.bin
 chmod +x /tmp/sgx_linux_x64_sdk.bin
 mkdir -p /opt/intel
 cd /opt/intel
 echo 'yes'| /tmp/sgx_linux_x64_sdk.bin
 rm /tmp/sgx_linux_x64_sdk.bin
 
-npm install --unsafe-perm -g truffle
+npm install -g truffle

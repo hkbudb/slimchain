@@ -1,6 +1,3 @@
-// remove after upgrading rust to v1.45
-#![feature(str_strip)]
-
 #[macro_use]
 extern crate tracing;
 
