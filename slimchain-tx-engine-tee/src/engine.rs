@@ -1,5 +1,6 @@
 use crate::config::TEEConfig;
 use dashmap::{mapref::one::RefMut as DashMapRefMut, DashMap};
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
@@ -19,10 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-lazy_static! {
-    pub(crate) static ref TASK_STATES: DashMap<TxTaskId, TaskState> = DashMap::new();
-}
-
+pub(crate) static TASK_STATES: Lazy<DashMap<TxTaskId, TaskState>> = Lazy::new(|| DashMap::new());
 pub(crate) type SharedSgxEnclave = Arc<SgxEnclave>;
 
 pub struct TEETxEngineWorkerFactory {

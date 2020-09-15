@@ -3,9 +3,6 @@
 #[macro_use]
 extern crate tracing;
 
-#[macro_use]
-extern crate lazy_static;
-
 pub(crate) mod config;
 pub(crate) mod ecall;
 pub(crate) mod engine;
