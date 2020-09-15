@@ -1,6 +1,5 @@
 use slimchain_common::error::{Error, Result};
 use std::path::Path;
-use tracing_appender::non_blocking::WorkerGuard as TracingLoggerGuard;
 use tracing_subscriber::EnvFilter;
 
 pub mod config;
@@ -12,7 +11,7 @@ pub use chrono;
 pub use toml;
 pub use tracing;
 
-pub fn init_tracing(default_level: &str, metrics_file: &Path) -> Result<TracingLoggerGuard> {
+pub fn init_tracing(default_level: &str, metrics_file: &Path) -> Result<metrics::Guard> {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(format!("slimchain={}", default_level)));
     tracing_subscriber::fmt()
@@ -22,7 +21,7 @@ pub fn init_tracing(default_level: &str, metrics_file: &Path) -> Result<TracingL
     metrics::init_metrics_subscriber_using_file(metrics_file)
 }
 
-pub fn init_tracing_for_test() -> Option<TracingLoggerGuard> {
+pub fn init_tracing_for_test() -> Option<metrics::Guard> {
     let filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("slimchain=info"));
     tracing_subscriber::fmt()

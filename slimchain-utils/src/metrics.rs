@@ -1,41 +1,99 @@
-use slimchain_common::error::{ensure, Result};
+pub use serde_json;
+
+use crossbeam_channel::{bounded, Sender};
+use once_cell::sync::OnceCell;
+use serde_json::Value as JsonValue;
+use slimchain_common::error::{anyhow, Result};
 use std::{
     fs,
     io::{BufWriter, Write},
     path::Path,
-    sync::atomic::{AtomicBool, Ordering},
+    thread::{self, JoinHandle},
 };
-use tracing::{Dispatch, Level};
-use tracing_appender::non_blocking::WorkerGuard as TracingLoggerGuard;
 
-static METRICS_DISPATCH_INIT: AtomicBool = AtomicBool::new(false);
-pub static mut METRICS_DISPATCH: Option<Dispatch> = None;
+const BUFFERED_ENTRY_SIZE: usize = 10_000;
+pub static METRICS_DISPATCH: OnceCell<Dispatch> = OnceCell::new();
+
+pub struct Dispatch {
+    sender: Sender<DispatchEvent>,
+}
+
+impl Dispatch {
+    pub fn add_entry(&self, value: JsonValue) {
+        self.sender.try_send(DispatchEvent::Entry(value)).ok();
+    }
+}
+
+enum DispatchEvent {
+    Shutdown,
+    Entry(JsonValue),
+}
+
+pub struct Guard {
+    sender: Sender<DispatchEvent>,
+    handler: Option<JoinHandle<()>>,
+}
+
+impl Guard {
+    fn new(writer: impl Write + Send + Sync + 'static) -> Result<Self> {
+        let (tx, rx) = bounded(BUFFERED_ENTRY_SIZE);
+        METRICS_DISPATCH
+            .set(Dispatch { sender: tx.clone() })
+            .map_err(|_e| anyhow!("Metrics already init."))?;
+        let handler = thread::spawn(move || {
+            let mut writer = writer;
+            while let Ok(entry) = rx.recv() {
+                match entry {
+                    DispatchEvent::Shutdown => break,
+                    DispatchEvent::Entry(value) => {
+                        serde_json::to_writer(&mut writer, &value).ok();
+                        writeln!(writer).ok();
+                    }
+                }
+            }
+            writer.flush().ok();
+        });
+        Ok(Self {
+            sender: tx,
+            handler: Some(handler),
+        })
+    }
+}
+
+impl Drop for Guard {
+    fn drop(&mut self) {
+        self.sender.send(DispatchEvent::Shutdown).ok();
+        if let Some(handler) = self.handler.take() {
+            handler.join().ok();
+        }
+    }
+}
 
 #[macro_export]
-macro_rules! use_metrics_subscriber {
-    ($x:tt) => {
-        if let Some(dispatch) = unsafe { $crate::metrics::METRICS_DISPATCH.as_ref() } {
-            $crate::tracing::dispatcher::with_default(dispatch, || $x)
+macro_rules! __record_entry {
+    ($x:expr) => {
+        if let Some(dispatch) = $crate::metrics::METRICS_DISPATCH.get() {
+            dispatch.add_entry($x);
         }
     };
 }
 
 #[macro_export]
 macro_rules! record_time {
-    (label: $label:literal, $time:expr) => {
-        $crate::record_time!(label: $label, $time, );
+    ($label:literal, $time:expr) => {
+        $crate::record_time!($label, $time, );
     };
-    (label: $label:literal, $time:expr, $($fields:tt)*) => {
+    ($label:literal, $time:expr, $($fields:tt)*) => {
         match $time {
             t => {
-                $crate::use_metrics_subscriber! {{
-                    $crate::tracing::trace!(
-                        kind = "time",
-                        label = $label,
-                        time_ms = (t.as_millis() as u64),
-                        $($fields)*
-                    );
-                }};
+                let fields = $crate::metrics::serde_json::json!({ $($fields)* });
+                let entry = $crate::metrics::serde_json::json!({
+                    "k": "time",
+                    "l": $label,
+                    "t": t.as_millis() as u64,
+                    "v": fields,
+                });
+                $crate::__record_entry!(entry);
             }
         }
     };
@@ -43,47 +101,27 @@ macro_rules! record_time {
 
 #[macro_export]
 macro_rules! record_event {
-    (label: $label:literal) => {
-        $crate::record_event!(label: $label,);
+    ($label:literal) => {
+        $crate::record_event!($label,);
     };
-    (label: $label:literal, $($fields:tt)*) => {
-        $crate::use_metrics_subscriber! {{
-            $crate::tracing::trace!(
-                kind = "event",
-                label = $label,
-                timestamp = $crate::chrono::Utc::now()
-                    .to_rfc3339_opts($crate::chrono::SecondsFormat::Millis, true)
-                    .as_str(),
-                $($fields)*
-            );
-        }};
-    };
+    ($label:literal, $($fields:tt)*) => {{
+        let ts = $crate::chrono::Utc::now().to_rfc3339_opts($crate::chrono::SecondsFormat::Millis, true);
+        let fields = $crate::metrics::serde_json::json!({ $($fields)* });
+        let entry = $crate::metrics::serde_json::json!({
+            "k": "event",
+            "l": $label,
+            "ts": ts.as_str(),
+            "v": fields,
+        });
+        $crate::__record_entry!(entry);
+    }};
 }
 
-pub fn init_metrics_subscriber(
-    writer: impl Write + Send + Sync + 'static,
-) -> Result<TracingLoggerGuard> {
-    ensure!(
-        !METRICS_DISPATCH_INIT.compare_and_swap(false, true, Ordering::SeqCst),
-        "Metrics subscriber already init."
-    );
-
-    let (writer, guard) = tracing_appender::non_blocking(writer);
-    let subscriber = tracing_subscriber::fmt()
-        .json()
-        .with_max_level(Level::TRACE)
-        .with_writer(writer)
-        .without_time()
-        .finish();
-
-    unsafe {
-        METRICS_DISPATCH = Some(Dispatch::new(subscriber));
-    }
-
-    Ok(guard)
+pub fn init_metrics_subscriber(writer: impl Write + Send + Sync + 'static) -> Result<Guard> {
+    Guard::new(writer)
 }
 
-pub fn init_metrics_subscriber_using_file(file: impl AsRef<Path>) -> Result<TracingLoggerGuard> {
+pub fn init_metrics_subscriber_using_file(file: impl AsRef<Path>) -> Result<Guard> {
     let f = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -101,9 +139,9 @@ mod tests {
         let _guard = crate::init_tracing_for_test();
 
         let time = Duration::from_millis(2200);
-        record_time!(label: "test_time", time);
-        record_time!(label: "test_time", time, foo = 1);
-        record_event!(label: "test_event", id = 1);
+        record_time!("test_time", time);
+        record_time!("test_time", time, "foo": 1);
+        record_event!("test_event", "id": 1);
         tracing::error!("An error");
         tracing::info!("An info");
     }
