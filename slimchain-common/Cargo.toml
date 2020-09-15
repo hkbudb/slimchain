@@ -8,7 +8,7 @@ publish = false
 [features]
 default = [
     "std",
-    "ed25519-batch",
+    "multi-signed-tx",
     "primitive-types-rlp",
 ]
 std = [
@@ -19,8 +19,9 @@ std = [
     "primitive-types/std",
     "serde/std",
 ]
-ed25519-batch = [
+multi-signed-tx = [
     "ed25519-dalek/batch",
+    "once_cell",
 ]
 primitive-types-rlp = [
     "primitive-types/rlp",
@@ -34,6 +35,7 @@ derive_more = "0.99"
 ed25519-dalek = { version = "1.0", default-features = false, features = ["u64_backend", "alloc", "serde"] }
 hashbrown = { version = "0.9", features = ["serde"] }
 hex = { version = "0.4", default-features = false }
+once_cell = { version = "1.4", optional = true }
 primitive-types = { version = "0.7", default-features = false, features = ["serde_no_std", "byteorder"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 
