@@ -8,6 +8,10 @@ pub mod block_proposal;
 pub mod config;
 pub mod conflict_check;
 pub mod consensus;
+pub mod db;
 pub mod loader;
 pub mod role;
 pub mod snapshot;
+
+#[cfg(test)]
+mod tests;

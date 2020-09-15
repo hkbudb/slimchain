@@ -87,7 +87,7 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
         blk.nonce += 1.into();
     }
 
-    record_time!(label: "mining", Instant::now() - begin, height = blk.header.height.0);
+    record_time!("mining", Instant::now() - begin, "height": blk.header.height.0);
     blk
 }
 

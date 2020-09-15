@@ -1,6 +1,15 @@
-use crate::{access_map::AccessMap, block::BlockTrait};
-use slimchain_common::{basic::BlockHeight, error::Result};
-use slimchain_tx_state::TxTrieTrait;
+use crate::{
+    access_map::AccessMap,
+    block::BlockTrait,
+    db::{DBPtr, Transaction},
+    loader::BlockLoaderTrait,
+};
+use serde::Deserialize;
+use slimchain_common::{
+    basic::{BlockHeight, ShardId, H256},
+    error::{Context as _, Result},
+};
+use slimchain_tx_state::{InShardData, OutShardData, StorageTxTrie, TxTrie, TxTrieTrait};
 
 #[derive(Clone)]
 pub struct Snapshot<Block: BlockTrait, TxTrie: TxTrieTrait> {
@@ -57,4 +66,106 @@ impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
         }
         Ok(())
     }
+}
+
+impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
+    fn write_db_tx(&self) -> Result<Transaction> {
+        let mut tx = Transaction::with_capacity(3);
+        tx.insert_block_height(self.current_height())?;
+        tx.insert_access_map(&self.access_map)?;
+        tx.insert_tx_trie(&self.tx_trie)?;
+        Ok(tx)
+    }
+
+    pub fn write_sync(&self, db: &DBPtr) -> Result<()> {
+        db.write_sync(self.write_db_tx()?)
+    }
+
+    pub async fn write_async(&self, db: &DBPtr) -> Result<()> {
+        db.write_async(self.write_db_tx()?).await
+    }
+
+    pub fn load_from_db(db: &DBPtr, state_len: usize) -> Result<Self> {
+        if let Some(height) = db.get_block_height()? {
+            let recent_blocks = load_recent_blocks::<Block>(db, height, state_len)?;
+            let tx_trie = db.get_tx_trie()?;
+            let access_map = db.get_access_map()?;
+            assert_eq!(height, access_map.latest_block_height());
+            Ok(Self::new(recent_blocks, tx_trie, access_map))
+        } else {
+            Ok(Self::genesis_snapshot(
+                Default::default(),
+                Block::genesis_block(),
+                state_len,
+            ))
+        }
+    }
+}
+
+impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTrie> {
+    fn write_db_tx(&self) -> Result<Transaction> {
+        let mut tx = Transaction::with_capacity(4);
+        tx.insert_block_height(self.current_height())?;
+        tx.insert_shard_id(self.tx_trie.get_shard_id())?;
+        tx.insert_access_map(&self.access_map)?;
+        tx.insert_out_shard_data(self.tx_trie.get_out_shard_data())?;
+        Ok(tx)
+    }
+
+    pub fn write_sync(&self, db: &DBPtr) -> Result<()> {
+        db.write_sync(self.write_db_tx()?)
+    }
+
+    pub async fn write_async(&self, db: &DBPtr) -> Result<()> {
+        db.write_async(self.write_db_tx()?).await
+    }
+
+    pub fn load_from_db(db: &DBPtr, state_len: usize, shard_id: ShardId) -> Result<Self> {
+        if let Some(height) = db.get_block_height()? {
+            let recent_blocks = load_recent_blocks::<Block>(db, height, state_len)?;
+            let root = recent_blocks
+                .back()
+                .context("Failed to access the latest block.")?
+                .state_root();
+            let out_shard_data = db.get_out_shard_data()?;
+            let tx_trie =
+                StorageTxTrie::new(shard_id, InShardData::new(db.clone(), root), out_shard_data);
+            let access_map = db.get_access_map()?;
+            assert_eq!(height, access_map.latest_block_height());
+            Ok(Self::new(recent_blocks, tx_trie, access_map))
+        } else {
+            let tx_trie = StorageTxTrie::new(
+                shard_id,
+                InShardData::new(db.clone(), H256::zero()),
+                OutShardData::default(),
+            );
+            Ok(Self::genesis_snapshot(
+                tx_trie,
+                Block::genesis_block(),
+                state_len,
+            ))
+        }
+    }
+}
+
+fn load_recent_blocks<Block: BlockTrait + for<'de> Deserialize<'de>>(
+    db: &DBPtr,
+    block_height: BlockHeight,
+    state_len: usize,
+) -> Result<im::Vector<Block>> {
+    let mut height = block_height;
+    let mut out = im::Vector::new();
+    while height.0 > 0 && out.len() < state_len {
+        let blk = db.get_block(height)?;
+        out.push_front(blk);
+        height.0 -= 1;
+    }
+
+    if out.len() < state_len {
+        debug_assert!(height.is_zero());
+        let blk = db.get_block(height)?;
+        out.push_front(blk);
+    }
+
+    Ok(out)
 }
