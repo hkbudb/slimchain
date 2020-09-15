@@ -4,7 +4,7 @@ use crate::{
     collections::HashSet,
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
     ed25519::{ed25519_dalek::PUBLIC_KEY_LENGTH, verify_multi_signature, PubSigPair, PublicKey},
-    error::{anyhow, bail, ensure, Result},
+    error::{anyhow, ensure, Result},
     rw_set::{TxReadSet, TxWriteData},
     tx_req::TxRequest,
 };
@@ -56,20 +56,17 @@ impl TxTrait for MultiSignedTx {
     }
 
     fn verify_sig(&self) -> Result<()> {
-        if let Some(known_pks) = KNOWN_PKS.get() {
-            let mut pks = HashSet::new();
+        let known_pks = MultiSignedTx::known_pks();
+        let mut pks = HashSet::new();
 
-            for pk_sig in &self.pk_sig_pairs {
-                ensure!(known_pks.has_key(pk_sig.public()), "Unknown public key.");
-                pks.insert(pk_sig.public().to_bytes());
-            }
-            ensure!(
-                pks.len() >= known_pks.quorum,
-                "The number of signatures is less than the quorum."
-            );
-        } else {
-            bail!("Known public keys are not set.");
+        for pk_sig in &self.pk_sig_pairs {
+            ensure!(known_pks.has_key(pk_sig.public()), "Unknown public key.");
+            pks.insert(pk_sig.public().to_bytes());
         }
+        ensure!(
+            pks.len() >= known_pks.quorum,
+            "The number of signatures is less than the quorum."
+        );
 
         let hash = self.raw_tx.to_digest();
         verify_multi_signature(hash, &self.pk_sig_pairs)?;
@@ -89,7 +86,13 @@ impl From<SignedTx> for MultiSignedTx {
 
 impl MultiSignedTx {
     pub fn add_pk_sig(&mut self, pk_sig: PubSigPair) {
-        self.pk_sig_pairs.push(pk_sig);
+        if !self
+            .pk_sig_pairs
+            .iter()
+            .any(|p| p.public() == pk_sig.public())
+        {
+            self.pk_sig_pairs.push(pk_sig);
+        }
     }
 
     pub fn set_known_pks(pks: &[PublicKey], quorum: usize) -> Result<()> {
@@ -97,9 +100,13 @@ impl MultiSignedTx {
             .set(KnownPks::new(pks, quorum))
             .map_err(|_e| anyhow!("Known public keys already init."))
     }
+
+    pub fn known_pks() -> &'static KnownPks {
+        KNOWN_PKS.get().expect("Known public keys are not set.")
+    }
 }
 
-struct KnownPks {
+pub struct KnownPks {
     known_pks: HashSet<[u8; PUBLIC_KEY_LENGTH]>,
     quorum: usize,
 }
@@ -113,8 +120,12 @@ impl KnownPks {
         Self { known_pks, quorum }
     }
 
-    fn has_key(&self, key: &PublicKey) -> bool {
+    pub fn has_key(&self, key: &PublicKey) -> bool {
         self.known_pks.contains(key.as_bytes())
+    }
+
+    pub fn quorum(&self) -> usize {
+        self.quorum
     }
 }
 
