@@ -13,9 +13,9 @@ impl Config {
     pub fn load(file: &Path) -> Result<Self> {
         let cfg = toml::from_str(
             &fs::read_to_string(file)
-                .map_err(|e| anyhow!("Failed to open {:?}. Reason: {}.", file, e))?,
+                .map_err(|e| anyhow!("Failed to open {}. Reason: {}.", file.display(), e))?,
         )
-        .map_err(|e| anyhow!("Failed to load {:?}. Reason: {}.", file, e))?;
+        .map_err(|e| anyhow!("Failed to load {}. Reason: {}.", file.display(), e))?;
         Ok(Self(cfg))
     }
 

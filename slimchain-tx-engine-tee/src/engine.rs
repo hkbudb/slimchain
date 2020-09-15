@@ -32,7 +32,7 @@ pub struct TEETxEngineWorkerFactory {
 
 impl TEETxEngineWorkerFactory {
     pub fn new(config: TEEConfig, enclave_path: &Path) -> Result<Self> {
-        info!("Init SGX enclave from {:?}.", enclave_path);
+        info!("Init SGX enclave from {}.", enclave_path.display());
         let debug = 1;
         let mut launch_token: sgx_launch_token_t = unsafe { mem::zeroed() };
         let mut launch_token_updated: i32 = 0;
