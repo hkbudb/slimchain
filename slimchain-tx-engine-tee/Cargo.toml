@@ -27,5 +27,5 @@ tracing = "0.1"
 ureq = { version = "1.2", features = ["json"] }
 
 [build-dependencies]
-bindgen = "0.55"
+bindgen = "0.54"
 cc = "1.0"
