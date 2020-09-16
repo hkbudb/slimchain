@@ -9,6 +9,7 @@ pub mod config;
 pub mod conflict_check;
 pub mod consensus;
 pub mod db;
+pub mod latest;
 pub mod loader;
 pub mod role;
 pub mod snapshot;

@@ -27,5 +27,6 @@ tracing-futures = "0.2"
 kvdb-memorydb = "0.7"
 postcard = { version = "0.5", features = ["alloc"] }
 serde_json = "1.0"
+serial_test = "0.5"
 slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-engine-simple = { path = "../slimchain-tx-engine-simple" }
