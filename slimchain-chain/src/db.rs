@@ -1,7 +1,6 @@
 use crate::{
     access_map::AccessMap,
     block::BlockTrait,
-    block_proposal::BlockProposal,
     loader::{BlockLoaderTrait, TxLoaderTrait},
 };
 use kvdb::{DBKey, DBTransaction, DBValue, KeyValueDB};
