@@ -84,6 +84,6 @@ where
     snapshot.commit_block(blk_proposal.get_block().clone());
     snapshot.remove_oldest_block()?;
 
-    record_time!("verify-block", Instant::now() - begin, "height": blk_proposal.get_block().block_height().0);
+    record_time!("verify_block", Instant::now() - begin, "height": blk_proposal.get_block().block_height().0);
     Ok(update)
 }

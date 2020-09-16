@@ -7,8 +7,9 @@ use crate::{
 use serde::Serialize;
 use slimchain_common::{error::Result, tx::TxTrait};
 use slimchain_tx_state::TxStateUpdate;
+use slimchain_utils::record_event;
 
-#[tracing::instrument(level = "info", skip(blk_proposal, db), fields(height = blk_proposal.get_block().block_height().0), err)]
+#[tracing::instrument(level = "debug", skip(blk_proposal, db), fields(height = blk_proposal.get_block().block_height().0), err)]
 pub async fn commit_block<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
     db: &DBPtr,
@@ -22,10 +23,11 @@ where
     db_tx.insert_block(blk)?;
     db.write_async(db_tx).await?;
     set_latest_block_header(blk);
+    record_event!("tx_commit", "txs": blk.tx_list());
     Ok(())
 }
 
-#[tracing::instrument(level = "info", skip(blk_proposal, state_update, db), fields(height = blk_proposal.get_block().block_height().0), err)]
+#[tracing::instrument(level = "debug", skip(blk_proposal, state_update, db), fields(height = blk_proposal.get_block().block_height().0), err)]
 pub async fn commit_block_storage_node<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
     state_update: &TxStateUpdate,
@@ -48,5 +50,6 @@ where
 
     db.write_async(db_tx).await?;
     set_latest_block_header(blk);
+    record_event!("tx_commit", "txs": blk.tx_list());
     Ok(())
 }
