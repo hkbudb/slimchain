@@ -104,6 +104,13 @@ impl MultiSignedTx {
     pub fn known_pks() -> &'static KnownPks {
         KNOWN_PKS.get().expect("Known public keys are not set.")
     }
+
+    #[allow(clippy::missing_safety_doc)]
+    pub unsafe fn reset_known_pks() {
+        let known_pks_ptr =
+            core::mem::transmute::<*const OnceCell<KnownPks>, *mut OnceCell<KnownPks>>(&KNOWN_PKS);
+        (*known_pks_ptr).take();
+    }
 }
 
 pub struct KnownPks {
@@ -169,11 +176,7 @@ mod tests {
 
         // clean up
         unsafe {
-            let known_pks_ptr = core::mem::transmute::<
-                *const OnceCell<KnownPks>,
-                *mut OnceCell<KnownPks>,
-            >(&KNOWN_PKS);
-            (*known_pks_ptr).take();
+            MultiSignedTx::reset_known_pks();
         }
     }
 }
