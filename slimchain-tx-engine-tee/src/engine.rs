@@ -20,7 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub(crate) static TASK_STATES: Lazy<DashMap<TxTaskId, TaskState>> = Lazy::new(|| DashMap::new());
+pub(crate) static TASK_STATES: Lazy<DashMap<TxTaskId, TaskState>> = Lazy::new(DashMap::new);
 pub(crate) type SharedSgxEnclave = Arc<SgxEnclave>;
 
 pub struct TEETxEngineWorkerFactory {
