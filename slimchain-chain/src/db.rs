@@ -186,19 +186,6 @@ impl Transaction {
         self.insert_object(TX_DB_COL, &h256_to_db_key(tx_hash), tx)
     }
 
-    pub fn insert_block_proposal<Block: BlockTrait + Serialize, Tx: TxTrait + Serialize>(
-        &mut self,
-        block_proposal: BlockProposal<Block, Tx>,
-    ) -> Result<()> {
-        let (blk, txs) = block_proposal.unpack();
-        self.insert_block(&blk)?;
-        for (&tx_hash, tx) in blk.tx_list().iter().zip(txs.iter()) {
-            debug_assert_eq!(tx_hash, tx.to_digest());
-            self.insert_tx(tx_hash, tx)?;
-        }
-        Ok(())
-    }
-
     pub fn update_state(&mut self, update: &TxStateUpdate) -> Result<()> {
         for (&addr, node) in update.acc_nodes.iter() {
             self.insert_object(STATE_DB_COL, &h256_to_db_key(addr), node)?;
