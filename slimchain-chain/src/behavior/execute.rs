@@ -1,4 +1,4 @@
-use crate::{db::DBPtr, latest::get_latest_block_height_and_state_root};
+use crate::{db::DBPtr, latest::LatestBlockHeaderPtr};
 use futures::{prelude::*, stream::Fuse};
 use pin_project::pin_project;
 use slimchain_common::{tx::TxTrait, tx_req::SignedTxRequest};
@@ -15,12 +15,25 @@ pub struct TxExecuteStream<Tx: TxTrait + 'static, Input: Stream<Item = SignedTxR
     input: Fuse<Input>,
     engine: TxEngine<Tx>,
     db: DBPtr,
+    latest_block_header: LatestBlockHeaderPtr,
 }
 
 impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> TxExecuteStream<Tx, Input> {
-    pub fn new(input: Input, engine: TxEngine<Tx>, db: DBPtr) -> Self {
+    pub fn new(
+        input: Input,
+        engine: TxEngine<Tx>,
+        db: &DBPtr,
+        latest_block_header: &LatestBlockHeaderPtr,
+    ) -> Self {
         let input = input.fuse();
-        Self { input, engine, db }
+        let db = db.clone();
+        let latest_block_header = latest_block_header.clone();
+        Self {
+            input,
+            engine,
+            db,
+            latest_block_header,
+        }
     }
 }
 
@@ -33,8 +46,8 @@ impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> Stream for TxExecuteStr
         while let Poll::Ready(req) = this.input.as_mut().poll_next(cx) {
             match req {
                 Some(req) => {
-                    let (block_height, state_root) = get_latest_block_height_and_state_root()
-                        .expect("Failed to get the latest block info.");
+                    let (block_height, state_root) =
+                        this.latest_block_header.get_height_and_state_root();
                     let task = TxTask::new(block_height, this.db.clone(), state_root, req);
                     this.engine.push_task(task);
                 }

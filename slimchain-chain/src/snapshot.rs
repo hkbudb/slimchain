@@ -2,7 +2,6 @@ use crate::{
     access_map::AccessMap,
     block::BlockTrait,
     db::{DBPtr, Transaction},
-    latest::set_latest_block_header,
     loader::BlockLoaderTrait,
 };
 use serde::Deserialize;
@@ -95,7 +94,6 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
             Ok(Self::new(recent_blocks, tx_trie, access_map))
         } else {
             let genesis_block = Block::genesis_block();
-            set_latest_block_header(&genesis_block);
             Ok(Self::genesis_snapshot(
                 Default::default(),
                 genesis_block,
@@ -143,7 +141,6 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTri
                 OutShardData::default(),
             );
             let genesis_block = Block::genesis_block();
-            set_latest_block_header(&genesis_block);
             Ok(Self::genesis_snapshot(tx_trie, genesis_block, state_len))
         }
     }

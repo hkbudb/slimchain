@@ -1,89 +1,76 @@
 use crate::block::{BlockHeader, BlockTrait};
-use arc_swap::{ArcSwap, Guard};
-use once_cell::sync::OnceCell;
-use slimchain_common::{
-    basic::{BlockHeight, H256},
-    error::{Context as _, Result},
-};
+use arc_swap::ArcSwap;
+use slimchain_common::basic::{BlockHeight, H256};
 use std::sync::Arc;
 
-static LATEST_BLOCK_HEADER: OnceCell<ArcSwap<BlockHeader>> = OnceCell::new();
-
-pub fn set_latest_block_header(block: &impl BlockTrait) {
-    let header = Arc::new(block.block_header().clone());
-    LATEST_BLOCK_HEADER
-        .get_or_init(|| ArcSwap::new(header.clone()))
-        .store(header);
+pub struct LatestBlockHeader {
+    header: ArcSwap<BlockHeader>,
 }
 
-fn get_latest_block_header_inner() -> Result<Guard<'static, Arc<BlockHeader>>> {
-    Ok(LATEST_BLOCK_HEADER
-        .get()
-        .context("Failed to load the latest block header.")?
-        .load())
-}
+pub type LatestBlockHeaderPtr = Arc<LatestBlockHeader>;
 
-pub fn get_latest_block_header() -> Result<Arc<BlockHeader>> {
-    let header = get_latest_block_header_inner()?;
-    Ok(Guard::into_inner(header))
-}
+impl LatestBlockHeader {
+    pub fn new(header: BlockHeader) -> Arc<Self> {
+        Arc::new(Self {
+            header: ArcSwap::from_pointee(header),
+        })
+    }
 
-pub fn get_latest_block_height() -> Result<BlockHeight> {
-    let header = get_latest_block_header_inner()?;
-    Ok(header.height)
-}
+    pub fn new_from_block(block: &impl BlockTrait) -> Arc<Self> {
+        Self::new(block.block_header().clone())
+    }
 
-pub fn get_latest_block_height_and_state_root() -> Result<(BlockHeight, H256)> {
-    let header = get_latest_block_header_inner()?;
-    Ok((header.height, header.state_root))
-}
+    pub fn set(self: &Arc<Self>, header: BlockHeader) {
+        self.header.store(Arc::new(header));
+    }
 
-#[allow(clippy::missing_safety_doc)]
-pub unsafe fn reset_latest_block_header() {
-    let ptr = core::mem::transmute::<
-        *const OnceCell<ArcSwap<BlockHeader>>,
-        *mut OnceCell<ArcSwap<BlockHeader>>,
-    >(&LATEST_BLOCK_HEADER);
-    (*ptr).take();
+    pub fn set_from_block(self: &Arc<Self>, block: &impl BlockTrait) {
+        self.set(block.block_header().clone());
+    }
+
+    fn get_inner<T>(self: &Arc<Self>, f: impl FnOnce(&BlockHeader) -> T) -> T {
+        let guard = self.header.load();
+        f(guard.as_ref())
+    }
+
+    pub fn get(self: &Arc<Self>) -> Arc<BlockHeader> {
+        self.header.load_full()
+    }
+
+    pub fn get_height(self: &Arc<Self>) -> BlockHeight {
+        self.get_inner(|h| h.height)
+    }
+
+    pub fn get_height_and_state_root(self: &Arc<Self>) -> (BlockHeight, H256) {
+        self.get_inner(|h| (h.height, h.state_root))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
 
     #[test]
-    #[serial]
     fn test() {
-        assert!(get_latest_block_header().is_err());
         let mut block = crate::consensus::raft::Block::genesis_block();
+        let latest_blk_header = LatestBlockHeader::new_from_block(&block);
+
         block.block_header_mut().height = 2.into();
-        set_latest_block_header(&block);
-        assert_eq!(
-            block.block_header(),
-            get_latest_block_header().unwrap().as_ref()
-        );
-        assert_eq!(BlockHeight::from(2), get_latest_block_height().unwrap());
+        latest_blk_header.set_from_block(&block);
+        assert_eq!(block.block_header(), latest_blk_header.get().as_ref());
+        assert_eq!(BlockHeight::from(2), latest_blk_header.get_height());
         assert_eq!(
             (BlockHeight::from(2), H256::zero()),
-            get_latest_block_height_and_state_root().unwrap()
+            latest_blk_header.get_height_and_state_root(),
         );
 
         block.block_header_mut().height = 3.into();
-        set_latest_block_header(&block);
-        assert_eq!(
-            block.block_header(),
-            get_latest_block_header().unwrap().as_ref()
-        );
-        assert_eq!(BlockHeight::from(3), get_latest_block_height().unwrap());
+        latest_blk_header.set_from_block(&block);
+        assert_eq!(block.block_header(), latest_blk_header.get().as_ref());
+        assert_eq!(BlockHeight::from(3), latest_blk_header.get_height());
         assert_eq!(
             (BlockHeight::from(3), H256::zero()),
-            get_latest_block_height_and_state_root().unwrap()
+            latest_blk_header.get_height_and_state_root(),
         );
-
-        unsafe {
-            reset_latest_block_header();
-        }
-        assert!(get_latest_block_header().is_err());
     }
 }
