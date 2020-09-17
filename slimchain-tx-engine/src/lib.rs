@@ -19,7 +19,7 @@ use slimchain_utils::record_time;
 use std::{
     iter,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
     thread::{self, JoinHandle},
@@ -76,6 +76,7 @@ pub struct TxEngine<Tx: TxTrait + 'static> {
     unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
     worker_threads: Vec<JoinHandle<()>>,
+    remaining_tasks: Arc<AtomicUsize>,
 }
 
 impl<Tx: TxTrait + 'static> TxEngine<Tx> {
@@ -90,6 +91,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
         let result_queue = Arc::new(SegQueue::new());
         let unparker_queue = Arc::new(ArrayQueue::new(threads));
         let shutdown_flag = Arc::new(AtomicBool::new(false));
+        let remaining_tasks = Arc::new(AtomicUsize::new(0));
 
         let mut workers: Vec<_> = (0..threads)
             .map(|_| {
@@ -100,6 +102,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
                     result_queue.clone(),
                     unparker_queue.clone(),
                     shutdown_flag.clone(),
+                    remaining_tasks.clone(),
                 )
             })
             .collect();
@@ -125,10 +128,16 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
             unparker_queue,
             shutdown_flag,
             worker_threads,
+            remaining_tasks,
         }
     }
 
+    pub fn remaining_tasks(&self) -> usize {
+        self.remaining_tasks.load(Ordering::SeqCst)
+    }
+
     pub fn push_task(&self, task: TxTask) {
+        self.remaining_tasks.fetch_add(1, Ordering::SeqCst);
         self.task_queue.push(task);
         if let Ok(unparker) = self.unparker_queue.pop() {
             unparker.unpark();
@@ -136,7 +145,11 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
     }
 
     pub fn pop_result(&self) -> Option<TxTaskOutput<Tx>> {
-        self.result_queue.pop().ok()
+        let result = self.result_queue.pop().ok();
+        if result.is_some() {
+            self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
+        }
+        result
     }
 
     pub fn pop_or_wait_result(&self) -> TxTaskOutput<Tx> {
@@ -177,6 +190,7 @@ struct TxEngineWorkerInstance<Tx: TxTrait> {
     result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
     unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
+    remaining_tasks: Arc<AtomicUsize>,
     worker: Box<dyn TxEngineWorker<Output = Tx>>,
 }
 
@@ -188,6 +202,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
         result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
         unparker_queue: Arc<ArrayQueue<Unparker>>,
         shutdown_flag: Arc<AtomicBool>,
+        remaining_tasks: Arc<AtomicUsize>,
     ) -> Self {
         let local_task_queue = Worker::new_fifo();
 
@@ -198,6 +213,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
             result_queue,
             unparker_queue,
             shutdown_flag,
+            remaining_tasks,
             worker,
         }
     }
@@ -259,6 +275,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 Ok(output) => output,
                 Err(e) => {
                     error!("Failed to execute task. Error: {}", e);
+                    self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
             };
@@ -266,6 +283,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 Ok(trie) => trie,
                 Err(e) => {
                     error!("Failed to create TxWriteSetTrie. Error: {}", e);
+                    self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
             };

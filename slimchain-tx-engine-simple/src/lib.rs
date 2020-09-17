@@ -140,6 +140,7 @@ mod tests {
             signed_tx_req1,
         );
         task_engine.push_task(task1);
+        assert_eq!(task_engine.remaining_tasks(), 1);
         let TxTaskOutput {
             tx_proposal:
                 TxProposal {
@@ -148,6 +149,7 @@ mod tests {
                 },
             ..
         } = task_engine.pop_or_wait_result();
+        assert_eq!(task_engine.remaining_tasks(), 0);
         assert!(write_trie1.verify(states.state_root()).is_ok());
         assert!(tx1.verify_sig().is_ok());
 
@@ -180,6 +182,7 @@ mod tests {
             signed_tx_req2,
         );
         task_engine.push_task(task2);
+        assert_eq!(task_engine.remaining_tasks(), 1);
         let TxTaskOutput {
             tx_proposal:
                 TxProposal {
@@ -188,6 +191,7 @@ mod tests {
                 },
             ..
         } = task_engine.pop_or_wait_result();
+        assert_eq!(task_engine.remaining_tasks(), 0);
         assert!(write_trie2.verify(states.state_root()).is_ok());
         assert!(tx2.verify_sig().is_ok());
 
