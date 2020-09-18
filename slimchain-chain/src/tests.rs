@@ -68,23 +68,25 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
     let (mut req_tx, req_rx) = unbounded();
     let mut tx_rx = TxExecuteStream::new(req_rx, task_engine, &storage_db, &storage_latest);
 
-    let tx_req1 = TxRequest::Create {
+    let mut tx_reqs = vec![TxRequest::Create {
         nonce: U256::from(0).into(),
         code: contract.code().clone(),
-    };
+    }];
 
-    let tx_req2 = TxRequest::Call {
-        address: contract_address,
-        nonce: U256::from(1).into(),
-        data: contract
-            .encode_tx_input(
-                "set",
-                &[Token::Uint(U256::from(1)), Token::Uint(U256::from(43))],
-            )
-            .unwrap(),
-    };
+    for i in 0..5 {
+        tx_reqs.push(TxRequest::Call {
+            address: contract_address,
+            nonce: U256::from(i + 1).into(),
+            data: contract
+                .encode_tx_input(
+                    "set",
+                    &[Token::Uint(U256::from(i)), Token::Uint(U256::from(i))],
+                )
+                .unwrap(),
+        });
+    }
 
-    for tx_req in vec![tx_req1, tx_req2] {
+    for tx_req in tx_reqs {
         let signed_tx_req = tx_req.sign(&keypair);
         req_tx.send(signed_tx_req).await.unwrap();
         let blk_proposal = propose_block(
@@ -129,7 +131,7 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
     let mut client2_snapshot =
         Snapshot::<Block, TxTrie>::load_from_db(&client2_db, chain_cfg.state_len).unwrap();
     let client2_latest = client2_snapshot.to_latest_block_header();
-    for i in 1..=2 {
+    for i in 1..=6 {
         let blk_proposal: BlockProposal<Block, SignedTx> =
             BlockProposal::from_db(&storage_db, i.into()).unwrap();
         verify_block(
@@ -197,6 +199,7 @@ async fn test() {
                 state_len,
                 consensus: Consensus::Raft,
             };
+            warn!(state_len, ?conflict_check);
             test_chain_cycle(&chain_cfg, &miner_cfg).await;
         }
     }

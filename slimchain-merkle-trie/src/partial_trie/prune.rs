@@ -64,7 +64,8 @@ fn prune_unused_key_inner(mut root: Arc<SubTree>, key: Nibbles) -> Result<Arc<Su
                     cur_ptr = &n.child;
                     cur_key = remaining;
                 } else {
-                    bail!("Invalid key {} at extension node.", key);
+                    // The pruned value is zero.
+                    return Ok(root);
                 }
             }
             SubTree::Branch(n) => {
@@ -87,7 +88,8 @@ fn prune_unused_key_inner(mut root: Arc<SubTree>, key: Nibbles) -> Result<Arc<Su
                             cur_key = remaining;
                         }
                         None => {
-                            bail!("Invalid key {} at branch node.", key);
+                            // The pruned value is zero.
+                            return Ok(root);
                         }
                     }
                 } else {
@@ -98,7 +100,8 @@ fn prune_unused_key_inner(mut root: Arc<SubTree>, key: Nibbles) -> Result<Arc<Su
                 if cur_key == n.nibbles.as_nibbles() {
                     break;
                 } else {
-                    bail!("Invalid key {} at leaf node.", key);
+                    // The pruned value is zero.
+                    return Ok(root);
                 }
             }
         }
