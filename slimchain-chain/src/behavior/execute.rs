@@ -13,7 +13,6 @@ use std::{
 pub struct TxExecuteStream<Tx: TxTrait + 'static, Input: Stream<Item = SignedTxRequest>> {
     #[pin]
     input: Fuse<Input>,
-    #[pin]
     engine: TxEngine<Tx>,
     db: DBPtr,
     latest_block_header: LatestBlockHeaderPtr,
@@ -62,7 +61,7 @@ impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> Stream for TxExecuteStr
             return Poll::Ready(None);
         }
 
-        let result = ready!(this.engine.as_mut().poll_result(cx));
+        let result = ready!(this.engine.poll_result(cx));
         Poll::Ready(Some(result.tx_proposal))
     }
 }

@@ -18,7 +18,6 @@ use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetTrie};
 use slimchain_utils::record_time;
 use std::{
     iter,
-    pin::Pin,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
@@ -165,7 +164,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
         result
     }
 
-    pub fn poll_result(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<TxTaskOutput<Tx>> {
+    pub fn poll_result(&mut self, cx: &mut Context<'_>) -> Poll<TxTaskOutput<Tx>> {
         match self.result_rx.poll_recv(cx) {
             Poll::Ready(result) => {
                 self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
