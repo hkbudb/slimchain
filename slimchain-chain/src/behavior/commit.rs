@@ -9,6 +9,15 @@ use slimchain_common::{error::Result, tx::TxTrait};
 use slimchain_tx_state::TxStateUpdate;
 use slimchain_utils::record_event;
 
+fn record_txs<Tx, Block>(blk_proposal: &BlockProposal<Block, Tx>)
+where
+    Tx: TxTrait,
+    Block: BlockTrait,
+{
+    let tx_ids: Vec<_> = blk_proposal.get_txs().iter().map(|tx| tx.id()).collect();
+    record_event!("tx_commit", "txs": tx_ids);
+}
+
 #[tracing::instrument(level = "debug", skip(blk_proposal, db, latest_block_header), fields(height = blk_proposal.get_block().block_height().0), err)]
 pub async fn commit_block<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
@@ -24,7 +33,7 @@ where
     db_tx.insert_block(blk)?;
     db.write_async(db_tx).await?;
     latest_block_header.set_from_block(blk);
-    record_event!("tx_commit", "txs": blk.tx_list());
+    record_txs(blk_proposal);
     Ok(())
 }
 
@@ -52,6 +61,6 @@ where
 
     db.write_async(db_tx).await?;
     latest_block_header.set_from_block(blk);
-    record_event!("tx_commit", "txs": blk.tx_list());
+    record_txs(blk_proposal);
     Ok(())
 }

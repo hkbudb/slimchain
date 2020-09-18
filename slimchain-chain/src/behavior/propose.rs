@@ -23,7 +23,7 @@ pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
     snapshot: &mut Snapshot<Block, TxTrie>,
     tx_proposals: &mut TxStream,
     new_block_fn: NewBlockFn,
-) -> Result<BlockProposal<Block, Tx>>
+) -> Result<Option<BlockProposal<Block, Tx>>>
 where
     Tx: TxTrait,
     Block: BlockTrait,
@@ -57,7 +57,7 @@ where
             Some(tx_proposal) => tx_proposal,
             None => {
                 debug!("No tx proposal is available.");
-                break;
+                return Ok(None);
             }
         };
 
@@ -106,8 +106,6 @@ where
         tx_write_tries.push(write_trie);
     }
 
-    ensure!(txs.len() >= miner_cfg.min_txs, "Not enough txs.");
-
     let tx_trie_diff = tx_write_tries
         .iter()
         .map(|t| snapshot.tx_trie.diff_missing_branches(t))
@@ -116,7 +114,8 @@ where
             (l @ Err(_), _) => l,
             (_, r @ Err(_)) => r,
         })
-        .expect("Failed to compute the TxTrieDiff")?;
+        .transpose()?
+        .unwrap_or_default();
 
     snapshot.tx_trie.apply_diff(&tx_trie_diff, false)?;
     for tx in &txs {
@@ -130,7 +129,7 @@ where
         .context("Failed to get the last block.")?;
     let block_header = BlockHeader::new(
         last_block_height.next_height(),
-        last_block.prev_blk_hash(),
+        last_block.to_digest(),
         Utc::now(),
         tx_list,
         new_state_root,
@@ -141,6 +140,8 @@ where
     snapshot.remove_oldest_block()?;
     snapshot.commit_block(blk_proposal.get_block().clone());
 
-    record_time!("propose_block", Instant::now() - begin, "height": blk_proposal.get_block().block_height().0);
-    Ok(blk_proposal)
+    let time = Instant::now() - begin;
+    record_time!("propose_block", time, "height": blk_proposal.get_block().block_height().0);
+    info!(?time);
+    Ok(Some(blk_proposal))
 }

@@ -2,6 +2,7 @@ use crate::{
     access_map::AccessMap,
     block::BlockTrait,
     db::{DBPtr, Transaction},
+    latest::{LatestBlockHeader, LatestBlockHeaderPtr},
     loader::BlockLoaderTrait,
 };
 use serde::Deserialize;
@@ -41,6 +42,13 @@ impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         self.recent_blocks.back()
+    }
+
+    pub fn to_latest_block_header(&self) -> LatestBlockHeaderPtr {
+        LatestBlockHeader::new_from_block(
+            self.get_latest_block()
+                .expect("Failed to get the latest block."),
+        )
     }
 
     pub fn get_block(&self, height: BlockHeight) -> Option<&Block> {
