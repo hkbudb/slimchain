@@ -29,3 +29,4 @@ ureq = { version = "1.2", features = ["json"] }
 [build-dependencies]
 bindgen = "0.54"
 cc = "1.0"
+tokio = { version = "0.2", features = ["rt-threaded", "macros"] }

@@ -1,5 +1,5 @@
 use crate::{db::DBPtr, latest::LatestBlockHeaderPtr};
-use futures::{prelude::*, stream::Fuse};
+use futures::{prelude::*, ready, stream::Fuse};
 use pin_project::pin_project;
 use slimchain_common::{tx::TxTrait, tx_req::SignedTxRequest};
 use slimchain_tx_engine::{TxEngine, TxTask};
@@ -13,6 +13,7 @@ use std::{
 pub struct TxExecuteStream<Tx: TxTrait + 'static, Input: Stream<Item = SignedTxRequest>> {
     #[pin]
     input: Fuse<Input>,
+    #[pin]
     engine: TxEngine<Tx>,
     db: DBPtr,
     latest_block_header: LatestBlockHeaderPtr,
@@ -57,15 +58,11 @@ impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> Stream for TxExecuteStr
             }
         }
 
-        match this.engine.pop_result() {
-            Some(result) => Poll::Ready(Some(result.tx_proposal)),
-            None => {
-                if input_exhausted && this.engine.remaining_tasks() == 0 {
-                    Poll::Ready(None)
-                } else {
-                    Poll::Pending
-                }
-            }
+        if input_exhausted && this.engine.remaining_tasks() == 0 {
+            return Poll::Ready(None);
         }
+
+        let result = ready!(this.engine.as_mut().poll_result(cx));
+        Poll::Ready(Some(result.tx_proposal))
     }
 }

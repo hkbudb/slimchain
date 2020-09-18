@@ -15,8 +15,8 @@ use slimchain_utils::{
 };
 use std::path::PathBuf;
 
-#[test]
-fn test() {
+#[tokio::test]
+async fn test() {
     let _guard = init_tracing_for_test();
 
     let mut states = MemTxState::new();
@@ -35,7 +35,7 @@ fn test() {
     let cfg = Config::load_test().unwrap();
     let factory = TEETxEngineWorkerFactory::use_test(cfg.get("tee").unwrap()).unwrap();
 
-    let task_engine = TxEngine::new(2, || factory.worker());
+    let mut task_engine = TxEngine::new(2, || factory.worker());
 
     let tx_req1 = TxRequest::Create {
         nonce: U256::from(0).into(),
@@ -57,7 +57,7 @@ fn test() {
                 write_trie: write_trie1,
             },
         ..
-    } = task_engine.pop_or_wait_result();
+    } = task_engine.pop_result().await;
     assert!(write_trie1.verify(states.state_root()).is_ok());
     assert!(tx1.verify_sig().is_ok());
 
@@ -97,7 +97,7 @@ fn test() {
                 write_trie: write_trie2,
             },
         ..
-    } = task_engine.pop_or_wait_result();
+    } = task_engine.pop_result().await;
     assert!(write_trie2.verify(states.state_root()).is_ok());
     assert!(tx2.verify_sig().is_ok());
 

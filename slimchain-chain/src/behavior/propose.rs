@@ -8,7 +8,7 @@ use chrono::Utc;
 use futures::prelude::*;
 use itertools::Itertools;
 use slimchain_common::{
-    error::{ensure, Context as _, Result},
+    error::{Context as _, Result},
     tx::TxTrait,
 };
 use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieTrait, TxWriteSetTrie};

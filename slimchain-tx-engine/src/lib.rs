@@ -3,7 +3,7 @@ extern crate tracing;
 
 use crossbeam::{
     deque::{Injector, Stealer, Worker},
-    queue::{ArrayQueue, SegQueue},
+    queue::ArrayQueue,
     sync::{Parker, Unparker},
     utils::Backoff,
 };
@@ -18,13 +18,16 @@ use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetTrie};
 use slimchain_utils::record_time;
 use std::{
     iter,
+    pin::Pin,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
     },
+    task::{Context, Poll},
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 create_id_type_u32!(TxTaskId);
 
@@ -72,7 +75,7 @@ pub struct TxTaskOutput<Tx: TxTrait> {
 
 pub struct TxEngine<Tx: TxTrait + 'static> {
     task_queue: Arc<Injector<TxTask>>,
-    result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
+    result_rx: UnboundedReceiver<TxTaskOutput<Tx>>,
     unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
     worker_threads: Vec<JoinHandle<()>>,
@@ -88,7 +91,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
         info!("Spawning TxEngine workers in {} threads.", threads);
 
         let task_queue = Arc::new(Injector::new());
-        let result_queue = Arc::new(SegQueue::new());
+        let (result_tx, result_rx) = unbounded_channel();
         let unparker_queue = Arc::new(ArrayQueue::new(threads));
         let shutdown_flag = Arc::new(AtomicBool::new(false));
         let remaining_tasks = Arc::new(AtomicUsize::new(0));
@@ -99,7 +102,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
                     worker_factory(),
                     task_queue.clone(),
                     threads - 1,
-                    result_queue.clone(),
+                    result_tx.clone(),
                     unparker_queue.clone(),
                     shutdown_flag.clone(),
                     remaining_tasks.clone(),
@@ -124,7 +127,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
 
         Self {
             task_queue,
-            result_queue,
+            result_rx,
             unparker_queue,
             shutdown_flag,
             worker_threads,
@@ -144,22 +147,31 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
         }
     }
 
-    pub fn pop_result(&self) -> Option<TxTaskOutput<Tx>> {
-        let result = self.result_queue.pop().ok();
+    pub fn try_pop_result(&mut self) -> Option<TxTaskOutput<Tx>> {
+        let result = self.result_rx.try_recv().ok();
         if result.is_some() {
             self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
         }
         result
     }
 
-    pub fn pop_or_wait_result(&self) -> TxTaskOutput<Tx> {
-        let backoff = Backoff::new();
-        loop {
-            if let Some(output) = self.pop_result() {
-                return output;
-            }
+    pub async fn pop_result(&mut self) -> TxTaskOutput<Tx> {
+        let result = self
+            .result_rx
+            .recv()
+            .await
+            .expect("Failed to get the result");
+        self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
+        result
+    }
 
-            backoff.snooze();
+    pub fn poll_result(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<TxTaskOutput<Tx>> {
+        match self.result_rx.poll_recv(cx) {
+            Poll::Ready(result) => {
+                self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
+                Poll::Ready(result.expect("Failed to get the result"))
+            }
+            Poll::Pending => Poll::Pending,
         }
     }
 }
@@ -187,7 +199,7 @@ struct TxEngineWorkerInstance<Tx: TxTrait> {
     global_task_queue: Arc<Injector<TxTask>>,
     local_task_queue: Worker<TxTask>,
     stealers: Vec<Stealer<TxTask>>,
-    result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
+    result_tx: UnboundedSender<TxTaskOutput<Tx>>,
     unparker_queue: Arc<ArrayQueue<Unparker>>,
     shutdown_flag: Arc<AtomicBool>,
     remaining_tasks: Arc<AtomicUsize>,
@@ -199,7 +211,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
         worker: Box<dyn TxEngineWorker<Output = Tx>>,
         global_task_queue: Arc<Injector<TxTask>>,
         stealer_num: usize,
-        result_queue: Arc<SegQueue<TxTaskOutput<Tx>>>,
+        result_tx: UnboundedSender<TxTaskOutput<Tx>>,
         unparker_queue: Arc<ArrayQueue<Unparker>>,
         shutdown_flag: Arc<AtomicBool>,
         remaining_tasks: Arc<AtomicUsize>,
@@ -210,7 +222,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
             global_task_queue,
             local_task_queue,
             stealers: Vec::with_capacity(stealer_num),
-            result_queue,
+            result_tx,
             unparker_queue,
             shutdown_flag,
             remaining_tasks,
@@ -288,10 +300,12 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 }
             };
             record_time!("exec_time", Instant::now() - begin, "task_id": task_id.0, "tx_id": tx.id());
-            self.result_queue.push(TxTaskOutput {
-                task_id,
-                tx_proposal: TxProposal::new(tx, write_trie),
-            });
+            self.result_tx
+                .send(TxTaskOutput {
+                    task_id,
+                    tx_proposal: TxProposal::new(tx, write_trie),
+                })
+                .ok();
         }
     }
 }

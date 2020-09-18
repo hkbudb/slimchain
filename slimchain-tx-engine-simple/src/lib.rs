@@ -105,8 +105,8 @@ mod tests {
     };
     use std::path::PathBuf;
 
-    #[test]
-    fn test() {
+    #[tokio::test]
+    async fn test() {
         let _guard = init_tracing_for_test();
 
         let mut states = MemTxState::new();
@@ -122,7 +122,7 @@ mod tests {
         let caller_address = caller_address_from_pk(&keypair.public);
         let contract_address = contract_address(caller_address, U256::from(0).into());
 
-        let task_engine = TxEngine::new(2, || {
+        let mut task_engine = TxEngine::new(2, || {
             let mut rng = rand::rngs::StdRng::seed_from_u64(1u64);
             Box::new(SimpleTxEngineWorker::new(Keypair::generate(&mut rng)))
         });
@@ -148,7 +148,7 @@ mod tests {
                     write_trie: write_trie1,
                 },
             ..
-        } = task_engine.pop_or_wait_result();
+        } = task_engine.pop_result().await;
         assert_eq!(task_engine.remaining_tasks(), 0);
         assert!(write_trie1.verify(states.state_root()).is_ok());
         assert!(tx1.verify_sig().is_ok());
@@ -190,7 +190,7 @@ mod tests {
                     write_trie: write_trie2,
                 },
             ..
-        } = task_engine.pop_or_wait_result();
+        } = task_engine.pop_result().await;
         assert_eq!(task_engine.remaining_tasks(), 0);
         assert!(write_trie2.verify(states.state_root()).is_ok());
         assert!(tx2.verify_sig().is_ok());
