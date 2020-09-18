@@ -1,5 +1,5 @@
 use crate::loader::TxLoaderTrait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{BlockHeight, H256},
@@ -41,6 +41,7 @@ impl BlockHeader {
         tx_list: BlockTxList,
         state_root: H256,
     ) -> Self {
+        let time_stamp = Utc.timestamp_millis(time_stamp.timestamp_millis());
         Self {
             height,
             prev_blk_hash,

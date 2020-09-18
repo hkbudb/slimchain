@@ -1,5 +1,6 @@
 use crate::{
     block::{BlockTrait, BlockTxList},
+    db::DBPtr,
     loader::{BlockLoaderTrait, TxLoaderTrait},
 };
 use serde::{
@@ -8,6 +9,7 @@ use serde::{
     Deserialize, Serialize,
 };
 use slimchain_common::{
+    basic::BlockHeight,
     error::{ensure, Result},
     rw_set::TxWriteData,
     tx::TxTrait,
@@ -73,6 +75,15 @@ impl<Block: BlockTrait, Tx: TxTrait> BlockProposal<Block, Tx> {
 
     pub fn unpack(self) -> (Block, Vec<Tx>) {
         (self.block, self.txs)
+    }
+}
+
+impl<Block: BlockTrait + for<'de> Deserialize<'de>, Tx: TxTrait + for<'de> Deserialize<'de>>
+    BlockProposal<Block, Tx>
+{
+    pub fn from_db(db: &DBPtr, height: BlockHeight) -> Result<Self> {
+        let block = db.get_block(height)?;
+        Self::from_existing_block(block, db, db, db)
     }
 }
 
