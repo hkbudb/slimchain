@@ -133,7 +133,7 @@ pub trait BlockTrait: Digestible + Clone + Sized + Send + Sync {
             "Invalid previous block hash."
         );
         ensure!(
-            self.time_stamp() > prev_blk.time_stamp(),
+            self.time_stamp() >= prev_blk.time_stamp(),
             "Invalid timestamp."
         );
         ensure!(
