@@ -29,21 +29,7 @@ use slimchain_utils::{
 };
 use std::{path::PathBuf, time::Duration};
 
-#[tokio::test]
-async fn test_chain_cycle() {
-    let _guard = init_tracing_for_test();
-
-    let chain_cfg = ChainConfig {
-        conflict_check: ConflictCheck::SSI,
-        state_len: 2,
-        consensus: Consensus::Raft,
-    };
-    let miner_cfg = MinerConfig {
-        max_txs: 1,
-        min_txs: 1,
-        max_block_interval: Duration::from_millis(100),
-    };
-
+async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
     let contract_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
@@ -102,8 +88,8 @@ async fn test_chain_cycle() {
         let signed_tx_req = tx_req.sign(&keypair);
         req_tx.send(signed_tx_req).await.unwrap();
         let blk_proposal = propose_block(
-            &chain_cfg,
-            &miner_cfg,
+            chain_cfg,
+            miner_cfg,
             &mut miner_snapshot,
             &mut tx_rx,
             create_new_block,
@@ -112,7 +98,7 @@ async fn test_chain_cycle() {
         .unwrap()
         .unwrap();
         verify_block(
-            &chain_cfg,
+            chain_cfg,
             &mut client_snapshot,
             &blk_proposal,
             verify_consensus,
@@ -120,7 +106,7 @@ async fn test_chain_cycle() {
         .await
         .unwrap();
         let storage_update = verify_block(
-            &chain_cfg,
+            chain_cfg,
             &mut storage_snapshot,
             &blk_proposal,
             verify_consensus,
@@ -147,7 +133,7 @@ async fn test_chain_cycle() {
         let blk_proposal: BlockProposal<Block, SignedTx> =
             BlockProposal::from_db(&storage_db, i.into()).unwrap();
         verify_block(
-            &chain_cfg,
+            chain_cfg,
             &mut client2_snapshot,
             &blk_proposal,
             verify_consensus,
@@ -192,4 +178,26 @@ async fn test_chain_cycle() {
         storage_snapshot2.recent_blocks
     );
     assert_eq!(storage_snapshot.access_map, storage_snapshot2.access_map);
+}
+
+#[tokio::test]
+async fn test() {
+    let _guard = init_tracing_for_test();
+
+    let miner_cfg = MinerConfig {
+        max_txs: 1,
+        min_txs: 1,
+        max_block_interval: Duration::from_millis(100),
+    };
+
+    for state_len in 1..=3 {
+        for &conflict_check in &[ConflictCheck::SSI, ConflictCheck::OCC] {
+            let chain_cfg = ChainConfig {
+                conflict_check,
+                state_len,
+                consensus: Consensus::Raft,
+            };
+            test_chain_cycle(&chain_cfg, &miner_cfg).await;
+        }
+    }
 }
