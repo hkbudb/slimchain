@@ -90,7 +90,7 @@ macro_rules! record_time {
                 let entry = $crate::metrics::serde_json::json!({
                     "k": "time",
                     "l": $label,
-                    "t": t.as_millis() as u64,
+                    "t_in_us": t.as_micros() as u64,
                     "v": fields,
                 });
                 $crate::__record_entry!(entry);
@@ -105,7 +105,7 @@ macro_rules! record_event {
         $crate::record_event!($label,);
     };
     ($label:literal, $($fields:tt)*) => {{
-        let ts = $crate::chrono::Utc::now().to_rfc3339_opts($crate::chrono::SecondsFormat::Millis, true);
+        let ts = $crate::chrono::Utc::now().to_rfc3339_opts($crate::chrono::SecondsFormat::Micros, true);
         let fields = $crate::metrics::serde_json::json!({ $($fields)* });
         let entry = $crate::metrics::serde_json::json!({
             "k": "event",
