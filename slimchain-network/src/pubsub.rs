@@ -146,7 +146,7 @@ where
             let topic = match TOPIC_MAP.get(&topics[0]) {
                 Some(topic) => topic,
                 None => {
-                    warn!("PubSub: Unknown topic.");
+                    warn!(?topics, "PubSub: Unknown topic.");
                     return;
                 }
             };
