@@ -5,3 +5,4 @@ pub mod config;
 pub mod control;
 pub mod discovery;
 pub mod rpc;
+pub mod http;
