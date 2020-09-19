@@ -3,6 +3,7 @@ members = [
     "slimchain-chain",
     "slimchain-common",
     "slimchain-merkle-trie",
+    "slimchain-network",
     "slimchain-tee-sig",
     "slimchain-tx-engine",
     "slimchain-tx-engine-simple",

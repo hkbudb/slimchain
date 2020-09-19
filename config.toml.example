@@ -39,3 +39,22 @@ api_key = "YOUR_API_KEY"
 spid = "YOUR_SPID"
 # Whether to sign linkable quote
 linkable = false
+
+# Network configure.
+[network]
+# Listen address for node
+listen = "/ip4/0.0.0.0/tcp/6000"
+
+# Listen address for HTTP server (Client only)
+http_listen = "127.0.0.1:8000"
+
+# Ed25519 key. If missing, a new key will be generated.
+keypair = "Ed25519_KEY"
+
+# Whether to enable mDNS
+mdns = true
+
+# Known peers
+[[network.peers]]
+peer_id = "PEER_ID"
+address = "/ip4/127.0.0.1/tcp/6000"
