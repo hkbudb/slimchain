@@ -14,11 +14,14 @@ where
     Tx: TxTrait,
     Block: BlockTrait,
 {
-    let tx_ids: Vec<_> = blk_proposal.get_txs().iter().map(|tx| tx.id()).collect();
+    let txs = blk_proposal.get_txs();
+    info!("Commit {} TX.", txs.len());
+    let tx_ids: Vec<_> = txs.iter().map(|tx| tx.id()).collect();
     record_event!("tx_commit", "txs": tx_ids);
 }
 
-#[tracing::instrument(level = "debug", skip(blk_proposal, db, latest_block_header), fields(height = blk_proposal.get_block().block_height().0), err)]
+#[allow(clippy::unit_arg)]
+#[tracing::instrument(level = "info", skip(blk_proposal, db, latest_block_header), fields(height = blk_proposal.get_block().block_height().0), err)]
 pub async fn commit_block<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
     db: &DBPtr,
@@ -37,7 +40,8 @@ where
     Ok(())
 }
 
-#[tracing::instrument(level = "debug", skip(blk_proposal, state_update, db, latest_block_header), fields(height = blk_proposal.get_block().block_height().0), err)]
+#[allow(clippy::unit_arg)]
+#[tracing::instrument(level = "info", skip(blk_proposal, state_update, db, latest_block_header), fields(height = blk_proposal.get_block().block_height().0), err)]
 pub async fn commit_block_storage_node<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
     state_update: &TxStateUpdate,
