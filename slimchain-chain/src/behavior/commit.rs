@@ -17,7 +17,7 @@ where
     let txs = blk_proposal.get_txs();
     info!("Commit {} TX.", txs.len());
     let tx_ids: Vec<_> = txs.iter().map(|tx| tx.id()).collect();
-    record_event!("tx_commit", "txs": tx_ids);
+    record_event!("tx_commit", "txs": tx_ids, "height": blk_proposal.get_block().block_height().0);
 }
 
 #[allow(clippy::unit_arg)]
