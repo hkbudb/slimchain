@@ -30,10 +30,9 @@ async fn test() {
 
     let handler = tokio::spawn(async move { swarm.next().await });
     tokio::time::delay_for(tokio::time::Duration::from_millis(300)).await;
-    let id = send_tx_request("127.0.0.1:8000", signed_tx_req.clone())
+    send_tx_request("127.0.0.1:8000", signed_tx_req.clone())
         .await
         .unwrap();
-    let (req_id, req) = handler.await.unwrap();
-    assert_eq!(id, req_id);
+    let req = handler.await.unwrap();
     assert_eq!(req.req, signed_tx_req);
 }

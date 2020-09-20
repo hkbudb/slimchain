@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::ShardId,
     error::{ensure, Error, Result},
-    tx_req::{SignedTxRequest, TxReqId},
+    tx_req::SignedTxRequest,
 };
 use std::net::SocketAddr;
 use std::task::{Context, Poll};
@@ -26,7 +26,7 @@ pub struct TxHttpRequest {
 
 const TX_REQ_ROUTE_PATH: &str = "tx_req";
 
-pub async fn send_tx_request(endpoint: &str, req: SignedTxRequest) -> Result<TxReqId> {
+pub async fn send_tx_request(endpoint: &str, req: SignedTxRequest) -> Result<()> {
     send_tx_request_with_shard(endpoint, req, ShardId::default()).await
 }
 
@@ -34,7 +34,7 @@ pub async fn send_tx_request_with_shard(
     endpoint: &str,
     req: SignedTxRequest,
     shard_id: ShardId,
-) -> Result<TxReqId> {
+) -> Result<()> {
     let tx_req = TxHttpRequest { req, shard_id };
     let mut resp = surf::post(&format!("http://{}/{}", endpoint, TX_REQ_ROUTE_PATH))
         .body_json(&tx_req)?
@@ -50,7 +50,7 @@ pub async fn send_tx_request_with_shard(
 
 pub struct TxHttpServer {
     srv: BoxFuture<'static, ()>,
-    recv: mpsc::Receiver<(TxReqId, TxHttpRequest)>,
+    recv: mpsc::Receiver<TxHttpRequest>,
 }
 
 #[derive(Debug)]
@@ -67,12 +67,10 @@ impl TxHttpServer {
             .and(warp::path(TX_REQ_ROUTE_PATH))
             .and(warp::body::json())
             .and_then(move |req: TxHttpRequest| {
-                let req_id = TxReqId::next_id();
-
                 let tx = tx.clone();
                 async move {
-                    match tx.clone().send((req_id, req)).await {
-                        Ok(_) => Ok(warp::reply::json(&req_id)),
+                    match tx.clone().send(req).await {
+                        Ok(_) => Ok(warp::reply::json(&())),
                         Err(e) => Err(warp::reject::custom(TxHttpServerErr(Error::msg(e)))),
                     }
                 }
@@ -84,7 +82,7 @@ impl TxHttpServer {
 
 impl NetworkBehaviour for TxHttpServer {
     type ProtocolsHandler = DummyProtocolsHandler;
-    type OutEvent = (TxReqId, TxHttpRequest);
+    type OutEvent = TxHttpRequest;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         DummyProtocolsHandler::default()

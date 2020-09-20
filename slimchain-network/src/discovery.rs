@@ -110,10 +110,8 @@ impl Discovery {
     }
 
     pub fn add_address_from_net_config(&mut self, cfg: &NetworkConfig) {
-        if let Some(peers) = cfg.peers.as_ref() {
-            for peer in peers {
-                self.add_address(&peer.peer_id, peer.address.clone())
-            }
+        for peer in cfg.peers.iter() {
+            self.add_address(&peer.peer_id, peer.address.clone())
         }
     }
 

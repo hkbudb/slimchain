@@ -3,18 +3,37 @@ use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializ
 use slimchain_common::error::{Error, Result};
 use std::fmt;
 
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct NetworkConfig {
     /// Listen address for node
     pub listen: String,
     /// Listen address for HTTP server (Client only)
-    pub http_listen: Option<String>,
+    #[serde(default = "default_http_listen")]
+    pub http_listen: String,
     /// Ed25519 key
-    pub keypair: Option<KeypairConfig>,
+    #[serde(default = "default_keypair")]
+    pub keypair: KeypairConfig,
     /// Whether to enable mDNS
-    pub mdns: Option<bool>,
+    #[serde(default = "default_mdns")]
+    pub mdns: bool,
     /// Known peers
-    pub peers: Option<Vec<PeerConfig>>,
+    #[serde(default = "Vec::new")]
+    pub peers: Vec<PeerConfig>,
+}
+
+fn default_http_listen() -> String {
+    "127.0.0.1:8000".into()
+}
+
+fn default_keypair() -> KeypairConfig {
+    let keypair = KeypairConfig::generate();
+    println!("A keypair is generated.");
+    keypair.print_config_msg();
+    keypair
+}
+
+fn default_mdns() -> bool {
+    true
 }
 
 #[derive(Clone)]
@@ -36,8 +55,8 @@ impl KeypairConfig {
         Ok(Self(key))
     }
 
-    pub fn into_libp2p_keypair(self) -> libp2p::identity::Keypair {
-        libp2p::identity::Keypair::Ed25519(self.0)
+    pub fn to_libp2p_keypair(&self) -> libp2p::identity::Keypair {
+        libp2p::identity::Keypair::Ed25519(self.0.clone())
     }
 
     pub fn print_config_msg(&self) {
