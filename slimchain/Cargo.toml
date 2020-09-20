@@ -5,6 +5,14 @@ authors = ["Cheng XU <rust@xuc.me>"]
 edition = "2018"
 publish = false
 
+[[bin]]
+name = "slimchain-node-simple"
+required-features = ["simple"]
+
+[[bin]]
+name = "slimchain-node-tee"
+required-features = ["tee"]
+
 [features]
 default = [
     "simple",
@@ -22,6 +30,7 @@ tee = [
 cfg-if = "0.1"
 color-backtrace = "0.4"
 rand = "0.7"
+serde = { version = "1.0", features = ["derive"] }
 slimchain-chain = { path = "../slimchain-chain" }
 slimchain-common = { path = "../slimchain-common" }
 slimchain-network = { path = "../slimchain-network" }

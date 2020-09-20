@@ -1,49 +1,16 @@
-#[macro_use]
-extern crate tracing;
+use serde::{Deserialize, Serialize};
 use slimchain_chain::{
     config::{ChainConfig, MinerConfig},
     consensus::Consensus,
     db::DB,
     role::Role,
 };
-use slimchain_common::error::Result;
+use slimchain_common::{error::Result, tx::TxTrait};
 use slimchain_network::{config::NetworkConfig, control::Swarmer};
 use slimchain_tx_engine::TxEngine;
-use slimchain_utils::{config::Config, init_tracing, path::binary_directory, tx_engine_threads};
+use slimchain_utils::{config::Config, init_tracing, path::binary_directory};
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-cfg_if::cfg_if! {
-    if #[cfg(all(feature = "simple", feature = "tee"))] {
-        compile_error!("Only one of `simple` and `tee` features can be enabled.");
-    } else if #[cfg(feature = "simple")] {
-        use slimchain_common::tx::SignedTx as Tx;
-        use slimchain_tx_engine_simple::SimpleTxEngineWorker;
-
-        fn create_tx_engine(_cfg: &Config, _enclave: &Option<PathBuf>) -> Result<TxEngine<Tx>> {
-            Ok(TxEngine::new(tx_engine_threads(), || {
-                let mut rng = rand::thread_rng();
-                let keypair = slimchain_common::ed25519::Keypair::generate(&mut rng);
-                Box::new(SimpleTxEngineWorker::new(keypair))
-            }))
-        }
-    } else if #[cfg(feature = "tee")] {
-        use slimchain_tee_sig::TEESignedTx as Tx;
-        use slimchain_tx_engine_tee::{TEEConfig, TEETxEngineWorkerFactory};
-
-        fn create_tx_engine(cfg: &Config, enclave: &Option<PathBuf>) -> Result<TxEngine<Tx>> {
-            let tee_cfg: TEEConfig = cfg.get("tee")?;
-            let factory = match enclave {
-                Some(enclave) => TEETxEngineWorkerFactory::new(tee_cfg, enclave)?,
-                None => TEETxEngineWorkerFactory::use_enclave_in_the_same_dir(tee_cfg)?,
-            };
-            TEETxEngineWorkerFactory::use_test(cfg.get("tee").unwrap()).unwrap();
-            Ok(TxEngine::new(tx_engine_threads(), || factory.worker()))
-        }
-    } else {
-        compile_error!("Require to enable either `simple` or `tee` feature.");
-    }
-}
 
 #[derive(Debug, StructOpt)]
 struct Opts {
@@ -68,8 +35,9 @@ struct Opts {
     log_level: Option<String>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static>(
+    create_tx_engine: impl FnOnce(&Config, &Option<PathBuf>) -> Result<TxEngine<Tx>>,
+) -> Result<()> {
     color_backtrace::install();
     let opts = Opts::from_args();
     let bin_dir = binary_directory()?;
