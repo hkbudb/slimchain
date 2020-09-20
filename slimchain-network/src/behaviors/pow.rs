@@ -27,6 +27,7 @@ use slimchain_common::{
 };
 use slimchain_tx_state::{TxProposal, TxTrie, TxTrieTrait};
 use std::{
+    cmp::Ordering,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -70,17 +71,19 @@ impl<Tx: TxTrait, Input: Stream<Item = BlockProposal<Block, Tx>>> Stream
 
         if let Poll::Ready(Some(item)) = this.input.as_mut().poll_next(cx) {
             let item_height = item.get_block_height();
-            if item_height == *this.height {
-                *this.height = this.height.next_height();
-                return Poll::Ready(Some(item));
-            } else if item_height > *this.height {
-                this.cache.insert(item_height, item);
-            } else {
-                warn!(
+            match item_height.cmp(this.height) {
+                Ordering::Equal => {
+                    *this.height = this.height.next_height();
+                    return Poll::Ready(Some(item));
+                }
+                Ordering::Greater => {
+                    this.cache.insert(item_height, item);
+                }
+                Ordering::Less => warn!(
                     height = item_height.0,
                     cur_height = this.height.0,
                     "Received outdated block."
-                )
+                ),
             }
         }
 

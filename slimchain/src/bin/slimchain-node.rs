@@ -76,11 +76,7 @@ async fn main() -> Result<()> {
 
     let _guard = {
         let metrics = opts.metrics.unwrap_or_else(|| bin_dir.join("metrics.log"));
-        let log_level = opts
-            .log_level
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("info");
+        let log_level = opts.log_level.as_deref().unwrap_or("info");
         init_tracing(log_level, &metrics)?
     };
 
