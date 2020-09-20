@@ -1,6 +1,10 @@
 use crate::basic::H256;
 use crate::digest::Digestible;
-use core::ops::{Add, AddAssign, Sub, SubAssign};
+use core::{
+    num::ParseIntError,
+    ops::{Add, AddAssign, Sub, SubAssign},
+    str::FromStr,
+};
 
 #[derive(
     Debug,
@@ -25,6 +29,14 @@ pub struct BlockHeight(pub u64);
 impl Digestible for BlockHeight {
     fn to_digest(&self) -> H256 {
         self.0.to_digest()
+    }
+}
+
+impl FromStr for BlockHeight {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.parse()?))
     }
 }
 
