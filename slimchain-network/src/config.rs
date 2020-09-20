@@ -6,6 +6,7 @@ use std::fmt;
 #[derive(Debug, Clone, Deserialize)]
 pub struct NetworkConfig {
     /// Listen address for node
+    #[serde(default = "default_listen")]
     pub listen: String,
     /// Listen address for HTTP server (Client only)
     #[serde(default = "default_http_listen")]
@@ -19,6 +20,10 @@ pub struct NetworkConfig {
     /// Known peers
     #[serde(default = "Vec::new")]
     pub peers: Vec<PeerConfig>,
+}
+
+fn default_listen() -> String {
+    "/ip4/0.0.0.0/tcp/6000".into()
 }
 
 fn default_http_listen() -> String {
