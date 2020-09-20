@@ -12,7 +12,6 @@ fn create_tx_engine(cfg: &Config, enclave: &Option<PathBuf>) -> Result<TxEngine<
         Some(enclave) => TEETxEngineWorkerFactory::new(tee_cfg, enclave)?,
         None => TEETxEngineWorkerFactory::use_enclave_in_the_same_dir(tee_cfg)?,
     };
-    TEETxEngineWorkerFactory::use_test(cfg.get("tee").unwrap()).unwrap();
     Ok(TxEngine::new(tx_engine_threads(), || factory.worker()))
 }
 
