@@ -69,6 +69,8 @@ impl AttestationReport {
         }
 
         let report: JsonValue = serde_json::from_slice(&self.report)?;
+        trace!("Quote report:\n{}", serde_json::to_string_pretty(&report).unwrap());
+
         let report_time_str = report["timestamp"]
             .as_str()
             .context("Failed to get timestamp.")?;
@@ -95,10 +97,14 @@ impl AttestationReport {
         let quote_status = report["isvEnclaveQuoteStatus"]
             .as_str()
             .context("Failed to get isvEnclaveQuoteStatus.")?;
+
         match quote_status {
             "OK" => {}
-            "GROUP_OUT_OF_DATE" => {
-                debug!("quote status is GROUP_OUT_OF_DATE");
+            "GROUP_OUT_OF_DATE"
+            | "CONFIGURATION_NEEDED"
+            | "SW_HARDENING_NEEDED"
+            | "CONFIGURATION_AND_SW_HARDENING_NEEDED" => {
+                debug!("quote status is {}", quote_status);
             }
             status => {
                 bail!("Invalid quote status {}.", status);
