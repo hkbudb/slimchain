@@ -13,6 +13,14 @@ required-features = ["simple"]
 name = "slimchain-node-tee"
 required-features = ["tee"]
 
+[[bin]]
+name = "slimchain-inspect-pow-simple"
+required-features = ["simple"]
+
+[[bin]]
+name = "slimchain-inspect-pow-tee"
+required-features = ["tee"]
+
 [features]
 default = [
     "simple",
