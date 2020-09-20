@@ -11,28 +11,18 @@ use crate::{
     },
 };
 use async_trait::async_trait;
-use libp2p::{
-    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
-    NetworkBehaviour,
-};
+use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
 use serde::Serialize;
 use slimchain_chain::{
     block_proposal::BlockProposal, config::ChainConfig, consensus::pow::Block, db::DBPtr,
     role::Role, snapshot::Snapshot,
 };
 use slimchain_common::{
-    basic::{BlockHeight, ShardId, H256},
-    collections::HashMap,
-    error::Result,
-    tx::TxTrait,
-    tx_req::SignedTxRequest,
+    basic::H256, collections::HashMap, error::Result, tx::TxTrait, tx_req::SignedTxRequest,
 };
 use slimchain_tx_state::{TxProposal, TxTrie};
 use slimchain_utils::record_event;
-use std::{
-    task::{Context, Poll},
-    time::{Duration, Instant},
-};
+use std::time::Duration;
 
 #[derive(NetworkBehaviour)]
 pub struct ClientBehavior<Tx: TxTrait + Serialize + 'static> {
