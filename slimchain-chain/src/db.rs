@@ -2,6 +2,7 @@ use crate::{
     access_map::AccessMap,
     block::BlockTrait,
     loader::{BlockLoaderTrait, TxLoaderTrait},
+    role::Role,
 };
 use kvdb::{DBKey, DBTransaction, DBValue, KeyValueDB};
 use once_cell::sync::Lazy;
@@ -62,6 +63,15 @@ impl DB {
         let cfg = kvdb_rocksdb::DatabaseConfig::with_columns(TOTAL_COLS);
         let db = kvdb_rocksdb::Database::open(&cfg, &path.to_string_lossy())?;
         Ok(Arc::new(Self { db: Box::new(db) }))
+    }
+
+    pub fn open_or_create_in_dir(dir: &Path, role: Role) -> Result<Arc<Self>> {
+        let db_file = match role {
+            Role::Client => "client.db",
+            Role::Miner => "miner.db",
+            Role::Storage(_) => "storage.db",
+        };
+        Self::open_or_create(&dir.join(db_file))
     }
 
     #[cfg(test)]
