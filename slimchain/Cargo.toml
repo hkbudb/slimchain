@@ -1,0 +1,33 @@
+[package]
+name = "slimchain"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[features]
+default = [
+    "simple",
+    # "tee",
+]
+simple = [
+    "slimchain-tx-engine-simple",
+]
+tee = [
+    "slimchain-tee-sig",
+]
+
+[dependencies]
+cfg-if = "0.1"
+color-backtrace = "0.4"
+rand = "0.7"
+slimchain-chain = { path = "../slimchain-chain" }
+slimchain-common = { path = "../slimchain-common" }
+slimchain-network = { path = "../slimchain-network" }
+slimchain-tee-sig = { path = "../slimchain-tee-sig", optional = true }
+slimchain-tx-engine = { path = "../slimchain-tx-engine" }
+slimchain-tx-engine-simple = { path = "../slimchain-tx-engine-simple", optional = true }
+slimchain-utils = { path = "../slimchain-utils" }
+structopt = "0.3"
+tokio = { version = "0.2", features = ["full", "parking_lot"] }
+tracing = "0.1"
