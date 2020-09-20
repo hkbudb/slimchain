@@ -19,7 +19,7 @@ use tokio::signal;
 
 cfg_if::cfg_if! {
     if #[cfg(all(feature = "simple", feature = "tee"))] {
-        compile_error!("Only one of `simple` and `tee` can be enabled.");
+        compile_error!("Only one of `simple` and `tee` features can be enabled.");
     } else if #[cfg(feature = "simple")] {
         use slimchain_common::tx::SignedTx as Tx;
         use slimchain_tx_engine_simple::SimpleTxEngineWorker;
