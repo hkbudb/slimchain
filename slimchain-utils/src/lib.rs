@@ -30,3 +30,19 @@ pub fn init_tracing_for_test() -> Option<metrics::Guard> {
         .ok();
     metrics::init_metrics_subscriber(std::io::stdout()).ok()
 }
+
+pub fn tx_engine_threads() -> usize {
+    if let Some(t) = std::env::var("TX_ENGINE_THREADS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+    {
+        return t;
+    }
+
+    let cpus = num_cpus::get();
+    if cpus == 1 {
+        cpus
+    } else {
+        cpus - 1
+    }
+}
