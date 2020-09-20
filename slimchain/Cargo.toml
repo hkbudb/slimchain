@@ -16,7 +16,7 @@ required-features = ["tee"]
 [features]
 default = [
     "simple",
-    # "tee",
+    "tee",
 ]
 simple = [
     "slimchain-tx-engine-simple",
