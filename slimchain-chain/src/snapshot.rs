@@ -77,7 +77,7 @@ impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
 }
 
 impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
-    fn write_db_tx(&self) -> Result<Transaction> {
+    pub fn write_db_tx(&self) -> Result<Transaction> {
         let mut tx = Transaction::with_capacity(3);
         tx.insert_block_height(self.current_height())?;
         tx.insert_access_map(&self.access_map)?;
@@ -112,7 +112,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
 }
 
 impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTrie> {
-    fn write_db_tx(&self) -> Result<Transaction> {
+    pub fn write_db_tx(&self) -> Result<Transaction> {
         let mut tx = Transaction::with_capacity(4);
         tx.insert_block_height(self.current_height())?;
         tx.insert_shard_id(self.tx_trie.get_shard_id())?;

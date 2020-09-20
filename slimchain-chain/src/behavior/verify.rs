@@ -13,7 +13,7 @@ use slimchain_tx_state::{TxStateUpdate, TxTrieTrait};
 use slimchain_utils::record_time;
 use std::time::Instant;
 
-#[tracing::instrument(level = "info", skip(chain_cfg, snapshot, blk_proposal, verify_consensus_fn), fields(height = blk_proposal.get_block().block_height().0), err)]
+#[tracing::instrument(level = "info", skip(chain_cfg, snapshot, blk_proposal, verify_consensus_fn), fields(height = blk_proposal.get_block_height().0), err)]
 pub async fn verify_block<Tx, Block, TxTrie, VerifyConsensusFn>(
     chain_cfg: &ChainConfig,
     snapshot: &mut Snapshot<Block, TxTrie>,
@@ -86,7 +86,7 @@ where
     snapshot.remove_oldest_block()?;
 
     let time = Instant::now() - begin;
-    record_time!("verify_block", time, "height": blk_proposal.get_block().block_height().0);
+    record_time!("verify_block", time, "height": blk_proposal.get_block_height().0);
     info!(?time);
     Ok(update)
 }

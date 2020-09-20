@@ -42,22 +42,13 @@ impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> Stream for TxExecuteStr
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
-        let mut input_exhausted = false;
-        while let Poll::Ready(req) = this.input.as_mut().poll_next(cx) {
-            match req {
-                Some(req) => {
-                    let (block_height, state_root) =
-                        this.latest_block_header.get_height_and_state_root();
-                    let task = TxTask::new(block_height, this.db.clone(), state_root, req);
-                    this.engine.push_task(task);
-                }
-                None => {
-                    input_exhausted = true;
-                }
-            }
+        while let Poll::Ready(Some(req)) = this.input.as_mut().poll_next(cx) {
+            let (block_height, state_root) = this.latest_block_header.get_height_and_state_root();
+            let task = TxTask::new(block_height, this.db.clone(), state_root, req);
+            this.engine.push_task(task);
         }
 
-        if input_exhausted && this.engine.remaining_tasks() == 0 {
+        if this.input.is_done() && this.engine.remaining_tasks() == 0 {
             return Poll::Ready(None);
         }
 

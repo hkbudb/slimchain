@@ -57,6 +57,10 @@ impl<Block: BlockTrait, Tx: TxTrait> BlockProposal<Block, Tx> {
         Ok(Self::new(block, txs, BlockProposalTrie::Trie(trie)))
     }
 
+    pub fn get_block_height(&self) -> BlockHeight {
+        self.block.block_height()
+    }
+
     pub fn get_block(&self) -> &Block {
         &self.block
     }

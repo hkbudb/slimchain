@@ -141,7 +141,7 @@ where
     snapshot.commit_block(blk_proposal.get_block().clone());
 
     let time = Instant::now() - begin;
-    record_time!("propose_block", time, "height": blk_proposal.get_block().block_height().0);
+    record_time!("propose_block", time, "height": blk_proposal.get_block_height().0);
     info!(?time);
     Ok(Some(blk_proposal))
 }
