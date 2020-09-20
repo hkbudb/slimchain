@@ -7,8 +7,6 @@ use crate::{
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
-crate::create_id_type_u64!(TxReqId);
-
 pub fn caller_address_from_pk(pk: &PublicKey) -> Address {
     let hash = blake2(20).hash(&pk.to_bytes()[..]);
     blake2b_hash_to_h160(hash).into()
