@@ -12,7 +12,7 @@ use slimchain_common::{
 use slimchain_tee_sig::{AttestationReport, TEESignedTx};
 use slimchain_tx_engine::{TxEngineWorker, TxTask, TxTaskId};
 use slimchain_tx_state::{TxStateReadContext, TxStateView};
-use slimchain_utils::path::current_directory;
+use slimchain_utils::path::binary_directory;
 use std::{
     mem,
     path::{Path, PathBuf},
@@ -50,7 +50,7 @@ impl TEETxEngineWorkerFactory {
     }
 
     pub fn use_enclave_in_the_same_dir(config: TEEConfig) -> Result<Self> {
-        let dir = current_directory()?;
+        let dir = binary_directory()?;
         Self::new(config, &dir.join(env!("ENCLAVE_FILE_NAME")))
     }
 

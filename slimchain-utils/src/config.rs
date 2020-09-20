@@ -24,7 +24,7 @@ impl Config {
     }
 
     pub fn load_in_the_same_dir() -> Result<Self> {
-        Self::load(&crate::path::current_directory()?.join(CONFIG_FILE_NAME))
+        Self::load(&crate::path::binary_directory()?.join(CONFIG_FILE_NAME))
     }
 
     pub fn from_toml(value: TomlValue) -> Self {

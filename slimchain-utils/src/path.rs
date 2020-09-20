@@ -1,7 +1,7 @@
 use slimchain_common::error::{Context as _, Result};
 use std::{env, path::PathBuf};
 
-pub fn current_directory() -> Result<PathBuf> {
+pub fn binary_directory() -> Result<PathBuf> {
     let binary_path = env::current_exe()?;
     let binary_dir = binary_path
         .parent()
