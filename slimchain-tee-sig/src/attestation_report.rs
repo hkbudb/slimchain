@@ -69,7 +69,10 @@ impl AttestationReport {
         }
 
         let report: JsonValue = serde_json::from_slice(&self.report)?;
-        trace!("Quote report:\n{}", serde_json::to_string_pretty(&report).unwrap());
+        trace!(
+            "Quote report:\n{}",
+            serde_json::to_string_pretty(&report).unwrap()
+        );
 
         let report_time_str = report["timestamp"]
             .as_str()
