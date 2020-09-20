@@ -11,23 +11,22 @@ pub use chrono;
 pub use toml;
 pub use tracing;
 
-pub fn init_tracing(default_level: &str, metrics_file: &Path) -> Result<metrics::Guard> {
+pub fn init_tracing_subscriber(default_level: &str) -> Result<()> {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(format!("slimchain={}", default_level)));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .try_init()
-        .map_err(Error::msg)?;
+        .map_err(Error::msg)
+}
+
+pub fn init_tracing(default_level: &str, metrics_file: &Path) -> Result<metrics::Guard> {
+    init_tracing_subscriber(default_level)?;
     metrics::init_metrics_subscriber_using_file(metrics_file)
 }
 
 pub fn init_tracing_for_test() -> Option<metrics::Guard> {
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("slimchain=info"));
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .try_init()
-        .ok();
+    init_tracing_subscriber("info").ok();
     metrics::init_metrics_subscriber(std::io::stdout()).ok()
 }
 
