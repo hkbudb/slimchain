@@ -128,6 +128,18 @@ where
         );
         Control { tx, swarm_rx, handler }
     }
+
+    pub async fn app_run(mut self, address: &str) -> Result<()> {
+        let listen_addr = self.listen_on_str(address).await?;
+        let peer_cfg = crate::config::PeerConfig::new(self.peer_id().clone(), listen_addr);
+        peer_cfg.print_config_msg();
+        let ctrl = self.spawn();
+        info!("Press Ctrl-C to quit.");
+        tokio::signal::ctrl_c().await?;
+        info!("Quitting.");
+        ctrl.shutdown().await?;
+        Ok(())
+    }
 }
 
 enum ControlMsg<Behaviour>

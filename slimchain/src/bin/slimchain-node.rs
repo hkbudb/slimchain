@@ -7,15 +7,11 @@ use slimchain_chain::{
     role::Role,
 };
 use slimchain_common::error::Result;
-use slimchain_network::{
-    config::{NetworkConfig, PeerConfig},
-    control::Swarmer,
-};
+use slimchain_network::{config::NetworkConfig, control::Swarmer};
 use slimchain_tx_engine::TxEngine;
 use slimchain_utils::{config::Config, init_tracing, path::binary_directory, tx_engine_threads};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tokio::signal;
 
 cfg_if::cfg_if! {
     if #[cfg(all(feature = "simple", feature = "tee"))] {
@@ -47,20 +43,6 @@ cfg_if::cfg_if! {
     } else {
         compile_error!("Require to enable either `simple` or `tee` feature.");
     }
-}
-
-macro_rules! run_swarmer {
-    ($swarmer: expr, $net_cfg: expr) => {{
-        let mut swarmer = $swarmer;
-        let listen_addr = swarmer.listen_on_str(&$net_cfg.listen).await?;
-        let peer_cfg = PeerConfig::new(swarmer.peer_id().clone(), listen_addr);
-        peer_cfg.print_config_msg();
-        let ctrl = swarmer.spawn();
-        info!("Press Ctrl-C to quit.");
-        signal::ctrl_c().await?;
-        info!("Quitting.");
-        ctrl.shutdown().await?;
-    }};
 }
 
 #[derive(Debug, StructOpt)]
@@ -125,21 +107,21 @@ async fn main() -> Result<()> {
                 Role::Client => {
                     let behavior = ClientBehavior::<Tx>::new(db, &chain_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    run_swarmer!(swarmer, net_cfg);
+                    swarmer.app_run(&net_cfg.listen).await?;
                 }
                 Role::Miner => {
                     let miner_cfg: MinerConfig = cfg.get("miner")?;
                     info!("Miner Cfg: {:#?}", miner_cfg);
                     let behavior = MinerBehavior::<Tx>::new(db, &chain_cfg, &miner_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    run_swarmer!(swarmer, net_cfg);
+                    swarmer.app_run(&net_cfg.listen).await?;
                 }
                 Role::Storage(shard_id) => {
                     let engine = create_tx_engine(&cfg, &opts.enclave)?;
                     let behavior =
                         StorageBehavior::<Tx>::new(db, engine, shard_id, &chain_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    run_swarmer!(swarmer, net_cfg);
+                    swarmer.app_run(&net_cfg.listen).await?;
                 }
             }
         }
