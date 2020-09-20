@@ -33,7 +33,7 @@ cfg_if::cfg_if! {
         }
     } else if #[cfg(feature = "tee")] {
         use slimchain_tee_sig::TEESignedTx as Tx;
-        use slimchain_tx_engine_tee::{config::TEEConfig, engine::TEETxEngineWorkerFactory};
+        use slimchain_tx_engine_tee::{TEEConfig, TEETxEngineWorkerFactory};
 
         fn create_tx_engine(cfg: &Config, enclave: &Option<PathBuf>) -> Result<TxEngine<Tx>> {
             let tee_cfg: TEEConfig = cfg.get("tee")?;
