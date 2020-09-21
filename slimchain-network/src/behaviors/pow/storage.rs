@@ -62,7 +62,7 @@ impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
         let tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
 
         let import_worker = BlockImportWorker::new(
-            false,
+            true,
             chain_cfg.clone(),
             snapshot,
             latest_block_header,
