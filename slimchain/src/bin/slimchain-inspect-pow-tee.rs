@@ -1,7 +1,7 @@
 use slimchain_common::error::Result;
 
-use slimchain_tee_sig::TEESignedTx as Tx;
 use slimchain_chain::consensus::pow::Block;
+use slimchain_tee_sig::TEESignedTx as Tx;
 
 #[tokio::main]
 async fn main() -> Result<()> {
