@@ -268,7 +268,10 @@ async fn main() -> Result<()> {
     let mut req_futs = Vec::with_capacity(opts.rate + 1);
     let mut next_epoch = delay_for(Duration::from_secs(1));
     for (i, key) in keys.iter().enumerate() {
-        let (address, shard_id, contract) = contracts.choose(&mut rng).copied().unwrap();
+        let (address, shard_id, contract) = contracts
+            .choose(&mut rng)
+            .copied()
+            .expect("Failed to get contract.");
         let tx_req = TxRequest::Call {
             nonce: U256::from(0).into(),
             address,
