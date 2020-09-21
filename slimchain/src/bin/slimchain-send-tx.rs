@@ -79,9 +79,9 @@ impl ContractArg {
                     .clone())
             }
             ContractArg::IoHeavy => {
-                let op_gen = Uniform::new(1, 3);
+                let op_gen = Uniform::new(1, 4);
                 let key_gen = Uniform::new(1, 100_000);
-                let size_gen = Uniform::new(1, 16);
+                let size_gen = Uniform::new(1, 32);
                 let contract = self.get_contract();
                 match op_gen.sample(rng) {
                     1 => contract.encode_tx_input(
@@ -111,9 +111,9 @@ impl ContractArg {
             ContractArg::KVStore => todo!(),
             ContractArg::SmallBank => {
                 // https://github.com/ooibc88/blockbench/blob/master/src/macro/smallbank/smallbank.cc
-                let op_gen = Uniform::new(1, 6);
+                let op_gen = Uniform::new(1, 7);
                 let acc_gen = Uniform::new(1, 100_000);
-                let bal_gen = Uniform::new(1, 10);
+                let bal_gen = Uniform::new(1, 100);
                 let contract = self.get_contract();
                 match op_gen.sample(rng) {
                     1 => contract.encode_tx_input(
