@@ -9,6 +9,7 @@ use slimchain_common::{
     error::{bail, Context as _, Result},
     tx::TxTrait,
 };
+use slimchain_utils::init_tracing_subscriber;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -36,6 +37,9 @@ where
     Tx: TxTrait + for<'de> Deserialize<'de> + 'static,
     Block: BlockTrait + for<'de> Deserialize<'de> + 'static,
 {
+    color_backtrace::install();
+    init_tracing_subscriber("info")?;
+
     let opts = Opts::from_args();
     info!("Opts: {:#?}", opts);
 
