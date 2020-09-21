@@ -283,8 +283,8 @@ async fn main() -> Result<()> {
             next_epoch = delay_for(Duration::from_secs(1));
         }
 
-        if (i + 1) % 5_000 == 0 {
-            debug!("Sent #{} txs", i + 1);
+        if (i + 1) % 1_000 == 0 {
+            info!("Sent #{} txs", i + 1);
         }
     }
 
