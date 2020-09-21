@@ -67,6 +67,10 @@ fn compute_diff(time_stamp: DateTime<Utc>, prev_blk: &Block) -> u64 {
 
 #[inline]
 fn nonce_is_valid(blk: &Block) -> bool {
+    if cfg!(debug_assertions) {
+        return true;
+    }
+
     let hash = U256::from(blk.to_digest().to_fixed_bytes());
     hash <= U256::MAX / blk.diff
 }
