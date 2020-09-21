@@ -3,7 +3,7 @@ use crate::{
     nibbles::{AsNibbles, NibbleBuf, Nibbles},
     u4::U4,
 };
-use alloc::{format, sync::Arc, vec::Vec};
+use alloc::{sync::Arc, vec::Vec};
 use slimchain_common::{
     digest::Digestible,
     error::{bail, Result},
@@ -54,7 +54,10 @@ fn prune_unused_key_inner(mut root: Arc<SubTree>, key: Nibbles) -> Result<Arc<Su
 
     loop {
         match cur_ptr.as_ref() {
-            SubTree::Hash(_) => bail!("Invalid key {}. Branch has already been pruned.", key),
+            SubTree::Hash(_) => {
+                // Branch has already been pruned.
+                return Ok(root);
+            }
             SubTree::Extension(n) => {
                 if let Some(remaining) = cur_key.strip_prefix(&n.nibbles) {
                     temp_nodes.push(TempNode::Extension {
