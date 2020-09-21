@@ -216,7 +216,7 @@ struct Opts {
     rate: usize,
 
     /// List of contracts. Accepted values: cpuheavy, donothing, ioheavy, kvstore, and smallbank.
-    #[structopt(parse(try_from_str = parse_contract_arg))]
+    #[structopt(parse(try_from_str = parse_contract_arg), required = true)]
     contract: Vec<ContractArg>,
 }
 
