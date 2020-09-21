@@ -30,6 +30,10 @@ struct Opts {
     /// Show write set
     #[structopt(short, long)]
     write_set: bool,
+
+    /// Set trace log level. Default: no tracing.
+    #[structopt(long)]
+    log_level: Option<String>,
 }
 
 pub async fn inspect_main<Tx, Block>() -> Result<()>
@@ -38,10 +42,12 @@ where
     Block: BlockTrait + for<'de> Deserialize<'de> + 'static,
 {
     color_backtrace::install();
-    init_tracing_subscriber("info")?;
 
     let opts = Opts::from_args();
-    info!("Opts: {:#?}", opts);
+
+    if let Some(log_level) = opts.log_level.as_deref() {
+        init_tracing_subscriber(log_level)?;
+    }
 
     if !opts.db_path.exists() {
         bail!("DB {:?} not existed.", opts.db_path);
@@ -66,8 +72,8 @@ where
         let block: Block = db.get_block(height)?;
         println!("Block #{} [#tx={}]", height, block.tx_list().len());
         for &tx_hash in block.tx_list().iter() {
-            if let Ok(tx) = db.get_tx(tx_hash) {
-                let tx: Tx = tx;
+            let tx: Result<Tx> = db.get_tx(tx_hash);
+            if let Ok(tx) = tx {
                 println!(" TX {} exec_height = {}", tx_hash, tx.tx_block_height());
                 if opts.write_set {
                     println!("   write_set = {:#?}", tx.tx_writes());
