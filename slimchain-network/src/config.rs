@@ -33,7 +33,7 @@ fn default_http_listen() -> String {
 fn default_keypair() -> KeypairConfig {
     let keypair = KeypairConfig::generate();
     println!("A keypair is generated.");
-    keypair.print_config_msg();
+    keypair.print_config_msg(false);
     keypair
 }
 
@@ -64,12 +64,16 @@ impl KeypairConfig {
         libp2p::identity::Keypair::Ed25519(self.0.clone())
     }
 
-    pub fn print_config_msg(&self) {
-        println!("To add the keypair in the config.toml.");
-        println!();
-        println!("  [network]");
-        println!("  keypair = \"{}\"", self.to_base58());
-        println!();
+    pub fn print_config_msg(&self, toml: bool) {
+        if toml {
+            println!("keypair = \"{}\"", self.to_base58());
+        } else {
+            println!("To add the keypair in the config.toml.");
+            println!();
+            println!("  [network]");
+            println!("  keypair = \"{}\"", self.to_base58());
+            println!();
+        }
     }
 }
 
