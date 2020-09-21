@@ -228,7 +228,7 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
                         }
                     }
                     None => {
-                        snapshot
+                        snapshot_backup
                             .write_async(&db)
                             .await
                             .expect("Failed to save the snapshot.");
