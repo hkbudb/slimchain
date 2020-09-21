@@ -37,7 +37,7 @@ pub async fn send_tx_request_with_shard(
 ) -> Result<()> {
     let tx_req = TxHttpRequest { req, shard_id };
     let mut resp = surf::post(&format!("http://{}/{}", endpoint, TX_REQ_ROUTE_PATH))
-        .body_json(&tx_req)?
+        .body(surf::Body::from_json(&tx_req).map_err(Error::msg)?)
         .await
         .map_err(Error::msg)?;
     ensure!(
