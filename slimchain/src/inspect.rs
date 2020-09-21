@@ -55,6 +55,7 @@ where
     let mut height = start;
     while height <= end {
         if height.is_zero() {
+            height = height.next_height();
             continue;
         }
 
