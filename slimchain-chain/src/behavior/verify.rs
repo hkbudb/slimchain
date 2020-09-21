@@ -51,7 +51,11 @@ where
         let tx_block_height = tx.tx_block_height();
         let tx_block = match snapshot.get_block(tx_block_height) {
             Some(blk) => blk,
-            None => bail!("Outdated tx in the block proposal."),
+            None => bail!(
+                "Outdated tx in the block proposal. blk_height={}, tx_height={}",
+                blk_proposal.get_block_height(),
+                tx_block_height
+            ),
         };
 
         ensure!(
