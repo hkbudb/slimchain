@@ -378,8 +378,8 @@ impl TxTrieTrait for TxTrie {
             let acc_trie = self.acc_tries.entry(*acc_addr).or_default();
 
             debug_assert_eq!(
-                self.main_trie.value_hash(acc_addr),
-                Some(acc_trie.acc_hash_inner()),
+                self.main_trie.value_hash(acc_addr).unwrap_or_default(),
+                acc_trie.acc_hash_inner(),
                 "TxTrie#apply_writes: Hash mismatched between main trie and account trie (address: {}).",
                 acc_addr
             );
