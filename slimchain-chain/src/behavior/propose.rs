@@ -9,6 +9,7 @@ use futures::prelude::*;
 use itertools::Itertools;
 use slimchain_common::{
     error::{Context as _, Result},
+    rw_set::TxWriteData,
     tx::TxTrait,
 };
 use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieTrait, TxWriteSetTrie};
@@ -39,6 +40,7 @@ where
     let last_block_height = snapshot.current_height();
 
     snapshot.access_map.alloc_new_block();
+    let mut writes = TxWriteData::default();
 
     while txs.len() < miner_cfg.max_txs {
         let tx_proposal = if txs.len() < miner_cfg.min_txs {
@@ -101,6 +103,7 @@ where
 
         snapshot.access_map.add_read(tx.tx_reads());
         snapshot.access_map.add_write(tx.tx_writes());
+        writes.merge(tx.tx_writes());
 
         txs.push(tx);
         tx_write_tries.push(write_trie);
@@ -118,9 +121,7 @@ where
         .unwrap_or_default();
 
     snapshot.tx_trie.apply_diff(&tx_trie_diff, false)?;
-    for tx in &txs {
-        snapshot.tx_trie.apply_writes(tx.tx_writes())?;
-    }
+    snapshot.tx_trie.apply_writes(&writes)?;
 
     let new_state_root = snapshot.tx_trie.root_hash();
     let tx_list: BlockTxList = txs.iter().collect();
