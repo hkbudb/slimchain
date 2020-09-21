@@ -234,7 +234,7 @@ pub fn apply_diff(
     let mut root = match &base.root {
         Some(root) => root.clone(),
         None => {
-            ensure!(diff.0.is_empty(), "Invalid diff.");
+            ensure!(diff.0.is_empty(), "Invalid diff at root.");
             return Ok(base.clone());
         }
     };
@@ -253,7 +253,7 @@ pub fn apply_diff(
 
         while !cur_nibbles.is_empty() {
             match cur_ptr.as_ref() {
-                SubTree::Hash(_) => bail!("Invalid diff."),
+                SubTree::Hash(_) => bail!("Invalid diff. Found hash."),
                 SubTree::Extension(n) => {
                     if let Some(remaining) = cur_nibbles.strip_prefix(&n.nibbles) {
                         temp_nodes.push(TempNode::Extension {
@@ -263,7 +263,7 @@ pub fn apply_diff(
                         cur_ptr = &n.child;
                         cur_nibbles = remaining;
                     } else {
-                        bail!("Invalid diff.");
+                        bail!("Invalid diff at extension node.");
                     }
                 }
                 SubTree::Branch(n) => {
@@ -279,14 +279,14 @@ pub fn apply_diff(
                                 cur_nibbles = remaining;
                             }
                             None => {
-                                bail!("Invalid diff.");
+                                bail!("Invalid diff at branch node.");
                             }
                         }
                     } else {
                         bail!("Invalid diff. Branch node does not store value.");
                     }
                 }
-                SubTree::Leaf(_) => bail!("Invalid diff."),
+                SubTree::Leaf(_) => bail!("Invalid diff. Found leaf node."),
             }
         }
 
