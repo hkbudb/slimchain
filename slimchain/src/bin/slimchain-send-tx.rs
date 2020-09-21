@@ -16,6 +16,7 @@ use slimchain_utils::{
     contract::{contract_address, Contract, Token},
     init_tracing_subscriber,
 };
+use std::io::{self, prelude::*};
 use structopt::StructOpt;
 use tokio::time::{delay_for, Duration, Instant};
 
@@ -255,9 +256,10 @@ async fn main() -> Result<()> {
     };
 
     {
-        println!("Press Enter to continue");
+        print!("Press Enter to continue");
+        io::stdout().flush().ok();
         let mut buf = String::new();
-        std::io::stdin().read_line(&mut buf)?;
+        io::stdin().read_line(&mut buf)?;
     }
 
     let begin = Instant::now();
