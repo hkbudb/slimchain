@@ -295,7 +295,7 @@ async fn main() -> Result<()> {
     let total_time = Instant::now() - begin;
     info!("Time: {:?}", total_time);
     info!(
-        "Real rate: {:?}",
+        "Real rate: {:?} tx/s",
         (opts.total as f64) / total_time.as_secs_f64()
     );
 

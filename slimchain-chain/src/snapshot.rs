@@ -78,6 +78,7 @@ impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
 
 impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
     pub fn write_db_tx(&self) -> Result<Transaction> {
+        debug!("Saving snapshot...");
         let mut tx = Transaction::with_capacity(3);
         tx.insert_block_height(self.current_height())?;
         tx.insert_access_map(&self.access_map)?;
@@ -94,6 +95,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
     }
 
     pub fn load_from_db(db: &DBPtr, state_len: usize) -> Result<Self> {
+        debug!("Loading snapshot...");
         if let Some(height) = db.get_block_height()? {
             let recent_blocks = load_recent_blocks::<Block>(db, height, state_len)?;
             let tx_trie = db.get_tx_trie()?;
@@ -113,6 +115,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
 
 impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTrie> {
     pub fn write_db_tx(&self) -> Result<Transaction> {
+        debug!("Saving snapshot...");
         let mut tx = Transaction::with_capacity(4);
         tx.insert_block_height(self.current_height())?;
         tx.insert_shard_id(self.tx_trie.get_shard_id())?;
@@ -130,6 +133,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTri
     }
 
     pub fn load_from_db(db: &DBPtr, state_len: usize, shard_id: ShardId) -> Result<Self> {
+        debug!("Loading snapshot...");
         if let Some(height) = db.get_block_height()? {
             let recent_blocks = load_recent_blocks::<Block>(db, height, state_len)?;
             let root = recent_blocks
