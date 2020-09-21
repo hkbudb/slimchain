@@ -141,8 +141,10 @@ impl DB {
 }
 
 impl<Block: BlockTrait + for<'de> Deserialize<'de>> BlockLoaderTrait<Block> for DB {
+    #[tracing::instrument(level = "debug", skip(self), err)]
     fn get_non_genesis_block(&self, height: BlockHeight) -> Result<Block> {
         self.get_existing_object(BLOCK_DB_COL, &block_height_to_db_key(height))
+            .context("Failed to get block from the database")
     }
 }
 
