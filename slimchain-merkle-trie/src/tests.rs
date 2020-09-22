@@ -144,6 +144,18 @@ fn build_test_trie() -> TestTrie {
     trie
 }
 
+fn build_test_trie2() -> TestTrie {
+    let mut trie = TestTrie::default();
+    let leaf = LeafNode {
+        nibbles: NibbleBuf::from_hex_str("12345678"),
+        value: Value(1),
+    };
+    let leaf_hash = leaf.to_digest();
+    trie.nodes.insert(leaf_hash, TrieNode::Leaf(Box::new(leaf)));
+    trie.root = leaf_hash;
+    trie
+}
+
 #[cfg(feature = "read")]
 #[test]
 fn test_trie_read() {
@@ -270,6 +282,15 @@ fn test_trie_read_ctx() {
         let p2: Proof = partial_trie.into();
         assert_eq!(trie.root, p2.root_hash());
     }
+
+    let trie2 = build_test_trie2();
+    let mut ctx3: ReadTrieContext<Key, _, _> = ReadTrieContext::new(&trie2, trie2.root);
+    assert_eq!(None, ctx3.read(&key!("00000000")).unwrap());
+    assert_eq!(Some(&1.into()), ctx3.read(&key!("12345678")).unwrap());
+    let p = ctx3.into_proof();
+    assert_eq!(trie2.root, p.root_hash());
+    assert!(p.value_hash(&key!("00000000")).unwrap().is_zero());
+    assert_eq!(Some(1.to_digest()), p.value_hash(&key!("12345678")));
 }
 
 #[cfg(feature = "write")]

@@ -1,5 +1,5 @@
 use super::{BranchNode, ExtensionNode, LeafNode};
-use crate::nibbles::Nibbles;
+use crate::nibbles::{AsNibbles, Nibbles};
 use alloc::boxed::Box;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
@@ -66,7 +66,14 @@ impl SubProof {
             }
             Self::Extension(n) => n.search_prefix(key),
             Self::Branch(n) => n.search_prefix(key),
-            Self::Leaf(_) => None,
+            Self::Leaf(n) => {
+                if key == n.nibbles.as_nibbles() {
+                    let n_hash = n.to_digest();
+                    Some((self as *mut _, n_hash, key))
+                } else {
+                    None
+                }
+            }
         }
     }
 }
