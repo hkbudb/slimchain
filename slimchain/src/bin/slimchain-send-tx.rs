@@ -238,6 +238,7 @@ async fn main() -> Result<()> {
             let id = (id as u64) % opts.shard;
             let shard_id = ShardId::new(id as u64, opts.shard);
             let (address, deploy_tx) = create_deploy_tx(contract, shard_id);
+            debug!("tx {} address {}", id, address);
             contracts.push((address, shard_id, contract));
             (shard_id, deploy_tx)
         })
