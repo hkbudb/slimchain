@@ -70,7 +70,12 @@ where
         }
 
         let block: Block = db.get_block(height)?;
-        println!("Block #{} [#tx={}]", height, block.tx_list().len());
+        println!(
+            "Block #{} [#tx={}, state_root={}]",
+            height,
+            block.tx_list().len(),
+            block.state_root()
+        );
         for &tx_hash in block.tx_list().iter() {
             let tx: Result<Tx> = db.get_tx(tx_hash);
             if let Ok(tx) = tx {
