@@ -44,6 +44,11 @@ check-deps:
 	$(MAKE) -C slimchain-tx-engine-tee-enclave check-deps
 .PHONY: check-deps
 
+update-deps:
+	cargo update
+	$(MAKE) -C slimchain-tx-engine-tee-enclave update-deps
+.PHONY: update-deps
+
 fmt:
 	cargo fmt
 	$(MAKE) -C slimchain-tx-engine-tee-enclave fmt

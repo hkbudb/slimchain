@@ -137,3 +137,9 @@ fmt:
 check-deps:
 	cargo upgrade --skip-compatible --dry-run
 .PHONY: check-deps
+
+## update-deps
+
+update-deps:
+	cargo update
+.PHONY: update-deps
