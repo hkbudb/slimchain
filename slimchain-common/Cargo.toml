@@ -14,6 +14,7 @@ default = [
 std = [
     "anyhow/std",
     "blake2b_simd/std",
+    "ed25519/std",
     "ed25519-dalek/std",
     "hex/std",
     "primitive-types/std",
@@ -32,7 +33,8 @@ anyhow = { version = "1.0", default-features = false }
 bitflags = "1.2"
 blake2b_simd = { version = "0.5", default-features = false }
 derive_more = "0.99"
-ed25519-dalek = { version = "1.0", default-features = false, features = ["u64_backend", "alloc", "serde"] }
+ed25519 = { version = "1", default-features = false, features = ["serde"] }
+ed25519-dalek = { version = "1.0", default-features = false, features = ["alloc", "rand", "u64_backend"] }
 hashbrown = { version = "0.9", features = ["serde"] }
 hex = { version = "0.4", default-features = false }
 once_cell = { version = "1.4", optional = true }
