@@ -70,11 +70,12 @@ pub fn read_trie_without_proof<K: Key, V: Value>(
 fn inner_read_trie<V: Value>(
     trie_node_loader: &impl NodeLoader<V>,
     root_node: TrieNode<V>,
+    root_node_hash: H256,
     key: Nibbles<'_>,
 ) -> Result<(Option<V>, SubProof)> {
     use proof::{BranchNode, ExtensionNode, LeafNode};
 
-    let mut read_proof = SubProof::default();
+    let mut read_proof = SubProof::from_hash(root_node_hash);
     let mut read_value: Option<V> = None;
 
     let mut cur_node = root_node;
@@ -169,7 +170,7 @@ pub fn read_trie<K: Key, V: Value>(
         }
     };
 
-    let (v, p) = inner_read_trie(trie_node_loader, root_node, key.as_nibbles())?;
+    let (v, p) = inner_read_trie(trie_node_loader, root_node, root_address, key.as_nibbles())?;
     Ok((v, Proof::from_subproof(p)))
 }
 
@@ -219,8 +220,12 @@ impl<K: Key, V: Value, L: NodeLoader<V>> ReadTrieContext<K, V, L> {
                     Some(root) => match root.search_prefix(key.as_nibbles()) {
                         Some((sub_proof, sub_root, sub_key)) => {
                             let sub_root_node = self.trie_node_loader.load_node(sub_root)?;
-                            let (v, p) =
-                                inner_read_trie(&self.trie_node_loader, sub_root_node, sub_key)?;
+                            let (v, p) = inner_read_trie(
+                                &self.trie_node_loader,
+                                sub_root_node,
+                                sub_root,
+                                sub_key,
+                            )?;
                             unsafe {
                                 *sub_proof = p;
                             }
