@@ -17,7 +17,7 @@ use slimchain_utils::record_time;
 use std::time::Instant;
 use tokio::time::timeout_at;
 
-#[tracing::instrument(level = "info", skip(chain_cfg, miner_cfg, snapshot, tx_proposals, new_block_fn), fields(height = snapshot.current_height().0), err)]
+#[tracing::instrument(level = "info", skip(chain_cfg, miner_cfg, snapshot, tx_proposals, new_block_fn), fields(height = snapshot.current_height().0 + 1), err)]
 pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
     chain_cfg: &ChainConfig,
     miner_cfg: &MinerConfig,
