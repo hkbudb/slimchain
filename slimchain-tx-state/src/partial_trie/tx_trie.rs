@@ -305,8 +305,8 @@ impl TxTrieTrait for TxTrie {
         if cfg!(debug_assertions) {
             for (acc_addr, acc_trie) in self.acc_tries.iter() {
                 debug_assert_eq!(
-                    self.main_trie.value_hash(acc_addr),
-                    Some(acc_trie.acc_hash_inner()),
+                    self.main_trie.value_hash(acc_addr).unwrap_or_default(),
+                    acc_trie.acc_hash_inner(),
                     "TxTrie#root_hash: Hash mismatched between main trie and account trie (address: {}).",
                     acc_addr
                 );
