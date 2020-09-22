@@ -74,10 +74,11 @@ impl TxReadProof {
 
             ensure!(
                 main_proof_acc_hash == Some(acc_hash),
-                "TxReadProof: Invalid account hash (address: {}, expect: {:?}, actual: {:?}).",
+                "TxReadProof: Invalid account hash (address: {}, expect: {:?}, actual: {:?}. state_root: {}.).",
                 acc_address,
                 main_proof_acc_hash,
-                Some(acc_hash)
+                Some(acc_hash),
+                state_root,
             );
         }
 
