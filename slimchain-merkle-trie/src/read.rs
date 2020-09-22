@@ -86,7 +86,7 @@ fn inner_read_trie<V: Value>(
             crate::TrieNode::Extension(n) => {
                 if let Some(remaining) = cur_key.strip_prefix(&n.nibbles) {
                     if let Some(sub_node) = trie_node_loader.check_address_and_load_node(n.child)? {
-                        let mut sub_proof = Box::new(SubProof::default());
+                        let mut sub_proof = Box::new(SubProof::from_hash(n.child));
                         let sub_proof_ptr = &mut *sub_proof as *mut _;
                         unsafe {
                             *cur_proof = SubProof::from_extension(ExtensionNode::new(
@@ -115,7 +115,7 @@ fn inner_read_trie<V: Value>(
                         if let Some(sub_node) =
                             trie_node_loader.check_address_and_load_node(child)?
                         {
-                            let mut sub_proof = Box::new(SubProof::default());
+                            let mut sub_proof = Box::new(SubProof::from_hash(child));
                             let sub_proof_ptr = &mut *sub_proof as *mut _;
                             let mut branch = BranchNode::from_hashes(&n.children);
                             *branch.get_child_mut(child_idx) = Some(sub_proof);
