@@ -106,14 +106,4 @@ impl BranchNode {
             None => Some(H256::zero()),
         }
     }
-
-    pub(crate) fn num_of_materialized_children(&self) -> usize {
-        self.children
-            .iter()
-            .filter(|c| match c {
-                Some(sub) => !matches!(sub.as_ref(), SubTree::Hash(_)),
-                None => false,
-            })
-            .count()
-    }
 }

@@ -436,19 +436,24 @@ fn test_partial_trie_prune() {
 
     let partial_trie: PartialTrie = read_ctx.into_proof().into();
 
-    let t1 = prune_unused_key(&partial_trie, &key!("0a77d337")).unwrap();
+    let t1 = prune_key(&partial_trie, &key!("0a77d337"), 3).unwrap();
     assert!(!t1.can_be_pruned());
     assert_eq!(t1.root_hash(), trie.root);
 
-    let t2 = prune_unused_key(&partial_trie, &key!("0a711355")).unwrap();
+    let t2 = prune_key(&partial_trie, &key!("0a711355"), 3).unwrap();
     assert!(!t2.can_be_pruned());
     assert_eq!(t2.root_hash(), trie.root);
 
-    let t3 = prune_unused_keys(
-        &partial_trie,
-        [key!("0a77d337"), key!("0a711355")].iter().cloned(),
-    )
-    .unwrap();
+    let t3 = prune_key(&t1, &key!("0a711355"), 0).unwrap();
     assert!(t3.can_be_pruned());
     assert_eq!(t3.root_hash(), trie.root);
+
+    let t4 = prune_key(&t1, &key!("0a720000"), 3).unwrap();
+    assert_eq!(t1, t4);
+
+    let t5 = prune_key(&t1, &key!("0a711360"), 6).unwrap();
+    assert_eq!(t1, t5);
+
+    let t6 = prune_key(&t1, &key!("0b000000"), 1).unwrap();
+    assert_eq!(t1, t6);
 }
