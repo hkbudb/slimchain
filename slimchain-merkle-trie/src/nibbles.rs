@@ -16,6 +16,12 @@ pub trait AsNibbles {
     fn as_nibbles(&self) -> Nibbles<'_>;
 }
 
+impl<'a, T: AsNibbles> AsNibbles for &'a T {
+    fn as_nibbles(&self) -> Nibbles<'_> {
+        (*self).as_nibbles()
+    }
+}
+
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct NibbleBuf {
     pub data: Vec<u8>,

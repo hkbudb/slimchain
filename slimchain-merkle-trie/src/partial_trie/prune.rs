@@ -1,6 +1,6 @@
 use super::{BranchNode, ExtensionNode, PartialTrie, SubTree};
 use crate::{
-    nibbles::{AsNibbles, NibbleBuf},
+    nibbles::{AsNibbles, NibbleBuf, Nibbles},
     u4::U4,
 };
 use alloc::{format, sync::Arc, vec::Vec};
@@ -9,9 +9,9 @@ use slimchain_common::{
     error::{bail, Result},
 };
 
-pub fn prune_key(
+fn prune_key_inner(
     trie: &PartialTrie,
-    key: &impl AsNibbles,
+    key: Nibbles,
     kept_prefix_len: usize,
 ) -> Result<PartialTrie> {
     let mut root = match &trie.root {
@@ -32,7 +32,7 @@ pub fn prune_key(
 
     let mut temp_nodes: Vec<TempNode> = Vec::new();
     let mut temp_node_prefix_len: usize = 0;
-    let mut cur_key = key.as_nibbles();
+    let mut cur_key = key;
     let mut cur_ptr = &root;
 
     while temp_node_prefix_len <= kept_prefix_len {
@@ -104,4 +104,27 @@ pub fn prune_key(
     }
 
     Ok(PartialTrie::from_subtree(root))
+}
+
+pub fn prune_key(
+    trie: &PartialTrie,
+    key: &impl AsNibbles,
+    kept_prefix_len: usize,
+) -> Result<PartialTrie> {
+    prune_key_inner(trie, key.as_nibbles(), kept_prefix_len)
+}
+
+pub fn prune_key2(
+    trie: &PartialTrie,
+    key: &impl AsNibbles,
+    other_keys: impl Iterator<Item = impl AsNibbles>,
+) -> Result<PartialTrie> {
+    let key = key.as_nibbles();
+    let key_len = key.len();
+    let kept_prefix_len = other_keys
+        .map(|other_k| key.common_prefix_len(&other_k))
+        .filter(|&l| l != key_len) // filter self
+        .max()
+        .unwrap_or(0);
+    prune_key_inner(trie, key, kept_prefix_len)
 }

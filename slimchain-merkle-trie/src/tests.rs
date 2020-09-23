@@ -456,4 +456,7 @@ fn test_partial_trie_prune() {
 
     let t6 = prune_key(&t1, &key!("0b000000"), 1).unwrap();
     assert_eq!(t1, t6);
+
+    let t7 = prune_key2(&partial_trie, &key!("0a77d337"), [key!("0a711355")].iter()).unwrap();
+    assert_eq!(t1, t7);
 }
