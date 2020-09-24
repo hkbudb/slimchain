@@ -19,22 +19,11 @@ use slimchain_merkle_trie::prelude::*;
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct StorageAccountTrie {
     state_trie: PartialTrie,
-    reset_values_flag: bool,
 }
 
 impl StorageAccountTrie {
-    pub fn new(state_trie: PartialTrie, reset_values_flag: bool) -> Self {
-        Self {
-            state_trie,
-            reset_values_flag,
-        }
-    }
-
-    pub fn create_from_state_trie(state_trie: PartialTrie) -> Self {
-        Self {
-            state_trie,
-            reset_values_flag: false,
-        }
+    pub fn new(state_trie: PartialTrie) -> Self {
+        Self { state_trie }
     }
 
     pub fn get_state_trie(&self) -> &PartialTrie {
@@ -45,16 +34,13 @@ impl StorageAccountTrie {
         self.state_trie = state_trie;
     }
 
-    pub fn get_reset_values(&self) -> bool {
-        self.reset_values_flag
-    }
-
-    pub fn set_reset_values(&mut self, flag: bool) {
-        self.reset_values_flag = flag;
-    }
-
-    pub fn can_be_pruned(&self) -> bool {
-        (!self.reset_values_flag) && self.state_trie.can_be_pruned()
+    fn prune_state_key(
+        &mut self,
+        key: StateKey,
+        other_keys: impl Iterator<Item = StateKey>,
+    ) -> Result<()> {
+        self.state_trie = prune_key2(&self.state_trie, &key, other_keys)?;
+        Ok(())
     }
 }
 
@@ -121,31 +107,6 @@ impl StorageTxTrie {
     pub fn get_out_shard_data(&self) -> &OutShardData {
         &self.out_shard
     }
-
-    fn prune_helper(
-        &mut self,
-        acc_addr: Address,
-        callback: impl FnOnce(&mut StorageAccountTrie) -> Result<()>,
-    ) -> Result<()> {
-        if self.shard_id.contains(acc_addr) {
-            return Ok(());
-        }
-
-        let mut entry = match self.out_shard.entry(acc_addr) {
-            im::hashmap::Entry::Occupied(o) => o,
-            im::hashmap::Entry::Vacant(_) => {
-                bail!("StorageTxTrie#prune_helper: Account is already pruned");
-            }
-        };
-
-        callback(entry.get_mut())?;
-
-        if entry.get().can_be_pruned() {
-            entry.remove();
-        }
-
-        Ok(())
-    }
 }
 
 impl TxTrieTrait for StorageTxTrie {
@@ -176,7 +137,7 @@ impl TxTrieTrait for StorageTxTrie {
                         "StorageTxTrie#update_missing_branches: Hash mismatched (address: {}).",
                         acc_addr
                     );
-                    v.insert(StorageAccountTrie::create_from_state_trie(acc_state_trie));
+                    v.insert(StorageAccountTrie::new(acc_state_trie));
                 }
             }
         }
@@ -216,7 +177,7 @@ impl TxTrieTrait for StorageTxTrie {
                             acc_addr
                         );
                     }
-                    v.insert(StorageAccountTrie::create_from_state_trie(acc_state_trie));
+                    v.insert(StorageAccountTrie::new(acc_state_trie));
                 }
             }
         }
@@ -277,7 +238,6 @@ impl TxTrieTrait for StorageTxTrie {
 
                     if acc_data.reset_values {
                         acc_state.set_state_trie(PartialTrie::new());
-                        acc_state.set_reset_values(true);
                     }
 
                     let mut state_write_ctx =
@@ -307,38 +267,36 @@ impl TxTrieTrait for StorageTxTrie {
         Ok(updates)
     }
 
-    fn prune_acc_nonce(&mut self, _acc_addr: Address) -> Result<()> {
-        Ok(())
-    }
-
-    fn prune_acc_code(&mut self, _acc_addr: Address) -> Result<()> {
-        Ok(())
-    }
-
-    fn prune_acc_state_key(&mut self, acc_addr: Address, key: StateKey) -> Result<()> {
-        self.prune_helper(acc_addr, |acc_state| {
-            let state_trie = prune_unused_key(acc_state.get_state_trie(), &key)?;
-            acc_state.set_state_trie(state_trie);
-            Ok(())
-        })
-    }
-
-    fn prune_acc_state_keys(
+    fn prune_account(
         &mut self,
         acc_addr: Address,
-        keys: impl Iterator<Item = StateKey>,
+        _other_acc_addr: impl Iterator<Item = Address>,
     ) -> Result<()> {
-        self.prune_helper(acc_addr, move |acc_state| {
-            let state_trie = prune_unused_keys(acc_state.get_state_trie(), keys)?;
-            acc_state.set_state_trie(state_trie);
-            Ok(())
-        })
+        if self.shard_id.contains(acc_addr) {
+            return Ok(());
+        }
+
+        self.out_shard.remove(&acc_addr);
+        Ok(())
     }
 
-    fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()> {
-        self.prune_helper(acc_addr, move |acc_state| {
-            acc_state.set_reset_values(false);
-            Ok(())
-        })
+    fn prune_acc_state_key(
+        &mut self,
+        acc_addr: Address,
+        key: StateKey,
+        other_keys: impl Iterator<Item = StateKey>,
+    ) -> Result<()> {
+        if self.shard_id.contains(acc_addr) {
+            return Ok(());
+        }
+
+        match self.out_shard.get_mut(&acc_addr) {
+            Some(acc_trie) => acc_trie.prune_state_key(key, other_keys)?,
+            None => bail!(
+                "StorageTxTrie#prune_acc_state_key: cannot find acc_trie. Address: {}",
+                acc_addr
+            ),
+        }
+        Ok(())
     }
 }

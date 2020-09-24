@@ -1,4 +1,5 @@
 use super::*;
+use core::iter;
 use slimchain_common::{
     basic::ShardId, create_address, create_state_key, create_tx_read_data, create_tx_write_set,
 };
@@ -541,47 +542,30 @@ fn test_prune() {
             }
         }
     };
+
+    let addr1 = create_address!("0000000000000000000000000000000000000000");
+    let addr2 = create_address!("0000000000000000000000000000000000000001");
+
+    let key1 =
+        create_state_key!("0000000000000000000000000000000000000000000000000000000000000000");
+    let key2 =
+        create_state_key!("0000000000000000000000000000000000000000000000000000000000000001");
+
     let mut trie1 = TxTrie::default();
     trie1.apply_writes(&write_set).unwrap();
     let root = trie1.root_hash();
 
-    trie1
-        .prune_acc_state_keys(
-            create_address!("0000000000000000000000000000000000000001"),
-            core::iter::empty(),
-        )
-        .unwrap();
-    assert_eq!(trie1.acc_tries.len(), 2);
+    trie1.prune_account(addr1, iter::once(addr2)).unwrap();
+    assert_eq!(trie1.acc_tries.len(), 1);
     assert_eq!(trie1.root_hash(), root);
 
     trie1
-        .prune_acc_nonce(create_address!("0000000000000000000000000000000000000000"))
+        .prune_acc_state_key(addr2, key1, iter::once(key2))
         .unwrap();
     assert_eq!(trie1.acc_tries.len(), 1);
     assert_eq!(trie1.root_hash(), root);
-    trie1
-        .prune_acc_state_keys(
-            create_address!("0000000000000000000000000000000000000001"),
-            [
-                create_state_key!(
-                    "0000000000000000000000000000000000000000000000000000000000000000"
-                ),
-                create_state_key!(
-                    "0000000000000000000000000000000000000000000000000000000000000001"
-                ),
-            ]
-            .iter()
-            .copied(),
-        )
-        .unwrap();
-    assert_eq!(trie1.acc_tries.len(), 1);
-    assert_eq!(trie1.root_hash(), root);
-    trie1
-        .prune_acc_code(create_address!("0000000000000000000000000000000000000001"))
-        .unwrap();
-    trie1
-        .prune_acc_reset_values(create_address!("0000000000000000000000000000000000000001"))
-        .unwrap();
+
+    trie1.prune_account(addr2, iter::empty()).unwrap();
     assert_eq!(trie1.acc_tries.len(), 0);
     assert_eq!(trie1.root_hash(), root);
 
@@ -595,33 +579,19 @@ fn test_prune() {
     trie2_storage.apply_update(update).unwrap();
     assert_eq!(trie2.out_shard.len(), 1);
 
+    trie2.prune_account(addr1, iter::once(addr2)).unwrap();
+    assert_eq!(trie2.out_shard.len(), 1);
+    assert_eq!(trie2.root_hash(), root);
+
     trie2
-        .prune_acc_state_keys(
-            create_address!("0000000000000000000000000000000000000001"),
-            core::iter::empty(),
-        )
+        .prune_acc_state_key(addr2, key1, iter::once(key2))
         .unwrap();
     assert_eq!(trie2.out_shard.len(), 1);
-    trie2
-        .prune_acc_state_keys(
-            create_address!("0000000000000000000000000000000000000001"),
-            [
-                create_state_key!(
-                    "0000000000000000000000000000000000000000000000000000000000000000"
-                ),
-                create_state_key!(
-                    "0000000000000000000000000000000000000000000000000000000000000001"
-                ),
-            ]
-            .iter()
-            .copied(),
-        )
-        .unwrap();
-    assert_eq!(trie2.out_shard.len(), 1);
-    trie2
-        .prune_acc_reset_values(create_address!("0000000000000000000000000000000000000001"))
-        .unwrap();
+    assert_eq!(trie2.root_hash(), root);
+
+    trie2.prune_account(addr2, iter::empty()).unwrap();
     assert_eq!(trie2.out_shard.len(), 0);
+    assert_eq!(trie2.root_hash(), root);
 
     let mut trie3_storage = MemTxState::new();
     let mut trie3 = StorageTxTrie::new(
@@ -633,31 +603,17 @@ fn test_prune() {
     trie3_storage.apply_update(update).unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
 
+    trie3.prune_account(addr1, iter::once(addr2)).unwrap();
+    assert_eq!(trie3.out_shard.len(), 0);
+    assert_eq!(trie3.root_hash(), root);
+
     trie3
-        .prune_acc_state_keys(
-            create_address!("0000000000000000000000000000000000000001"),
-            core::iter::empty(),
-        )
+        .prune_acc_state_key(addr2, key1, iter::once(key2))
         .unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
-    trie3
-        .prune_acc_state_keys(
-            create_address!("0000000000000000000000000000000000000001"),
-            [
-                create_state_key!(
-                    "0000000000000000000000000000000000000000000000000000000000000000"
-                ),
-                create_state_key!(
-                    "0000000000000000000000000000000000000000000000000000000000000001"
-                ),
-            ]
-            .iter()
-            .copied(),
-        )
-        .unwrap();
+    assert_eq!(trie3.root_hash(), root);
+
+    trie3.prune_account(addr2, iter::empty()).unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
-    trie3
-        .prune_acc_reset_values(create_address!("0000000000000000000000000000000000000001"))
-        .unwrap();
-    assert_eq!(trie3.out_shard.len(), 0);
+    assert_eq!(trie3.root_hash(), root);
 }

@@ -11,13 +11,16 @@ pub trait TxTrieTrait: Clone + Send + Sync {
     fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()>;
     fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()>;
     fn apply_writes(&mut self, writes: &TxWriteData) -> Result<TxStateUpdate>;
-    fn prune_acc_nonce(&mut self, acc_addr: Address) -> Result<()>;
-    fn prune_acc_code(&mut self, acc_addr: Address) -> Result<()>;
-    fn prune_acc_state_key(&mut self, acc_addr: Address, key: StateKey) -> Result<()>;
-    fn prune_acc_state_keys(
+
+    fn prune_account(
         &mut self,
         acc_addr: Address,
-        keys: impl Iterator<Item = StateKey>,
+        other_acc_addr: impl Iterator<Item = Address>,
     ) -> Result<()>;
-    fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()>;
+    fn prune_acc_state_key(
+        &mut self,
+        acc_addr: Address,
+        key: StateKey,
+        other_keys: impl Iterator<Item = StateKey>,
+    ) -> Result<()>;
 }

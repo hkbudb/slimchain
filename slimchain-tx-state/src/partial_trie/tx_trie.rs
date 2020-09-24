@@ -8,7 +8,7 @@ use slimchain_common::{
     collections::HashMap,
     digest::Digestible,
     error::{bail, ensure, Result},
-    rw_set::{AccountWriteData, TxWriteData, WriteAccessFlags},
+    rw_set::{AccountWriteData, TxWriteData},
 };
 use slimchain_merkle_trie::prelude::*;
 
@@ -17,7 +17,6 @@ pub(crate) struct AccountTrie {
     nonce: Nonce,
     code_hash: H256,
     state_trie: PartialTrie,
-    access_flags: WriteAccessFlags,
     #[serde(skip)]
     acc_hash: AtomicCell<Option<H256>>,
 }
@@ -28,7 +27,6 @@ impl Clone for AccountTrie {
             nonce: self.nonce,
             code_hash: self.code_hash,
             state_trie: self.state_trie.clone(),
-            access_flags: self.access_flags,
             acc_hash: AtomicCell::new(self.acc_hash.load()),
         }
     }
@@ -39,7 +37,6 @@ impl PartialEq for AccountTrie {
         self.nonce == other.nonce
             && self.code_hash == other.code_hash
             && self.state_trie == other.state_trie
-            && self.access_flags == other.access_flags
     }
 }
 
@@ -50,17 +47,11 @@ impl AccountTrie {
         self.acc_hash.store(None);
     }
 
-    pub fn new(
-        nonce: Nonce,
-        code_hash: H256,
-        state_trie: PartialTrie,
-        access_flags: WriteAccessFlags,
-    ) -> Self {
+    pub fn new(nonce: Nonce, code_hash: H256, state_trie: PartialTrie) -> Self {
         Self {
             nonce,
             code_hash,
             state_trie,
-            access_flags,
             acc_hash: AtomicCell::new(None),
         }
     }
@@ -126,12 +117,7 @@ impl AccountTrie {
     }
 
     fn create_from_empty(fork: &AccountWriteSetTrie) -> Self {
-        Self::new(
-            fork.nonce,
-            fork.code_hash,
-            fork.state_trie.clone(),
-            WriteAccessFlags::empty(),
-        )
+        Self::new(fork.nonce, fork.code_hash, fork.state_trie.clone())
     }
 
     fn apply_diff(&mut self, diff: &AccountTrieDiff, check_hash: bool) -> Result<()> {
@@ -165,12 +151,7 @@ impl AccountTrie {
         let nonce = diff.nonce.unwrap_or_default();
         let code_hash = diff.code_hash.unwrap_or_default();
         let state_trie = diff.state_trie_diff.to_standalone_trie()?;
-        Ok(Self::new(
-            nonce,
-            code_hash,
-            state_trie,
-            WriteAccessFlags::empty(),
-        ))
+        Ok(Self::new(nonce, code_hash, state_trie))
     }
 
     fn apply_writes(&mut self, writes: &AccountWriteData) -> Result<()> {
@@ -178,17 +159,14 @@ impl AccountTrie {
 
         if let Some(nonce) = writes.nonce {
             self.nonce = nonce;
-            self.access_flags.set_nonce(true);
         }
 
         if let Some(code) = &writes.code {
             self.code_hash = code.to_digest();
-            self.access_flags.set_code(true);
         }
 
         if writes.reset_values {
             self.state_trie = PartialTrie::new();
-            self.access_flags.set_reset_values(true);
         }
 
         let mut ctx = WritePartialTrieContext::new(self.state_trie.clone());
@@ -200,30 +178,13 @@ impl AccountTrie {
         Ok(())
     }
 
-    fn can_be_pruned(&self) -> bool {
-        self.access_flags.is_empty() && self.state_trie.can_be_pruned()
-    }
-
-    fn prune_nonce(&mut self) {
-        self.access_flags.set_nonce(false);
-    }
-
-    fn prune_code(&mut self) {
-        self.access_flags.set_code(false);
-    }
-
-    fn prune_state_key(&mut self, key: StateKey) -> Result<()> {
-        self.state_trie = prune_unused_key(&self.state_trie, &key)?;
+    fn prune_state_key(
+        &mut self,
+        key: StateKey,
+        other_keys: impl Iterator<Item = StateKey>,
+    ) -> Result<()> {
+        self.state_trie = prune_key2(&self.state_trie, &key, other_keys)?;
         Ok(())
-    }
-
-    fn prune_state_keys(&mut self, keys: impl Iterator<Item = StateKey>) -> Result<()> {
-        self.state_trie = prune_unused_keys(&self.state_trie, keys)?;
-        Ok(())
-    }
-
-    fn prune_reset_values(&mut self) {
-        self.access_flags.set_reset_values(false);
     }
 }
 
@@ -274,29 +235,6 @@ impl TxTrie {
             main_trie_diff,
             acc_trie_diffs,
         })
-    }
-
-    fn prune_helper(
-        &mut self,
-        acc_addr: Address,
-        callback: impl FnOnce(&mut AccountTrie) -> Result<()>,
-    ) -> Result<()> {
-        let mut entry = match self.acc_tries.entry(acc_addr) {
-            im::hashmap::Entry::Occupied(o) => o,
-            im::hashmap::Entry::Vacant(_) => {
-                bail!("TxTrie#prune_helper: Account is already pruned");
-            }
-        };
-
-        callback(entry.get_mut())?;
-
-        if entry.get().can_be_pruned() {
-            entry.remove();
-
-            self.main_trie = prune_unused_key(&self.main_trie, &acc_addr)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -395,36 +333,33 @@ impl TxTrieTrait for TxTrie {
         Ok(update)
     }
 
-    fn prune_acc_nonce(&mut self, acc_addr: Address) -> Result<()> {
-        self.prune_helper(acc_addr, |acc_trie| {
-            acc_trie.prune_nonce();
-            Ok(())
-        })
-    }
-
-    fn prune_acc_code(&mut self, acc_addr: Address) -> Result<()> {
-        self.prune_helper(acc_addr, |acc_trie| {
-            acc_trie.prune_code();
-            Ok(())
-        })
-    }
-
-    fn prune_acc_state_key(&mut self, acc_addr: Address, key: StateKey) -> Result<()> {
-        self.prune_helper(acc_addr, |acc_trie| acc_trie.prune_state_key(key))
-    }
-
-    fn prune_acc_state_keys(
+    fn prune_account(
         &mut self,
         acc_addr: Address,
-        keys: impl Iterator<Item = StateKey>,
+        other_acc_addr: impl Iterator<Item = Address>,
     ) -> Result<()> {
-        self.prune_helper(acc_addr, move |acc_trie| acc_trie.prune_state_keys(keys))
+        let _acc_trie = self.acc_tries.remove(&acc_addr);
+        debug_assert!(
+            _acc_trie.is_some(),
+            "TxTrie#prune_account: Account is already pruned."
+        );
+        self.main_trie = prune_key2(&self.main_trie, &acc_addr, other_acc_addr)?;
+        Ok(())
     }
 
-    fn prune_acc_reset_values(&mut self, acc_addr: Address) -> Result<()> {
-        self.prune_helper(acc_addr, move |acc_trie| {
-            acc_trie.prune_reset_values();
-            Ok(())
-        })
+    fn prune_acc_state_key(
+        &mut self,
+        acc_addr: Address,
+        key: StateKey,
+        other_keys: impl Iterator<Item = StateKey>,
+    ) -> Result<()> {
+        match self.acc_tries.get_mut(&acc_addr) {
+            Some(acc_trie) => acc_trie.prune_state_key(key, other_keys)?,
+            None => bail!(
+                "TxTrie#prune_acc_state_key: cannot find acc_trie. Address: {}",
+                acc_addr
+            ),
+        }
+        Ok(())
     }
 }
