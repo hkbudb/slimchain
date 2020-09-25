@@ -163,19 +163,16 @@ impl WriteRevAccessItem {
             .add_block_height(block_height);
     }
 
-    pub fn remove_nonce(&mut self, block_height: BlockHeight) -> bool {
+    pub fn remove_nonce(&mut self, block_height: BlockHeight) {
         self.nonce.remove_block_height(block_height);
-        self.nonce.is_empty()
     }
 
-    pub fn remove_code(&mut self, block_height: BlockHeight) -> bool {
+    pub fn remove_code(&mut self, block_height: BlockHeight) {
         self.code.remove_block_height(block_height);
-        self.code.is_empty()
     }
 
-    pub fn remove_reset_values(&mut self, block_height: BlockHeight) -> bool {
+    pub fn remove_reset_values(&mut self, block_height: BlockHeight) {
         self.reset_values.remove_block_height(block_height);
-        self.reset_values.is_empty()
     }
 
     pub fn remove_value(&mut self, key: StateKey, block_height: BlockHeight) -> bool {
@@ -196,6 +193,10 @@ impl WriteRevAccessItem {
         }
 
         should_prune
+    }
+
+    pub(crate) fn value_keys(&self) -> Vec<StateKey> {
+        self.values.keys().copied().collect()
     }
 }
 

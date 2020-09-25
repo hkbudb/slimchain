@@ -68,7 +68,7 @@ impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
         let oldest_height = self.access_map.oldest_block_height();
         self.access_map
             .remove_oldest_block()
-            .prune_tx_trie(&mut self.tx_trie)?;
+            .prune_tx_trie(&self.access_map, &mut self.tx_trie)?;
         if oldest_height != self.access_map.oldest_block_height() {
             self.recent_blocks.pop_front();
         }

@@ -171,16 +171,16 @@ impl AccessMap {
 
             let entry = write_rev_entry.get_mut();
 
-            if write.get_nonce() && entry.remove_nonce(old_block_height) {
-                pruning.add_nonce(acc_addr);
+            if write.get_nonce() {
+                entry.remove_nonce(old_block_height);
             }
 
-            if write.get_code() && entry.remove_code(old_block_height) {
-                pruning.add_code(acc_addr);
+            if write.get_code() {
+                entry.remove_code(old_block_height);
             }
 
-            if write.get_reset_values() && entry.remove_reset_values(old_block_height) {
-                pruning.add_reset_values(acc_addr);
+            if write.get_reset_values() {
+                entry.remove_reset_values(old_block_height);
             }
 
             for &key in write.value_iter() {
@@ -191,10 +191,15 @@ impl AccessMap {
 
             if entry.is_empty() {
                 write_rev_entry.remove();
+                pruning.add_account(acc_addr);
             }
         }
 
         pruning
+    }
+
+    fn write_rev_map(&self) -> &'_ im::HashMap<Address, WriteRevAccessItem> {
+        &self.write_rev_map
     }
 }
 
