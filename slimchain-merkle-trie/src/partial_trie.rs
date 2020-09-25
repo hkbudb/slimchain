@@ -76,11 +76,4 @@ impl PartialTrie {
             None => Some(H256::zero()),
         }
     }
-
-    pub fn can_be_pruned(&self) -> bool {
-        match self.root.as_ref() {
-            Some(root) => root.can_be_pruned(),
-            None => true,
-        }
-    }
 }

@@ -425,6 +425,13 @@ fn test_partial_trie_update_whole_trie() {
     assert_eq!(trie1.root, partial_trie4.root_hash());
 }
 
+fn partial_trie_is_a_hash_node(trie: &PartialTrie) -> bool {
+    match trie.root.as_ref() {
+        Some(subtree) => subtree.is_hash_node(),
+        None => false,
+    }
+}
+
 #[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
 #[test]
 fn test_partial_trie_prune() {
@@ -437,15 +444,15 @@ fn test_partial_trie_prune() {
     let partial_trie: PartialTrie = read_ctx.into_proof().into();
 
     let t1 = prune_key(&partial_trie, &key!("0a77d337"), 3).unwrap();
-    assert!(!t1.can_be_pruned());
+    assert!(!partial_trie_is_a_hash_node(&t1));
     assert_eq!(t1.root_hash(), trie.root);
 
     let t2 = prune_key(&partial_trie, &key!("0a711355"), 3).unwrap();
-    assert!(!t2.can_be_pruned());
+    assert!(!partial_trie_is_a_hash_node(&t2));
     assert_eq!(t2.root_hash(), trie.root);
 
     let t3 = prune_key(&t1, &key!("0a711355"), 0).unwrap();
-    assert!(t3.can_be_pruned());
+    assert!(partial_trie_is_a_hash_node(&t3));
     assert_eq!(t3.root_hash(), trie.root);
 
     let t4 = prune_key(&t1, &key!("0a720000"), 3).unwrap();
@@ -468,9 +475,9 @@ fn test_partial_trie_prune() {
 
     let t8 = prune_key2(&t1, &key!("0a711355"), core::iter::empty::<Key>(), true).unwrap();
     assert_eq!(t1.root_hash(), t8.root_hash());
-    assert!(!t8.can_be_pruned());
+    assert!(!partial_trie_is_a_hash_node(&t8));
 
     let t9 = prune_key2(&t1, &key!("0a711355"), core::iter::empty::<Key>(), false).unwrap();
     assert_eq!(t1.root_hash(), t9.root_hash());
-    assert!(t9.can_be_pruned());
+    assert!(partial_trie_is_a_hash_node(&t9));
 }

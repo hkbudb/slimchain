@@ -1,6 +1,7 @@
 use super::{BranchNode, ExtensionNode, LeafNode};
 use crate::nibbles::Nibbles;
 use alloc::boxed::Box;
+use core::matches;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
 
@@ -79,7 +80,7 @@ impl SubTree {
         }
     }
 
-    pub(crate) fn can_be_pruned(&self) -> bool {
+    pub(crate) fn is_hash_node(&self) -> bool {
         matches!(self, Self::Hash(_))
     }
 }
