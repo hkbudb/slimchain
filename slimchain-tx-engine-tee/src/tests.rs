@@ -1,7 +1,7 @@
 use super::*;
 use rand::SeedableRng;
 use slimchain_common::{
-    basic::U256,
+    basic::{BlockHeight, H256, U256},
     ed25519::Keypair,
     tx::TxTrait,
     tx_req::{caller_address_from_pk, TxRequest},
