@@ -105,27 +105,27 @@ impl DB {
 
     pub fn get_block_height(&self) -> Result<Option<BlockHeight>> {
         self.get_object(META_DB_COL, &(*META_BLOCK_HEIGHT_KEY))
-            .context("Failed to get block height from the database")
+            .context("Failed to get block height from the database.")
     }
 
     pub fn get_shard_id(&self) -> Result<Option<ShardId>> {
         self.get_object(META_DB_COL, &(*META_SHARD_ID_KEY))
-            .context("Failed to get shard id from the database")
+            .context("Failed to get shard id from the database.")
     }
 
     pub fn get_access_map(&self) -> Result<AccessMap> {
         self.get_existing_object(META_DB_COL, &(*META_ACCESS_MAP_KEY))
-            .context("Failed to get access map from the database")
+            .context("Failed to get access map from the database.")
     }
 
     pub fn get_tx_trie(&self) -> Result<TxTrie> {
         self.get_existing_object(META_DB_COL, &(*META_TX_TRIE_KEY))
-            .context("Failed to get tx trie from the database")
+            .context("Failed to get tx trie from the database.")
     }
 
     pub fn get_out_shard_data(&self) -> Result<OutShardData> {
         self.get_existing_object(META_DB_COL, &(*META_OUT_SHARD_DATA_KEY))
-            .context("Failed to get out shard data from the database")
+            .context("Failed to get out shard data from the database.")
     }
 
     pub fn write_sync(&self, tx: Transaction) -> Result<()> {
@@ -144,7 +144,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> BlockLoaderTrait<Block> for 
     #[tracing::instrument(level = "debug", skip(self), err)]
     fn get_non_genesis_block(&self, height: BlockHeight) -> Result<Block> {
         self.get_existing_object(BLOCK_DB_COL, &block_height_to_db_key(height))
-            .context("Failed to get block from the database")
+            .with_context(|| format!("Failed to get block from the database. height: {}", height))
     }
 }
 
@@ -152,7 +152,7 @@ impl<Tx: TxTrait + for<'de> Deserialize<'de>> TxLoaderTrait<Tx> for DB {
     #[tracing::instrument(level = "debug", skip(self), err)]
     fn get_tx(&self, tx_hash: H256) -> Result<Tx> {
         self.get_existing_object(TX_DB_COL, &h256_to_db_key(tx_hash))
-            .context("Failed to get tx from the database")
+            .with_context(|| format!("Failed to get tx from the database. tx_hash: {}", tx_hash))
     }
 }
 
@@ -160,17 +160,27 @@ impl TxStateView for DB {
     #[tracing::instrument(level = "debug", skip(self), err)]
     fn account_trie_node(&self, node_address: H256) -> Result<TrieNode<AccountData>> {
         self.get_existing_object(STATE_DB_COL, &h256_to_db_key(node_address))
-            .context("Failed to get account trie node from the database")
+            .with_context(|| {
+                format!(
+                    "Failed to get account trie node from the database. node: {}",
+                    node_address
+                )
+            })
     }
 
     #[tracing::instrument(level = "debug", skip(self), err)]
     fn state_trie_node(
         &self,
-        _acc_address: Address,
+        acc_address: Address,
         node_address: H256,
     ) -> Result<TrieNode<StateValue>> {
         self.get_existing_object(STATE_DB_COL, &h256_to_db_key(node_address))
-            .context("Failed to get state trie node from the database")
+            .with_context(|| {
+                format!(
+                    "Failed to get state trie node from the database. acc: {}, node: {}",
+                    acc_address, node_address
+                )
+            })
     }
 }
 
