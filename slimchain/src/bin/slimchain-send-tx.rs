@@ -3,12 +3,13 @@ extern crate tracing;
 
 use futures::{future::join_all, join};
 use itertools::Itertools;
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use rand::{distributions::Uniform, prelude::*};
+use regex::Regex;
 use slimchain_common::{
     basic::{Address, ShardId, U256},
     ed25519::Keypair,
-    error::{bail, Result},
+    error::{anyhow, bail, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
 use slimchain_network::http::send_tx_request_with_shard;
@@ -16,9 +17,20 @@ use slimchain_utils::{
     contract::{contract_address, Contract, Token},
     init_tracing_subscriber,
 };
-use std::io::{self, prelude::*};
+use std::{
+    fs::File,
+    io::{self, prelude::*},
+    path::PathBuf,
+    sync::Mutex,
+};
 use structopt::StructOpt;
 use tokio::time::{delay_for, Duration, Instant};
+
+static YCSB: OnceCell<Mutex<io::BufReader<File>>> = OnceCell::new();
+static YCSB_READ_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^READ usertable (\w+) \[.+\]$").unwrap());
+static YCSB_WRITE_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^UPDATE usertable (\w+) \[ field\d+=(.+) \]$").unwrap());
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 enum ContractArg {
@@ -109,7 +121,35 @@ impl ContractArg {
                     _ => unreachable!(),
                 }
             }
-            ContractArg::KVStore => todo!(),
+            ContractArg::KVStore => {
+                let contract = self.get_contract();
+
+                if let Some(ycsb) = YCSB.get() {
+                    let mut ycsb = ycsb.lock().map_err(|_e| anyhow!("Failed to lock YCSB."))?;
+                    loop {
+                        let mut buf = String::new();
+                        ycsb.read_line(&mut buf)?;
+                        let buf = buf.trim();
+
+                        if let Some(cap) = YCSB_READ_RE.captures(&buf) {
+                            return contract
+                                .encode_tx_input("get", &[Token::String(cap[1].to_string())]);
+                        }
+
+                        if let Some(cap) = YCSB_WRITE_RE.captures(&buf) {
+                            return contract.encode_tx_input(
+                                "set",
+                                &[
+                                    Token::String(cap[1].to_string()),
+                                    Token::String(cap[2].to_string()),
+                                ],
+                            );
+                        }
+                    }
+                } else {
+                    bail!("Failed to access ycsb file.");
+                }
+            }
             ContractArg::SmallBank => {
                 // https://github.com/ooibc88/blockbench/blob/master/src/macro/smallbank/smallbank.cc
                 let op_gen = Uniform::new(1, 7);
@@ -218,6 +258,23 @@ struct Opts {
     /// List of contracts. Accepted values: cpuheavy, donothing, ioheavy, kvstore, and smallbank.
     #[structopt(parse(try_from_str = parse_contract_arg), required = true)]
     contract: Vec<ContractArg>,
+
+    #[structopt(
+        short,
+        long,
+        parse(from_os_str),
+        help = "Path to ycsb.txt. Used for kvstore smart contract.",
+        long_help = r#"Path to ycsb.txt. Used for kvstore smart contract.
+
+The file should contain content similar to the below:
+    UPDATE usertable <user> [ field="<value>" ]
+    READ usertable <user> [ <all fields>]
+
+To generate it:
+    /path/to/ycsb.sh run basic -P /path/to/workload.spec
+"#
+    )]
+    ycsb: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -227,6 +284,11 @@ async fn main() -> Result<()> {
 
     let opts = Opts::from_args();
     info!("Opts: {:#?}", opts);
+
+    if let Some(ycsb) = opts.ycsb.as_ref() {
+        YCSB.set(Mutex::new(io::BufReader::new(File::open(ycsb)?)))
+            .map_err(|_e| anyhow!("Failed to set YCSB."))?;
+    }
 
     let mut contracts: Vec<(Address, ShardId, ContractArg)> =
         Vec::with_capacity(opts.contract.len());
