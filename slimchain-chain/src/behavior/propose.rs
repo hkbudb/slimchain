@@ -13,7 +13,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieTrait, TxWriteSetTrie};
-use slimchain_utils::record_time;
+use slimchain_utils::record_event;
 use std::time::Instant;
 use tokio::time::timeout_at;
 
@@ -38,6 +38,7 @@ where
     let mut tx_write_tries: Vec<TxWriteSetTrie> = Vec::with_capacity(miner_cfg.max_txs);
 
     let last_block_height = snapshot.current_height();
+    let next_block_height = last_block_height.next_height();
 
     snapshot.access_map.alloc_new_block();
     let mut writes = TxWriteData::default();
@@ -62,6 +63,8 @@ where
                 return Ok(None);
             }
         };
+
+        record_event!("blk_recv_tx", "tx_id": tx.id(), "height": next_block_height.0);
 
         let tx_block_height = tx.tx_block_height();
         if tx_block_height < snapshot.access_map.oldest_block_height() {
@@ -129,7 +132,7 @@ where
         .get_block(last_block_height)
         .context("Failed to get the last block.")?;
     let block_header = BlockHeader::new(
-        last_block_height.next_height(),
+        next_block_height,
         last_block.to_digest(),
         Utc::now(),
         tx_list,
@@ -141,8 +144,6 @@ where
     snapshot.remove_oldest_block()?;
     snapshot.commit_block(blk_proposal.get_block().clone());
 
-    let time = Instant::now() - begin;
-    record_time!("propose_block", time, "height": blk_proposal.get_block_height().0);
-    info!(?time);
+    info!(time = ?(Instant::now() - begin));
     Ok(Some(blk_proposal))
 }
