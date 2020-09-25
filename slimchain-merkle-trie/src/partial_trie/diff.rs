@@ -247,6 +247,11 @@ pub fn apply_diff(
     }
 
     for (nibbles, trie) in diff.0.iter() {
+        debug_assert!(
+            !trie.is_hash_node(),
+            "Diff should not contain a simple hash node."
+        );
+
         let mut cur_nibbles = nibbles.as_nibbles();
         let mut cur_ptr = &root;
         let mut temp_nodes: Vec<TempNode> = Vec::new();
