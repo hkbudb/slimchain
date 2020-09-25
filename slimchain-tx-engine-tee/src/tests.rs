@@ -43,11 +43,11 @@ async fn test() {
     };
     let signed_tx_req1 = tx_req1.sign(&keypair);
 
+    let state_root = states.state_root();
     let task1 = TxTask::new(
-        1.into(),
         states.state_view(),
-        states.state_root(),
         signed_tx_req1,
+        move || -> (BlockHeight, H256) { (1.into(), state_root) },
     );
     task_engine.push_task(task1);
     let TxTaskOutput {
@@ -83,11 +83,11 @@ async fn test() {
     };
     let signed_tx_req2 = tx_req2.sign(&keypair);
 
+    let state_root = states.state_root();
     let task2 = TxTask::new(
-        2.into(),
         states.state_view(),
-        states.state_root(),
         signed_tx_req2,
+        move || -> (BlockHeight, H256) { (2.into(), state_root) },
     );
     task_engine.push_task(task2);
     let TxTaskOutput {

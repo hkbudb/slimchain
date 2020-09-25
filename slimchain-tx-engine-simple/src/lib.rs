@@ -1,16 +1,18 @@
 use slimchain_common::{
-    basic::{AccountData, Address, Code, Nonce, StateKey, StateValue, H256},
+    basic::{AccountData, Address, BlockHeight, Code, Nonce, StateKey, StateValue, H256},
     ed25519::Keypair,
     error::Result,
     tx::{RawTx, SignedTx},
+    tx_req::SignedTxRequest,
 };
 use slimchain_merkle_trie::prelude::*;
-use slimchain_tx_engine::{TxEngineWorker, TxTask};
+use slimchain_tx_engine::{TxEngineWorker, TxTaskId};
 use slimchain_tx_executor::execute_tx;
 use slimchain_tx_state::{
     trie_view::{AccountTrieView, StateTrieView},
     TxStateView,
 };
+use std::sync::Arc;
 
 struct ExecutorBackend<'a, StateView: TxStateView + ?Sized> {
     state_view: &'a StateView,
@@ -64,15 +66,22 @@ pub struct SimpleTxEngineWorker {
 impl TxEngineWorker for SimpleTxEngineWorker {
     type Output = SignedTx;
 
-    fn execute(&self, task: TxTask) -> Result<Self::Output> {
-        let backend = ExecutorBackend::new(task.state_view.as_ref(), task.state_root);
-        let output = execute_tx(task.signed_tx_req, &backend)?;
+    fn execute(
+        &self,
+        _id: TxTaskId,
+        block_height: BlockHeight,
+        state_view: Arc<dyn TxStateView + Sync + Send>,
+        state_root: H256,
+        signed_tx_req: SignedTxRequest,
+    ) -> Result<Self::Output> {
+        let backend = ExecutorBackend::new(state_view.as_ref(), state_root);
+        let output = execute_tx(signed_tx_req, &backend)?;
 
         let raw_tx = RawTx {
             caller: output.caller,
             input: output.input,
-            block_height: task.block_height,
-            state_root: task.state_root,
+            block_height,
+            state_root,
             reads: output.reads.to_set(),
             writes: output.writes,
         };
@@ -133,11 +142,11 @@ mod tests {
         };
         let signed_tx_req1 = tx_req1.sign(&keypair);
 
+        let state_root = states.state_root();
         let task1 = TxTask::new(
-            1.into(),
             states.state_view(),
-            states.state_root(),
             signed_tx_req1,
+            move || -> (BlockHeight, H256) { (1.into(), state_root) },
         );
         task_engine.push_task(task1);
         assert_eq!(task_engine.remaining_tasks(), 1);
@@ -175,11 +184,11 @@ mod tests {
         };
         let signed_tx_req2 = tx_req2.sign(&keypair);
 
+        let state_root = states.state_root();
         let task2 = TxTask::new(
-            2.into(),
             states.state_view(),
-            states.state_root(),
             signed_tx_req2,
+            move || -> (BlockHeight, H256) { (2.into(), state_root) },
         );
         task_engine.push_task(task2);
         assert_eq!(task_engine.remaining_tasks(), 1);

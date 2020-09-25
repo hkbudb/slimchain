@@ -33,32 +33,36 @@ create_id_type_u32!(TxTaskId);
 pub trait TxEngineWorker: Send {
     type Output: TxTrait;
 
-    fn execute(&self, task: TxTask) -> Result<Self::Output>;
-}
-
-pub struct TxTask {
-    pub id: TxTaskId,
-    pub block_height: BlockHeight,
-    pub state_view: Arc<dyn TxStateView + Sync + Send>,
-    pub state_root: H256,
-    pub signed_tx_req: SignedTxRequest,
-}
-
-impl TxTask {
-    pub fn new(
+    fn execute(
+        &self,
+        id: TxTaskId,
         block_height: BlockHeight,
         state_view: Arc<dyn TxStateView + Sync + Send>,
         state_root: H256,
         signed_tx_req: SignedTxRequest,
+    ) -> Result<Self::Output>;
+}
+
+pub struct TxTask {
+    id: TxTaskId,
+    state_view: Arc<dyn TxStateView + Sync + Send>,
+    signed_tx_req: SignedTxRequest,
+    block_state_fn: Box<dyn FnOnce() -> (BlockHeight, H256) + Sync + Send>,
+}
+
+impl TxTask {
+    pub fn new(
+        state_view: Arc<dyn TxStateView + Sync + Send>,
+        signed_tx_req: SignedTxRequest,
+        block_state_fn: impl FnOnce() -> (BlockHeight, H256) + Sync + Send + 'static,
     ) -> Self {
         let id = TxTaskId::next_id();
 
         Self {
             id,
-            block_height,
             state_view,
-            state_root,
             signed_tx_req,
+            block_state_fn: Box::new(block_state_fn),
         }
     }
 
@@ -281,8 +285,14 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
             let begin = Instant::now();
             let task_id = task.get_id();
             let state_view = task.state_view.clone();
-            let root_address = task.state_root;
-            let tx = match self.worker.execute(task) {
+            let (block_height, state_root) = (task.block_state_fn)();
+            let tx = match self.worker.execute(
+                task.id,
+                block_height,
+                task.state_view,
+                state_root,
+                task.signed_tx_req,
+            ) {
                 Ok(output) => output,
                 Err(e) => {
                     error!("Failed to execute task. Error: {}", e);
@@ -290,7 +300,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                     continue;
                 }
             };
-            let write_trie = match TxWriteSetTrie::new(&state_view, root_address, tx.tx_writes()) {
+            let write_trie = match TxWriteSetTrie::new(&state_view, state_root, tx.tx_writes()) {
                 Ok(trie) => trie,
                 Err(e) => {
                     error!("Failed to create TxWriteSetTrie. Error: {}", e);

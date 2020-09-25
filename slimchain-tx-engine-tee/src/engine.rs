@@ -5,12 +5,12 @@ use parking_lot::RwLock;
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
 use slimchain_common::{
-    basic::H256,
+    basic::{BlockHeight, H256},
     error::{anyhow, Context as _, Error, Result},
     tx::SignedTx,
 };
 use slimchain_tee_sig::{AttestationReport, TEESignedTx};
-use slimchain_tx_engine::{TxEngineWorker, TxTask, TxTaskId};
+use slimchain_tx_engine::{TxEngineWorker, TxTaskId};
 use slimchain_tx_state::{TxStateReadContext, TxStateView};
 use slimchain_utils::path::binary_directory;
 use std::{
@@ -83,17 +83,17 @@ impl TEETxEngineWorker {
 impl TxEngineWorker for TEETxEngineWorker {
     type Output = TEESignedTx;
 
-    fn execute(&self, task: TxTask) -> Result<Self::Output> {
-        let task_state_guard =
-            TaskStateGuard::new(task.id, task.state_root, task.state_view.clone());
-        crate::ecall::exec_tx(
-            &self.enclave,
-            task.id,
-            task.block_height,
-            task.state_root,
-            &task.signed_tx_req,
-        )?;
-        let SignedTx { raw_tx, pk_sig } = TaskState::get_task_state(task.id)?.take_result()?;
+    fn execute(
+        &self,
+        id: TxTaskId,
+        block_height: BlockHeight,
+        state_view: Arc<dyn TxStateView + Sync + Send>,
+        state_root: H256,
+        signed_tx_req: SignedTxRequest,
+    ) -> Result<Self::Output> {
+        let task_state_guard = TaskStateGuard::new(id, state_root, state_view.clone());
+        crate::ecall::exec_tx(&self.enclave, id, block_height, state_root, &signed_tx_req)?;
+        let SignedTx { raw_tx, pk_sig } = TaskState::get_task_state(id)?.take_result()?;
         task_state_guard.finish();
         let attest_report = self.attest_pk.get_attest_report()?;
         Ok(TEESignedTx {

@@ -1,7 +1,11 @@
 use crate::{db::DBPtr, latest::LatestBlockHeaderPtr};
 use futures::{prelude::*, ready, stream::Fuse};
 use pin_project::pin_project;
-use slimchain_common::{tx::TxTrait, tx_req::SignedTxRequest};
+use slimchain_common::{
+    basic::{BlockHeight, H256},
+    tx::TxTrait,
+    tx_req::SignedTxRequest,
+};
 use slimchain_tx_engine::{TxEngine, TxTask};
 use slimchain_tx_state::TxProposal;
 use std::{
@@ -43,8 +47,10 @@ impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> Stream for TxExecuteStr
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         while let Poll::Ready(Some(req)) = this.input.as_mut().poll_next(cx) {
-            let (block_height, state_root) = this.latest_block_header.get_height_and_state_root();
-            let task = TxTask::new(block_height, this.db.clone(), state_root, req);
+            let latest_block_header = this.latest_block_header.clone();
+            let task = TxTask::new(this.db.clone(), req, move || -> (BlockHeight, H256) {
+                latest_block_header.get_height_and_state_root()
+            });
             this.engine.push_task(task);
         }
 
