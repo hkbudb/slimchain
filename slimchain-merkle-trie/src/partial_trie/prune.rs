@@ -3,7 +3,7 @@ use crate::{
     nibbles::{AsNibbles, NibbleBuf, Nibbles},
     u4::U4,
 };
-use alloc::{format, sync::Arc, vec::Vec};
+use alloc::{sync::Arc, vec::Vec};
 use slimchain_common::{
     digest::Digestible,
     error::{bail, Result},
@@ -37,10 +37,10 @@ fn prune_key_inner(
 
     while temp_node_prefix_len <= kept_prefix_len {
         match cur_ptr.as_ref() {
-            SubTree::Hash(_) => bail!(
-                "Invalid key {}. Branch has already been pruned.",
-                key.as_nibbles()
-            ),
+            SubTree::Hash(_) => {
+                // Branch has already been pruned.
+                return Ok(trie.clone());
+            }
             SubTree::Extension(n) => {
                 if let Some(remaining) = cur_key.strip_prefix(&n.nibbles) {
                     temp_nodes.push(TempNode::Extension {
