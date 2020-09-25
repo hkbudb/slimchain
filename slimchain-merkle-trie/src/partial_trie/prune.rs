@@ -118,13 +118,19 @@ pub fn prune_key2(
     trie: &PartialTrie,
     key: &impl AsNibbles,
     other_keys: impl Iterator<Item = impl AsNibbles>,
+    kept_root: bool,
 ) -> Result<PartialTrie> {
     let key = key.as_nibbles();
     let key_len = key.len();
-    let kept_prefix_len = other_keys
+    let mut kept_prefix_len = other_keys
         .map(|other_k| key.common_prefix_len(&other_k))
         .filter(|&l| l != key_len) // filter self
         .max()
         .unwrap_or(0);
+
+    if kept_prefix_len == 0 && kept_root {
+        kept_prefix_len = 1;
+    }
+
     prune_key_inner(trie, key, kept_prefix_len)
 }

@@ -457,6 +457,20 @@ fn test_partial_trie_prune() {
     let t6 = prune_key(&t1, &key!("0b000000"), 1).unwrap();
     assert_eq!(t1, t6);
 
-    let t7 = prune_key2(&partial_trie, &key!("0a77d337"), [key!("0a711355")].iter()).unwrap();
+    let t7 = prune_key2(
+        &partial_trie,
+        &key!("0a77d337"),
+        [key!("0a711355")].iter(),
+        true,
+    )
+    .unwrap();
     assert_eq!(t1, t7);
+
+    let t8 = prune_key2(&t1, &key!("0a711355"), core::iter::empty::<Key>(), true).unwrap();
+    assert_eq!(t1.root_hash(), t8.root_hash());
+    assert!(!t8.can_be_pruned());
+
+    let t9 = prune_key2(&t1, &key!("0a711355"), core::iter::empty::<Key>(), false).unwrap();
+    assert_eq!(t1.root_hash(), t9.root_hash());
+    assert!(t9.can_be_pruned());
 }
