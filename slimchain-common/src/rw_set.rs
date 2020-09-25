@@ -1,8 +1,9 @@
 use crate::{
     basic::{Address, Code, Nonce, StateKey, StateValue, H256},
-    collections::{hash_map::Entry, HashMap, HashSet},
+    collections::{hash_map, HashMap, HashSet},
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
 };
+use alloc::collections::{btree_map, BTreeMap};
 use alloc::vec::Vec;
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
@@ -186,14 +187,14 @@ impl TxReadData {
 
     pub fn remove_nonce(&mut self, address: Address) {
         match self.0.entry(address) {
-            Entry::Occupied(mut e) => {
+            hash_map::Entry::Occupied(mut e) => {
                 let acc_data = e.get_mut();
                 acc_data.nonce = None;
                 if acc_data.is_empty() {
                     e.remove();
                 }
             }
-            Entry::Vacant(_) => {}
+            hash_map::Entry::Vacant(_) => {}
         }
     }
 
@@ -271,14 +272,12 @@ impl AccountReadData {
     derive_more::Deref,
     derive_more::DerefMut,
 )]
-pub struct TxWriteData(pub HashMap<Address, AccountWriteData>);
+pub struct TxWriteData(pub BTreeMap<Address, AccountWriteData>);
 
 impl Digestible for TxWriteData {
     fn to_digest(&self) -> H256 {
         let mut hash_state = default_blake2().to_state();
-        let mut sorted: Vec<_> = self.0.iter().collect();
-        sorted.sort_unstable_by_key(|input| input.0);
-        for (k, v) in &sorted {
+        for (k, v) in self.0.iter() {
             hash_state.update(k.as_bytes());
             hash_state.update(v.to_digest().as_bytes());
         }
@@ -294,7 +293,7 @@ impl TxWriteData {
             AccountWriteData {
                 nonce: Some(Nonce::default()),
                 code: Some(Code::new()),
-                values: HashMap::new(),
+                values: BTreeMap::new(),
                 reset_values: true,
             },
         );
@@ -325,10 +324,10 @@ impl TxWriteData {
     pub fn merge(&mut self, new: &TxWriteData) {
         for (&k, v) in new.0.iter() {
             match self.entry(k) {
-                Entry::Occupied(mut e) => {
+                btree_map::Entry::Occupied(mut e) => {
                     e.get_mut().merge(v);
                 }
-                Entry::Vacant(e) => {
+                btree_map::Entry::Vacant(e) => {
                     e.insert(v.clone());
                 }
             }
@@ -340,7 +339,7 @@ impl TxWriteData {
 pub struct AccountWriteData {
     pub nonce: Option<Nonce>,
     pub code: Option<Code>,
-    pub values: HashMap<StateKey, StateValue>,
+    pub values: BTreeMap<StateKey, StateValue>,
     pub reset_values: bool,
 }
 
@@ -370,9 +369,7 @@ impl Digestible for AccountWriteData {
         } else {
             hash_state.update(b"\x00");
         }
-        let mut sorted: Vec<_> = self.values.iter().collect();
-        sorted.sort_unstable_by_key(|input| input.0);
-        for (k, v) in &sorted {
+        for (k, v) in self.values.iter() {
             hash_state.update(k.as_bytes());
             hash_state.update(v.as_bytes());
         }
