@@ -8,6 +8,7 @@ use slimchain_common::{
     basic::{BlockHeight, H256},
     error::{anyhow, Context as _, Error, Result},
     tx::SignedTx,
+    tx_req::SignedTxRequest,
 };
 use slimchain_tee_sig::{AttestationReport, TEESignedTx};
 use slimchain_tx_engine::{TxEngineWorker, TxTaskId};
