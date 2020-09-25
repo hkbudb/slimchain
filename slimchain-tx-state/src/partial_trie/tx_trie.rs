@@ -183,7 +183,7 @@ impl AccountTrie {
         key: StateKey,
         other_keys: impl Iterator<Item = StateKey>,
     ) -> Result<()> {
-        self.state_trie = prune_key2(&self.state_trie, &key, other_keys)?;
+        self.state_trie = prune_key2(&self.state_trie, &key, other_keys, true)?;
         Ok(())
     }
 }
@@ -343,7 +343,7 @@ impl TxTrieTrait for TxTrie {
             _acc_trie.is_some(),
             "TxTrie#prune_account: Account is already pruned."
         );
-        self.main_trie = prune_key2(&self.main_trie, &acc_addr, other_acc_addr)?;
+        self.main_trie = prune_key2(&self.main_trie, &acc_addr, other_acc_addr, true)?;
         Ok(())
     }
 

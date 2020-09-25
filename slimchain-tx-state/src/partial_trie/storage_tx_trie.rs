@@ -39,7 +39,7 @@ impl StorageAccountTrie {
         key: StateKey,
         other_keys: impl Iterator<Item = StateKey>,
     ) -> Result<()> {
-        self.state_trie = prune_key2(&self.state_trie, &key, other_keys)?;
+        self.state_trie = prune_key2(&self.state_trie, &key, other_keys, true)?;
         Ok(())
     }
 }
