@@ -351,7 +351,11 @@ fn merge_diff_subtree(lhs: &Arc<SubTree>, rhs: &Arc<SubTree>) -> Arc<SubTree> {
         }
         (SubTree::Extension(l), SubTree::Extension(r)) => {
             debug_assert_eq!(l.nibbles, r.nibbles);
-            merge_diff_subtree(&l.child, &r.child)
+            let merge_c = merge_diff_subtree(&l.child, &r.child);
+            Arc::new(SubTree::from_extension(ExtensionNode::new(
+                l.nibbles.clone(),
+                merge_c,
+            )))
         }
         (SubTree::Branch(l), SubTree::Branch(r)) => {
             let mut merged_branch = BranchNode::default();
