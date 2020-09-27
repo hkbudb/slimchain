@@ -368,10 +368,8 @@ fn test_partial_trie_update() {
     let partial_trie_missing2: PartialTrie = read_ctx.into_proof().into();
     assert_eq!(trie2.root, partial_trie_missing2.root_hash());
 
-    let diff_missing1 =
-        diff_missing_branches(&partial_trie2, &partial_trie_missing1, true).unwrap();
-    let diff_missing2 =
-        diff_missing_branches(&partial_trie2, &partial_trie_missing2, true).unwrap();
+    let diff_missing1 = diff_missing_branches(&partial_trie2, &partial_trie_missing1);
+    let diff_missing2 = diff_missing_branches(&partial_trie2, &partial_trie_missing2);
     let diff = merge_diff(&diff_missing1, &diff_missing2);
 
     let partial_trie2_merge = apply_diff(&partial_trie2, &diff, true).unwrap();
@@ -415,7 +413,7 @@ fn test_partial_trie_update_whole_trie() {
     assert_eq!(trie1.root, partial_trie1.root_hash());
 
     let partial_trie2 = PartialTrie::from_root_hash(trie1.root);
-    let diff = diff_missing_branches(&partial_trie2, &partial_trie1, true).unwrap();
+    let diff = diff_missing_branches(&partial_trie2, &partial_trie1);
     let partial_trie3 = apply_diff(&partial_trie2, &diff, true).unwrap();
     assert_eq!(trie1.root, partial_trie3.root_hash());
 

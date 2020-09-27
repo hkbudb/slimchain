@@ -57,20 +57,16 @@ impl PartialTrieDiff {
     }
 }
 
-pub fn diff_missing_branches(
-    main: &PartialTrie,
-    fork: &PartialTrie,
-    fail_on_leaf_conflict: bool,
-) -> Result<PartialTrieDiff> {
+pub fn diff_missing_branches(main: &PartialTrie, fork: &PartialTrie) -> PartialTrieDiff {
     let mut diff = PartialTrieDiff::default();
 
     let fork_root = match fork.root.as_ref() {
         Some(root) => root.clone(),
-        None => return Ok(diff),
+        None => return diff,
     };
     let main_root = match main.root.as_ref() {
         Some(root) => root.clone(),
-        None => return Ok(diff), // the value to be written is currently zero.
+        None => return diff, // the value to be written is currently zero.
     };
 
     let mut queue: VecDeque<(Arc<SubTree>, Arc<SubTree>, Vec<U4>)> = VecDeque::new();
@@ -208,22 +204,14 @@ pub fn diff_missing_branches(
                     cur_nibbles,
                 ));
             }
-            (SubTree::Leaf(main_n), SubTree::Leaf(fork_n)) => {
-                if main_n.nibbles != fork_n.nibbles {
-                    continue; // the value to be written is currently zero.
-                }
-
-                if fail_on_leaf_conflict && main_n.value_hash != fork_n.value_hash {
-                    bail!("write-write conflict");
-                }
-            }
+            (SubTree::Leaf(_), SubTree::Leaf(_)) => {} // same leaf nodes or the value to be written is currently zero.
             (SubTree::Extension(_), SubTree::Branch(_))
             | (SubTree::Leaf(_), SubTree::Extension(_))
             | (SubTree::Leaf(_), SubTree::Branch(_)) => {} // the value to be written is currently zero.
         }
     }
 
-    Ok(diff)
+    diff
 }
 
 pub fn apply_diff(
@@ -330,12 +318,8 @@ pub fn apply_diff(
     Ok(PartialTrie::from_subtree(root))
 }
 
-pub fn update_missing_branches(
-    main: &PartialTrie,
-    fork: &PartialTrie,
-    fail_on_leaf_conflict: bool,
-) -> Result<PartialTrie> {
-    let diff = diff_missing_branches(main, fork, fail_on_leaf_conflict)?;
+pub fn update_missing_branches(main: &PartialTrie, fork: &PartialTrie) -> Result<PartialTrie> {
+    let diff = diff_missing_branches(main, fork);
     apply_diff(main, &diff, false)
 }
 
