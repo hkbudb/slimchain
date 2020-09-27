@@ -125,7 +125,6 @@ impl TxTrieTrait for StorageTxTrie {
                     let acc_state_trie = update_missing_branches(
                         o.get().get_state_trie(),
                         &fork_acc_trie.state_trie,
-                        true,
                     )?;
                     o.get_mut().set_state_trie(acc_state_trie);
                 }

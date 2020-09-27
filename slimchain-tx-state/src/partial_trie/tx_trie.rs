@@ -71,14 +71,14 @@ impl AccountTrie {
         acc_hash
     }
 
-    fn diff_missing_branches(&self, fork: &AccountWriteSetTrie) -> Result<AccountTrieDiff> {
-        let state_trie_diff = diff_missing_branches(&self.state_trie, &fork.state_trie, true)?;
+    fn diff_missing_branches(&self, fork: &AccountWriteSetTrie) -> AccountTrieDiff {
+        let state_trie_diff = diff_missing_branches(&self.state_trie, &fork.state_trie);
 
-        Ok(AccountTrieDiff {
+        AccountTrieDiff {
             nonce: None,
             code_hash: None,
             state_trie_diff,
-        })
+        }
     }
 
     fn update_missing_branches(&mut self, fork: &AccountWriteSetTrie) -> Result<()> {
@@ -90,7 +90,7 @@ impl AccountTrie {
             self.code_hash, fork.code_hash,
             "Invalid code hash in AccountWriteSetTrie."
         );
-        self.state_trie = update_missing_branches(&self.state_trie, &fork.state_trie, true)?;
+        self.state_trie = update_missing_branches(&self.state_trie, &fork.state_trie)?;
         Ok(())
     }
 
@@ -195,14 +195,14 @@ pub struct TxTrie {
 }
 
 impl TxTrie {
-    pub fn diff_missing_branches(&self, fork: &TxWriteSetTrie) -> Result<TxTrieDiff> {
-        let main_trie_diff = diff_missing_branches(&self.main_trie, &fork.main_trie, false)?;
+    pub fn diff_missing_branches(&self, fork: &TxWriteSetTrie) -> TxTrieDiff {
+        let main_trie_diff = diff_missing_branches(&self.main_trie, &fork.main_trie);
         let mut acc_trie_diffs = HashMap::new();
 
         for (acc_addr, fork_acc_trie) in fork.acc_tries.iter() {
             match self.acc_tries.get(acc_addr) {
                 Some(main_acc_trie) => {
-                    let acc_diff = main_acc_trie.diff_missing_branches(fork_acc_trie)?;
+                    let acc_diff = main_acc_trie.diff_missing_branches(fork_acc_trie);
                     if !acc_diff.is_empty() {
                         acc_trie_diffs.insert(*acc_addr, acc_diff);
                     }
@@ -231,10 +231,10 @@ impl TxTrie {
             }
         }
 
-        Ok(TxTrieDiff {
+        TxTrieDiff {
             main_trie_diff,
             acc_trie_diffs,
-        })
+        }
     }
 }
 
@@ -255,7 +255,7 @@ impl TxTrieTrait for TxTrie {
     }
 
     fn update_missing_branches(&mut self, fork: &TxWriteSetTrie) -> Result<()> {
-        self.main_trie = update_missing_branches(&self.main_trie, &fork.main_trie, false)?;
+        self.main_trie = update_missing_branches(&self.main_trie, &fork.main_trie)?;
 
         for (acc_addr, fork_acc_trie) in fork.acc_tries.iter() {
             match self.acc_tries.entry(*acc_addr) {
