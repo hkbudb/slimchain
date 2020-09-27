@@ -119,8 +119,6 @@ mod tests {
     #[test]
     #[ignore]
     fn test_pow() {
-        let _guard = slimchain_utils::init_tracing_for_test();
-
         let pow_cfg = Config::load_test()
             .and_then(|cfg| cfg.get::<PoWConfig>("pow"))
             .unwrap_or_default();
