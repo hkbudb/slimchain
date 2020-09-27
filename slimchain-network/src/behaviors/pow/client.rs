@@ -41,7 +41,8 @@ pub struct ClientBehavior<Tx: TxTrait + Serialize + 'static> {
 impl<Tx: TxTrait + Serialize> ClientBehavior<Tx> {
     pub fn new(db: DBPtr, chain_cfg: &ChainConfig, net_cfg: &NetworkConfig) -> Result<Self> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
-        let discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns)?;
+        let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns)?;
+        discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal]);
         let http_server = TxHttpServer::new(&net_cfg.http_listen)?;
         let rpc_client = create_request_response_client("/tx_req/1");
