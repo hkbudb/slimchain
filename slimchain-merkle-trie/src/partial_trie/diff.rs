@@ -70,7 +70,7 @@ pub fn diff_missing_branches(
     };
     let main_root = match main.root.as_ref() {
         Some(root) => root.clone(),
-        None => bail!("write-write conflict"),
+        None => return Ok(diff), // the value to be written is currently zero.
     };
 
     let mut queue: VecDeque<(Arc<SubTree>, Arc<SubTree>, Vec<U4>)> = VecDeque::new();
@@ -87,7 +87,7 @@ pub fn diff_missing_branches(
             (SubTree::Extension(main_n), SubTree::Extension(fork_n)) => {
                 let remaining = match fork_n.nibbles.as_nibbles().strip_prefix(&main_n.nibbles) {
                     Some(remaining) => remaining,
-                    None => bail!("write-write conflict"),
+                    None => continue, // the value to be written is currently zero.
                 };
 
                 cur_nibbles.extend(main_n.nibbles.iter());
@@ -121,7 +121,7 @@ pub fn diff_missing_branches(
             (SubTree::Extension(main_n), SubTree::Leaf(fork_n)) => {
                 let remaining = match fork_n.nibbles.as_nibbles().strip_prefix(&main_n.nibbles) {
                     Some(remaining) => remaining,
-                    None => bail!("write-write conflict"),
+                    None => continue, // the value to be written is currently zero.
                 };
 
                 cur_nibbles.extend(main_n.nibbles.iter());
@@ -182,7 +182,7 @@ pub fn diff_missing_branches(
                             cur_nibbles.push(unsafe { U4::from_u8_unchecked(i as u8) });
                             queue.push_back((main_c.clone(), fork_c.clone(), cur_nibbles));
                         }
-                        (None, Some(_)) => bail!("write-write conflict"),
+                        (None, Some(_)) => {} // the value to be written is currently zero.
                         (_, None) => {}
                     }
                 }
@@ -210,7 +210,7 @@ pub fn diff_missing_branches(
             }
             (SubTree::Leaf(main_n), SubTree::Leaf(fork_n)) => {
                 if main_n.nibbles != fork_n.nibbles {
-                    bail!("write-write conflict");
+                    continue; // the value to be written is currently zero.
                 }
 
                 if fail_on_leaf_conflict && main_n.value_hash != fork_n.value_hash {
@@ -219,7 +219,7 @@ pub fn diff_missing_branches(
             }
             (SubTree::Extension(_), SubTree::Branch(_))
             | (SubTree::Leaf(_), SubTree::Extension(_))
-            | (SubTree::Leaf(_), SubTree::Branch(_)) => bail!("write-write conflict"),
+            | (SubTree::Leaf(_), SubTree::Branch(_)) => {} // the value to be written is currently zero.
         }
     }
 
