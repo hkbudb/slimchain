@@ -12,7 +12,7 @@ use slimchain_common::{
     rw_set::TxWriteData,
     tx::TxTrait,
 };
-use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieTrait, TxWriteSetTrie};
+use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieDiff, TxTrieTrait};
 use slimchain_utils::record_event;
 use std::time::Instant;
 use tokio::time::timeout_at;
@@ -35,7 +35,7 @@ where
     let deadline = begin + miner_cfg.max_block_interval;
 
     let mut txs: Vec<Tx> = Vec::with_capacity(miner_cfg.max_txs);
-    let mut tx_write_tries: Vec<TxWriteSetTrie> = Vec::with_capacity(miner_cfg.max_txs);
+    let mut tx_trie_diffs: Vec<TxTrieDiff> = Vec::with_capacity(miner_cfg.max_txs);
 
     let last_block_height = snapshot.current_height();
     let next_block_height = last_block_height.next_height();
@@ -85,12 +85,12 @@ where
         }
 
         if let Err(e) = tx.verify_sig() {
-            warn!("Received a tx with invalid sig. Error: {}", e);
+            warn!("Received a tx with invalid sig. Error: {:?}", e);
             continue;
         }
 
         if let Err(e) = write_trie.verify(tx_block.state_root()) {
-            warn!("Received a tx with invalid write trie. Error: {}", e);
+            warn!("Received a tx with invalid write trie. Error: {:?}", e);
             continue;
         }
 
@@ -104,26 +104,28 @@ where
             continue;
         }
 
+        let diff = match snapshot.tx_trie.diff_missing_branches(&write_trie) {
+            Ok(diff) => diff,
+            Err(e) => {
+                warn!("Failed to compute the tx trie diff. Error: {:?}", e);
+                continue;
+            }
+        };
+
         snapshot.access_map.add_read(tx.tx_reads());
         snapshot.access_map.add_write(tx.tx_writes());
         writes.merge(tx.tx_writes());
 
         txs.push(tx);
-        tx_write_tries.push(write_trie);
+        tx_trie_diffs.push(diff);
     }
 
-    let tx_trie_diff = tx_write_tries
-        .iter()
-        .map(|t| snapshot.tx_trie.diff_missing_branches(t))
-        .tree_fold1(|lhs, rhs| match (lhs, rhs) {
-            (Ok(l), Ok(r)) => Ok(merge_tx_trie_diff(&l, &r)),
-            (l @ Err(_), _) => l,
-            (_, r @ Err(_)) => r,
-        })
-        .transpose()?
+    let merged_diff = tx_trie_diffs
+        .into_iter()
+        .tree_fold1(|l, r| merge_tx_trie_diff(&l, &r))
         .unwrap_or_default();
 
-    snapshot.tx_trie.apply_diff(&tx_trie_diff, false)?;
+    snapshot.tx_trie.apply_diff(&merged_diff, false)?;
     snapshot.tx_trie.apply_writes(&writes)?;
 
     let new_state_root = snapshot.tx_trie.root_hash();
@@ -141,7 +143,7 @@ where
     let last_block = last_block.clone();
     let new_blk =
         tokio::task::spawn_blocking(move || new_block_fn(block_header, &last_block)).await?;
-    let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(tx_trie_diff));
+    let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(merged_diff));
 
     snapshot.remove_oldest_block()?;
     snapshot.commit_block(blk_proposal.get_block().clone());
