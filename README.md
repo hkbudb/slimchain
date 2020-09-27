@@ -29,3 +29,28 @@ linkable = false
 make
 make test-release
 ```
+
+## Run Nodes
+
+* Create proper `config.toml` file based on `config.toml.example`.
+* See help messages on how to run nodes and send txs:
+
+```bash
+./target/release/slimchain-node-tee --help
+./target/release/slimchain-send-tx --help
+```
+
+## Adjust Proof-of-Work Difficulty
+
+You can change the initial Proof-of-Work difficulty in the following files:
+
+* `slimchain-chain/src/consensus/pow.rs`.
+* `baseline/src/block/pow.rs`.
+
+Update the `diff` variable in the `genesis_block` method.
+
+To test the difficulty:
+
+```bash
+cargo test --release -p slimchain-chain consensus::pow::tests::test_pow  -- --nocapture --exact --ignored
+```
