@@ -26,9 +26,9 @@ pub async fn propose_block<Block, TxStream, NewBlockFn>(
     new_block_fn: NewBlockFn,
 ) -> Result<Option<(Block, TxStateUpdate)>>
 where
-    Block: BlockTrait + for<'de> Deserialize<'de>,
+    Block: BlockTrait + for<'de> Deserialize<'de> + 'static,
     TxStream: Stream<Item = SignedTxRequest> + Unpin,
-    NewBlockFn: Fn(BlockHeader, &Block) -> Block,
+    NewBlockFn: Fn(BlockHeader, &Block) -> Block + Send + 'static,
 {
     let begin = Instant::now();
     let deadline = begin + miner_cfg.max_block_interval;
@@ -87,7 +87,8 @@ where
         BlockTxList(txs),
         new_state_root,
     );
-    let new_blk = new_block_fn(block_header, &last_block);
+    let new_blk =
+        tokio::task::spawn_blocking(move || new_block_fn(block_header, &last_block)).await?;
 
     info!(time = ?(Instant::now() - begin));
     Ok(Some((new_blk, update)))

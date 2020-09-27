@@ -27,9 +27,9 @@ pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
 ) -> Result<Option<BlockProposal<Block, Tx>>>
 where
     Tx: TxTrait,
-    Block: BlockTrait,
+    Block: BlockTrait + 'static,
     TxStream: Stream<Item = TxProposal<Tx>> + Unpin,
-    NewBlockFn: Fn(BlockHeader, &Block) -> Block,
+    NewBlockFn: Fn(BlockHeader, &Block) -> Block + Send + 'static,
 {
     let begin = Instant::now();
     let deadline = begin + miner_cfg.max_block_interval;
@@ -138,7 +138,9 @@ where
         tx_list,
         new_state_root,
     );
-    let new_blk = new_block_fn(block_header, last_block);
+    let last_block = last_block.clone();
+    let new_blk =
+        tokio::task::spawn_blocking(move || new_block_fn(block_header, &last_block)).await?;
     let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(tx_trie_diff));
 
     snapshot.remove_oldest_block()?;
