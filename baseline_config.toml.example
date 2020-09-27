@@ -1,0 +1,43 @@
+# vim: set ft=toml:
+
+# The role of the node.
+[role]
+# Possible values: client, miner
+role = "client"
+
+# Chain configure.
+[chain]
+# Consensus method. Possible values: pow, raft.
+consensus = "pow"
+
+# Configure for miners.
+[miner]
+# The following three configures control when to create a new block.
+# A block is created if:
+#   (len(txs) >= min_tx && time_since_last_block >= max_block_interval) || len(txs) == max_txs
+
+# Max number of txs in one block.
+max_txs = 8
+# Min number of txs in one block.
+min_txs = 0
+# Max time span between blocks in seconds.
+max_block_interval = 15
+
+# Network configure.
+[network]
+# Listen address for node
+listen = "/ip4/0.0.0.0/tcp/6000"
+
+# Listen address for HTTP server (Client only)
+http_listen = "127.0.0.1:8000"
+
+# Ed25519 key. If missing, a new key will be generated.
+keypair = "Ed25519_KEY"
+
+# Whether to enable mDNS
+mdns = true
+
+# Known peers
+[[network.peers]]
+peer_id = "PEER_ID"
+address = "/ip4/127.0.0.1/tcp/6000"

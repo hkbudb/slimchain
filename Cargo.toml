@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "baseline",
     "slimchain",
     "slimchain-chain",
     "slimchain-common",
