@@ -80,6 +80,7 @@ fn nonce_is_valid(blk: &Block) -> bool {
 
 #[tracing::instrument(skip(header, prev_blk), fields(height = header.height.0))]
 pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
+    debug!("Begin mining");
     let begin = Instant::now();
     let diff = compute_diff(header.time_stamp, prev_blk);
     let mut blk = Block {
@@ -94,7 +95,9 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
         blk.nonce += 1.into();
     }
 
-    record_time!("mining", Instant::now() - begin, "height": blk.header.height.0);
+    let mining_time = Instant::now() - begin;
+    record_time!("mining", mining_time, "height": blk.header.height.0);
+    info!(?mining_time);
     blk
 }
 
