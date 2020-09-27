@@ -131,10 +131,6 @@ impl ContractArg {
                         ycsb.read_line(&mut buf)?;
                         let buf = buf.trim();
 
-                        if buf.is_empty() {
-                            bail!("Failed to read ycsb.txt file. Reach EOF.");
-                        }
-
                         if let Some(cap) = YCSB_READ_RE.captures(&buf) {
                             return contract
                                 .encode_tx_input("get", &[Token::String(cap[1].to_string())]);
@@ -149,6 +145,8 @@ impl ContractArg {
                                 ],
                             );
                         }
+
+                        warn!("Skip line in ycsb file: {}", buf);
                     }
                 } else {
                     bail!("Failed to access ycsb file.");
