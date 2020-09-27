@@ -104,13 +104,7 @@ where
             continue;
         }
 
-        let diff = match snapshot.tx_trie.diff_missing_branches(&write_trie) {
-            Ok(diff) => diff,
-            Err(e) => {
-                warn!("Failed to compute the tx trie diff. Error: {:?}", e);
-                continue;
-            }
-        };
+        let diff = snapshot.tx_trie.diff_missing_branches(&write_trie);
 
         snapshot.access_map.add_read(tx.tx_reads());
         snapshot.access_map.add_write(tx.tx_writes());
