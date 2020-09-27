@@ -128,7 +128,12 @@ impl ContractArg {
                     let mut ycsb = ycsb.lock().map_err(|_e| anyhow!("Failed to lock YCSB."))?;
                     loop {
                         let mut buf = String::new();
-                        ycsb.read_line(&mut buf)?;
+                        let buf_len = ycsb.read_line(&mut buf)?;
+
+                        if buf_len == 0 {
+                            bail!("Failed to read ycsb file. Reach EOF.");
+                        }
+
                         let buf = buf.trim();
 
                         if let Some(cap) = YCSB_READ_RE.captures(&buf) {
