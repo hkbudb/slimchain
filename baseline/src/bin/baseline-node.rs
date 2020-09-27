@@ -64,6 +64,7 @@ async fn main() -> Result<()> {
             use baseline::network::pow::*;
 
             let pow_cfg: PoWConfig = cfg.get("pow").unwrap_or_default();
+            info!("PoW initial difficulty: {}", pow_cfg.init_diff);
             pow_cfg.install_as_global()?;
 
             match role {

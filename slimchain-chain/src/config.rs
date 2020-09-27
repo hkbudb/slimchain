@@ -36,7 +36,7 @@ pub struct PoWConfig {
 impl Default for PoWConfig {
     fn default() -> Self {
         Self {
-            init_diff: 0x500000,
+            init_diff: 0x20000,
         }
     }
 }
