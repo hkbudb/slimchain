@@ -42,12 +42,7 @@ make test-release
 
 ## Adjust Proof-of-Work Difficulty
 
-You can change the initial Proof-of-Work difficulty in the following files:
-
-* `slimchain-chain/src/consensus/pow.rs`.
-* `baseline/src/block/pow.rs`.
-
-Update the `diff` variable in the `genesis_block` method.
+You can change the initial Proof-of-Work difficulty in the `config.toml`/`baseline_config.toml`.
 
 To test the difficulty:
 
