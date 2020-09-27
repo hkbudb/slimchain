@@ -39,7 +39,7 @@ impl BlockTrait for Block {
                 tx_list: BlockTxList::default(),
                 state_root: H256::zero(),
             },
-            diff: 0x10000,
+            diff: 0x500000,
             nonce: Nonce::zero(),
         }
     }
