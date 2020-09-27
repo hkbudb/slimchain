@@ -1,4 +1,7 @@
-use crate::block::{BlockHeader, BlockTrait, BlockTxList};
+use crate::{
+    block::{BlockHeader, BlockTrait, BlockTxList},
+    config::PoWConfig,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
@@ -39,7 +42,7 @@ impl BlockTrait for Block {
                 tx_list: BlockTxList::default(),
                 state_root: H256::zero(),
             },
-            diff: 0x500000,
+            diff: PoWConfig::get().init_diff,
             nonce: Nonce::zero(),
         }
     }

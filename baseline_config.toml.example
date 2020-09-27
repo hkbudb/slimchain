@@ -41,3 +41,9 @@ mdns = true
 [[network.peers]]
 peer_id = "PEER_ID"
 address = "/ip4/127.0.0.1/tcp/6000"
+
+# Configure used in Proof-of-Work.
+[pow]
+# The initial difficulty used by PoW.
+# The default value is 0x500000.
+init_diff = 327680

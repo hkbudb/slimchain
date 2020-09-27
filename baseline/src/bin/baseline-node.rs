@@ -60,7 +60,11 @@ async fn main() -> Result<()> {
 
     match chain_cfg.consensus {
         Consensus::PoW => {
+            use baseline::config::PoWConfig;
             use baseline::network::pow::*;
+
+            let pow_cfg: PoWConfig = cfg.get("pow").unwrap_or_default();
+            pow_cfg.install_as_global()?;
 
             match role {
                 Role::Client => {

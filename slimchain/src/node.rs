@@ -65,7 +65,11 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
 
     match chain_cfg.consensus {
         Consensus::PoW => {
+            use slimchain_chain::config::PoWConfig;
             use slimchain_network::behaviors::pow::*;
+
+            let pow_cfg: PoWConfig = cfg.get("pow").unwrap_or_default();
+            pow_cfg.install_as_global()?;
 
             match role {
                 Role::Client => {

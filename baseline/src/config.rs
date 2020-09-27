@@ -1,6 +1,10 @@
 use serde::Deserialize;
 
-pub use slimchain_chain::{config::MinerConfig, consensus::Consensus, role::Role};
+pub use slimchain_chain::{
+    config::{MinerConfig, PoWConfig},
+    consensus::Consensus,
+    role::Role,
+};
 pub use slimchain_network::config::NetworkConfig;
 
 #[derive(Debug, Clone, Deserialize)]
