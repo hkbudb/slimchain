@@ -65,18 +65,20 @@ impl<'a, StateView: TxStateView + ?Sized> slimchain_tx_executor::Backend
     }
 }
 
-pub(crate) fn exec_tx(
+pub(crate) async fn exec_tx(
     db: &DBPtr,
     pending_update: &TxStateUpdate,
     signed_tx_req: &SignedTxRequest,
 ) -> Result<TxStateUpdate> {
-    let state_root = pending_update.root;
-    let state_view = TxStateViewWithUpdate::new(db, pending_update);
-    let backend = ExecutorBackend::new(&state_view, state_root);
-    let output = execute_tx(signed_tx_req.clone(), &backend)?;
-    let new_update = update_tx_state(&state_view, state_root, &output.writes)?;
+    tokio::task::block_in_place(|| {
+        let state_root = pending_update.root;
+        let state_view = TxStateViewWithUpdate::new(db, pending_update);
+        let backend = ExecutorBackend::new(&state_view, state_root);
+        let output = execute_tx(signed_tx_req.clone(), &backend)?;
+        let new_update = update_tx_state(&state_view, state_root, &output.writes)?;
 
-    let mut update = pending_update.clone();
-    update.merge(new_update);
-    Ok(update)
+        let mut update = pending_update.clone();
+        update.merge(new_update);
+        Ok(update)
+    })
 }

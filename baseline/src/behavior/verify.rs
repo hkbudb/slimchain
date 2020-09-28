@@ -36,7 +36,7 @@ where
     update.root = last_block.state_root();
 
     for tx_req in new_block.tx_list().iter() {
-        let new_update = exec_tx(db, &update, tx_req)?;
+        let new_update = exec_tx(db, &update, tx_req).await?;
         update = new_update;
     }
 

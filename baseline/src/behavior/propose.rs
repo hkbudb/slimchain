@@ -66,7 +66,7 @@ where
 
         record_event!("blk_recv_tx", "tx_id": tx_req.id(), "height": next_block_height.0);
 
-        match exec_tx(db, &update, &tx_req) {
+        match exec_tx(db, &update, &tx_req).await {
             Ok(new_update) => {
                 update = new_update;
             }
