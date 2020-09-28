@@ -38,7 +38,6 @@ tee = [
 cfg-if = "0.1"
 color-backtrace = "0.4"
 futures = "0.3"
-itertools = "0.9"
 once_cell = "1.4"
 rand = "0.7"
 regex = "1.3"

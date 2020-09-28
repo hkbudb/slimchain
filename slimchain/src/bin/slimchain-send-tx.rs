@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate tracing;
 
-use futures::{future::join_all, join};
-use itertools::Itertools;
 use once_cell::sync::{Lazy, OnceCell};
 use rand::{distributions::Uniform, prelude::*};
 use regex::Regex;
@@ -12,7 +10,7 @@ use slimchain_common::{
     error::{anyhow, bail, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
-use slimchain_network::http::send_tx_request_with_shard;
+use slimchain_network::http::send_tx_requests_with_shard;
 use slimchain_utils::{
     contract::{contract_address, Contract, Token},
     init_tracing_subscriber,
@@ -299,7 +297,7 @@ async fn main() -> Result<()> {
 
     let mut contracts: Vec<(Address, ShardId, ContractArg)> =
         Vec::with_capacity(opts.contract.len());
-    let deploy_txs: Vec<(ShardId, SignedTxRequest)> = opts
+    let deploy_txs: Vec<(SignedTxRequest, ShardId)> = opts
         .contract
         .iter()
         .enumerate()
@@ -309,13 +307,11 @@ async fn main() -> Result<()> {
             let (address, deploy_tx) = create_deploy_tx(contract, shard_id);
             debug!("tx {} address {}", id, address);
             contracts.push((address, shard_id, contract));
-            (shard_id, deploy_tx)
+            (deploy_tx, shard_id)
         })
         .collect();
     info!("Deploy txs");
-    for (shard_id, tx_req) in deploy_txs {
-        send_tx_request_with_shard(&opts.endpoint, tx_req, shard_id).await?;
-    }
+    send_tx_requests_with_shard(&opts.endpoint, deploy_txs.into_iter()).await?;
     info!("Deploy finished");
 
     let keys: Vec<Keypair> = {
@@ -335,7 +331,7 @@ async fn main() -> Result<()> {
     let begin = Instant::now();
 
     let mut rng = thread_rng();
-    let mut req_futs = Vec::with_capacity(opts.rate + 1);
+    let mut reqs = Vec::with_capacity(opts.rate + 1);
     let mut next_epoch = delay_for(Duration::from_secs(1));
     for (i, key) in keys.iter().enumerate() {
         let (address, shard_id, contract) = contracts
@@ -348,12 +344,11 @@ async fn main() -> Result<()> {
             data: contract.gen_tx_input(&mut rng)?,
         };
         let signed_tx_req = tx_req.sign(key);
-        let req_fut = send_tx_request_with_shard(&opts.endpoint, signed_tx_req, shard_id);
-        req_futs.push(req_fut);
+        reqs.push((signed_tx_req, shard_id));
 
-        if req_futs.len() == opts.rate {
-            let (resps, _) = join!(join_all(req_futs.drain(..)), next_epoch);
-            resps.into_iter().try_collect()?;
+        if reqs.len() == opts.rate {
+            send_tx_requests_with_shard(&opts.endpoint, reqs.drain(..)).await?;
+            next_epoch.await;
 
             next_epoch = delay_for(Duration::from_secs(1));
         }
@@ -363,8 +358,8 @@ async fn main() -> Result<()> {
         }
     }
 
-    if !req_futs.is_empty() {
-        join_all(req_futs).await.into_iter().try_collect()?;
+    if !reqs.is_empty() {
+        send_tx_requests_with_shard(&opts.endpoint, reqs.drain(..)).await?;
     }
 
     let total_time = Instant::now() - begin;

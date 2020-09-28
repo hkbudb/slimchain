@@ -1,4 +1,4 @@
-use futures::{channel::mpsc, future::BoxFuture, prelude::*};
+use futures::{channel::mpsc, future::BoxFuture, prelude::*, stream};
 use libp2p::{
     core::connection::ConnectionId,
     swarm::{
@@ -13,8 +13,11 @@ use slimchain_common::{
     error::{ensure, Error, Result},
     tx_req::SignedTxRequest,
 };
-use std::net::SocketAddr;
-use std::task::{Context, Poll};
+use std::{
+    iter,
+    net::SocketAddr,
+    task::{Context, Poll},
+};
 use warp::Filter;
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -27,17 +30,28 @@ pub struct TxHttpRequest {
 const TX_REQ_ROUTE_PATH: &str = "tx_req";
 
 pub async fn send_tx_request(endpoint: &str, req: SignedTxRequest) -> Result<()> {
-    send_tx_request_with_shard(endpoint, req, ShardId::default()).await
+    send_tx_requests(endpoint, iter::once(req)).await
 }
 
-pub async fn send_tx_request_with_shard(
+pub async fn send_tx_requests(
     endpoint: &str,
-    req: SignedTxRequest,
-    shard_id: ShardId,
+    reqs: impl Iterator<Item = SignedTxRequest>,
 ) -> Result<()> {
-    let tx_req = TxHttpRequest { req, shard_id };
+    let reqs = reqs.into_iter().map(|req| (req, ShardId::default()));
+    send_tx_requests_with_shard(endpoint, reqs).await
+}
+
+pub async fn send_tx_requests_with_shard(
+    endpoint: &str,
+    reqs: impl Iterator<Item = (SignedTxRequest, ShardId)>,
+) -> Result<()> {
+    let reqs: Vec<_> = reqs
+        .into_iter()
+        .map(|(req, shard_id)| TxHttpRequest { req, shard_id })
+        .collect();
+
     let mut resp = surf::post(&format!("http://{}/{}", endpoint, TX_REQ_ROUTE_PATH))
-        .body(surf::Body::from_json(&tx_req).map_err(Error::msg)?)
+        .body(surf::Body::from_json(&reqs).map_err(Error::msg)?)
         .await
         .map_err(Error::msg)?;
     ensure!(
@@ -66,10 +80,11 @@ impl TxHttpServer {
         let route = warp::post()
             .and(warp::path(TX_REQ_ROUTE_PATH))
             .and(warp::body::json())
-            .and_then(move |req: TxHttpRequest| {
-                let tx = tx.clone();
+            .and_then(move |reqs: Vec<TxHttpRequest>| {
+                let mut tx = tx.clone();
                 async move {
-                    match tx.clone().send(req).await {
+                    let mut reqs = stream::iter(reqs).map(Ok);
+                    match tx.send_all(&mut reqs).await {
                         Ok(_) => Ok(warp::reply::json(&())),
                         Err(e) => Err(warp::reject::custom(TxHttpServerErr(Error::msg(e)))),
                     }
