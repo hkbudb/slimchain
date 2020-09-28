@@ -79,8 +79,6 @@ fn nonce_is_valid(blk_hash: H256, diff: u64) -> bool {
     }
 
     let target = U256::MAX / U256::from(diff);
-    debug!("mining target: {}", target);
-
     let hash = U256::from(blk_hash.to_fixed_bytes());
     hash <= target
 }
