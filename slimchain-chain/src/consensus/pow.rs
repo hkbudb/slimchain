@@ -156,6 +156,7 @@ mod tests {
             let new_blk = create_new_block(header, &blk);
             println!("diff = {}", new_blk.diff);
             println!("time = {}", new_blk.time_stamp() - blk.time_stamp());
+            println!("target = {}", U256::MAX / U256::from(new_blk.diff));
             println!("---------------------");
             blk = new_blk;
         }
