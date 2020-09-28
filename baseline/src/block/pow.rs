@@ -1,5 +1,5 @@
 use crate::{
-    block::{BlockHeader, BlockTrait, BlockTxList},
+    block::{block_header_to_digest, BlockHeader, BlockTrait, BlockTxList},
     config::PoWConfig,
 };
 use chrono::{DateTime, Utc};
@@ -69,13 +69,13 @@ fn compute_diff(time_stamp: DateTime<Utc>, prev_blk: &Block) -> u64 {
 }
 
 #[inline]
-fn nonce_is_valid(blk: &Block) -> bool {
+fn nonce_is_valid(blk_hash: H256, diff: u64) -> bool {
     if cfg!(debug_assertions) {
         return true;
     }
 
-    let hash = U256::from(blk.to_digest().to_fixed_bytes());
-    hash <= U256::MAX / blk.diff
+    let hash = U256::from(blk_hash.to_fixed_bytes());
+    hash <= U256::MAX / diff
 }
 
 #[tracing::instrument(skip(header, prev_blk), fields(height = header.height.0))]
@@ -89,7 +89,18 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
         nonce: Nonce::zero(),
     };
 
-    while !nonce_is_valid(&blk) {
+    let tx_list_root = blk.header.tx_list.to_digest();
+
+    while !nonce_is_valid(
+        block_header_to_digest(
+            blk.header.height,
+            blk.header.prev_blk_hash,
+            blk.header.time_stamp,
+            tx_list_root,
+            blk.header.state_root,
+        ),
+        blk.diff,
+    ) {
         blk.header.time_stamp = Utc::now();
         blk.diff = compute_diff(blk.header.time_stamp, prev_blk);
         blk.nonce += 1.into();
@@ -97,7 +108,7 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
 
     let mining_time = Instant::now() - begin;
     record_time!("mining", mining_time, "height": blk.header.height.0);
-    info!(?mining_time);
+    info!(?mining_time, diff = blk.diff);
     blk
 }
 
@@ -106,7 +117,7 @@ pub fn verify_consensus(blk: &Block, prev_blk: &Block) -> Result<()> {
         blk.diff == compute_diff(blk.header.time_stamp, prev_blk),
         "Invalid difficult."
     );
-    ensure!(nonce_is_valid(blk), "Invalid nonce");
+    ensure!(nonce_is_valid(blk.to_digest(), blk.diff), "Invalid nonce");
 
     Ok(())
 }

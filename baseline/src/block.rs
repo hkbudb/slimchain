@@ -19,16 +19,32 @@ pub struct BlockHeader {
     pub state_root: H256,
 }
 
+pub fn block_header_to_digest(
+    height: BlockHeight,
+    prev_blk_hash: H256,
+    time_stamp: DateTime<Utc>,
+    tx_list_root: H256,
+    state_root: H256,
+) -> H256 {
+    let mut hash_state = default_blake2().to_state();
+    hash_state.update(height.to_digest().as_bytes());
+    hash_state.update(prev_blk_hash.as_bytes());
+    hash_state.update(time_stamp.timestamp_millis().to_digest().as_bytes());
+    hash_state.update(tx_list_root.as_bytes());
+    hash_state.update(state_root.as_bytes());
+    let hash = hash_state.finalize();
+    blake2b_hash_to_h256(hash)
+}
+
 impl Digestible for BlockHeader {
     fn to_digest(&self) -> H256 {
-        let mut hash_state = default_blake2().to_state();
-        hash_state.update(self.height.to_digest().as_bytes());
-        hash_state.update(self.prev_blk_hash.as_bytes());
-        hash_state.update(self.time_stamp.timestamp_millis().to_digest().as_bytes());
-        hash_state.update(self.tx_list.to_digest().as_bytes());
-        hash_state.update(self.state_root.as_bytes());
-        let hash = hash_state.finalize();
-        blake2b_hash_to_h256(hash)
+        block_header_to_digest(
+            self.height,
+            self.prev_blk_hash,
+            self.time_stamp,
+            self.tx_list.to_digest(),
+            self.state_root,
+        )
     }
 }
 
