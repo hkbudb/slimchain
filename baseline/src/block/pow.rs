@@ -19,14 +19,18 @@ pub struct Block {
     nonce: Nonce,
 }
 
+fn block_hash(header_hash: H256, diff: u64, nonce: Nonce) -> H256 {
+    let mut hash_state = default_blake2().to_state();
+    hash_state.update(header_hash.as_bytes());
+    hash_state.update(diff.to_digest().as_bytes());
+    hash_state.update(nonce.to_digest().as_bytes());
+    let hash = hash_state.finalize();
+    blake2b_hash_to_h256(hash)
+}
+
 impl Digestible for Block {
     fn to_digest(&self) -> H256 {
-        let mut hash_state = default_blake2().to_state();
-        hash_state.update(self.header.to_digest().as_bytes());
-        hash_state.update(self.diff.to_digest().as_bytes());
-        hash_state.update(self.nonce.to_digest().as_bytes());
-        let hash = hash_state.finalize();
-        blake2b_hash_to_h256(hash)
+        block_hash(self.header.to_digest(), self.diff, self.nonce)
     }
 }
 
@@ -74,8 +78,11 @@ fn nonce_is_valid(blk_hash: H256, diff: u64) -> bool {
         return true;
     }
 
+    let target = U256::MAX / U256::from(diff);
+    debug!("mining target: {}", target);
+
     let hash = U256::from(blk_hash.to_fixed_bytes());
-    hash <= U256::MAX / diff
+    hash <= target
 }
 
 #[tracing::instrument(skip(header, prev_blk), fields(height = header.height.0))]
@@ -92,12 +99,16 @@ pub fn create_new_block(header: BlockHeader, prev_blk: &Block) -> Block {
     let tx_list_root = blk.header.tx_list.to_digest();
 
     while !nonce_is_valid(
-        block_header_to_digest(
-            blk.header.height,
-            blk.header.prev_blk_hash,
-            blk.header.time_stamp,
-            tx_list_root,
-            blk.header.state_root,
+        block_hash(
+            block_header_to_digest(
+                blk.header.height,
+                blk.header.prev_blk_hash,
+                blk.header.time_stamp,
+                tx_list_root,
+                blk.header.state_root,
+            ),
+            blk.diff,
+            blk.nonce,
         ),
         blk.diff,
     ) {
