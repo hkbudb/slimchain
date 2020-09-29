@@ -26,5 +26,8 @@ tracing = "0.1"
 tracing-futures = "0.2"
 warp = "0.2"
 
+# https://github.com/taiki-e/pin-project-lite/issues/33
+pin-project-lite = "=0.1.8"
+
 [dev-dependencies]
 serial_test = "0.5"
