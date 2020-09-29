@@ -124,6 +124,7 @@ $(RUST_LIB_FILE): $(RUST_SRC)
 ## clean
 
 clean:
+	-rm ./Cargo.lock
 	-rm -rf target
 	-rm -f ../target/*/lib$(ENCLAVE_NAME)*.signed.so
 .PHONY: clean
