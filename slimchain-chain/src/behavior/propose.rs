@@ -64,11 +64,13 @@ where
             }
         };
 
-        record_event!("blk_recv_tx", "tx_id": tx.id(), "height": next_block_height.0);
+        let tx_id = tx.id();
+        record_event!("blk_recv_tx", "tx_id": tx_id, "height": next_block_height.0);
 
         let tx_block_height = tx.tx_block_height();
         if tx_block_height < snapshot.access_map.oldest_block_height() {
             debug!("Tx proposal is outdated.");
+            record_event!("tx_outdated", "tx_id": tx_id);
             continue;
         }
         if tx_block_height > last_block_height {
@@ -101,6 +103,7 @@ where
             tx.tx_writes(),
         ) {
             debug!("Received a tx with conflict");
+            record_event!("tx_conflict", "tx_id": tx_id);
             continue;
         }
 
