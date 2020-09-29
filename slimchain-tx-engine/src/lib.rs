@@ -254,6 +254,10 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
     }
 
     fn wait_until_task(&self) -> Option<TxTask> {
+        if self.shutdown_flag.load(Ordering::Acquire) {
+            return None;
+        }
+
         let backoff = Backoff::new();
         loop {
             match self.find_task() {
