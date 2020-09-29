@@ -45,5 +45,5 @@ address = "/ip4/127.0.0.1/tcp/6000"
 # Configure used in Proof-of-Work.
 [pow]
 # The initial difficulty used by PoW.
-# The default value is 0x20000.
-init_diff = 131072
+# The default value is 5_000_000.
+init_diff = 5000000
