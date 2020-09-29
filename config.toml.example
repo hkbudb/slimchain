@@ -21,14 +21,14 @@ consensus = "pow"
 [miner]
 # The following three configures control when to create a new block.
 # A block is created if:
-#   (len(txs) >= min_tx && time_since_last_block >= max_block_interval) || len(txs) == max_txs
+#   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs
 
 # Max number of txs in one block. If missing, default to usize::MAX.
 max_txs = 8
 # Min number of txs in one block.
 min_txs = 0
-# Max time span between blocks in seconds.
-max_block_interval = 15
+# Max time span used in collecting txs.
+max_block_interval = 2
 
 # Configure used in TEE. Used by storage nodes with TEE only.
 # Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
