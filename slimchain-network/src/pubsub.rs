@@ -17,7 +17,6 @@ use slimchain_common::{
 use std::{
     collections::VecDeque,
     task::{Context, Poll},
-    time::Duration,
 };
 
 const MAX_MESSAGE_SIZE: usize = 50_000_000;
@@ -82,7 +81,6 @@ where
                 let hash = msg.data.to_digest();
                 MessageId::new(hash.as_bytes())
             })
-            .heartbeat_interval(Duration::from_secs(10))
             .max_transmit_size(MAX_MESSAGE_SIZE)
             .build();
         let mut gossipsub = Gossipsub::new(MessageAuthenticity::Signed(keypair), cfg);
