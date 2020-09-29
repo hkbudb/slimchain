@@ -47,6 +47,10 @@ where
         let tx_req = if txs.len() < miner_cfg.min_txs {
             tx_reqs.next().await
         } else {
+            if Instant::now() > deadline {
+                break;
+            }
+
             match timeout_at(deadline.into(), tx_reqs.next()).await {
                 Ok(req) => req,
                 Err(_) => {
