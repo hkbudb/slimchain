@@ -20,7 +20,7 @@ use std::{
     time::Duration,
 };
 
-const MAX_MESSAGE_SIZE: usize = 10_000_000;
+const MAX_MESSAGE_SIZE: usize = 50_000_000;
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
