@@ -5,9 +5,9 @@ https://01.org/sites/default/files/documentation/intel_sgx_sdk_developer_referen
 <EnclaveConfiguration>
   <ProdID>0</ProdID>
   <ISVSVN>0</ISVSVN>
-  <StackMaxSize>0x40000</StackMaxSize>
-  <HeapMaxSize>0x100000</HeapMaxSize>
-  <TCSNum>16</TCSNum>
+  <StackMaxSize>0x200000</StackMaxSize>
+  <HeapMaxSize>0x500000</HeapMaxSize>
+  <TCSNum>8</TCSNum>
   <TCSPolicy>1</TCSPolicy>
   <DisableDebug>0</DisableDebug>
   <MiscSelect>0</MiscSelect>
