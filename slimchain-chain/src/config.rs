@@ -17,6 +17,7 @@ pub struct ChainConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MinerConfig {
     /// Max number of txs in one block.
+    #[serde(default = "usize::max_value")]
     pub max_txs: usize,
     /// Min number of txs in one block.
     #[serde(default)]
@@ -35,7 +36,9 @@ pub struct PoWConfig {
 
 impl Default for PoWConfig {
     fn default() -> Self {
-        Self { init_diff: 5_000_000 }
+        Self {
+            init_diff: 5_000_000,
+        }
     }
 }
 
