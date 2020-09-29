@@ -16,7 +16,7 @@ consensus = "pow"
 # A block is created if:
 #   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs
 
-# Max number of txs in one block. If missing, default to usize::MAX.
+# Max number of txs in one block. If missing, default to 100_000.
 max_txs = 8
 # Min number of txs in one block.
 min_txs = 0
