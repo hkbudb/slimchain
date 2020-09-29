@@ -111,7 +111,9 @@ RUST_SRC := \
 		../slimchain-merkle-trie \
 		../slimchain-tx-executor \
 		../slimchain-tx-state \
-		-type f -name "Cargo.toml")
+		-type f -name "Cargo.toml") \
+	./Cargo.lock \
+	../Cargo.lock
 
 rust_lib: $(RUST_LIB_FILE)
 .PHONY: rust_lib
