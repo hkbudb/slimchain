@@ -17,7 +17,7 @@ pub struct ChainConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MinerConfig {
     /// Max number of txs in one block.
-    #[serde(default = "usize::max_value")]
+    #[serde(default = "default_max_txs")]
     pub max_txs: usize,
     /// Min number of txs in one block.
     #[serde(default)]
@@ -25,6 +25,10 @@ pub struct MinerConfig {
     /// Max time span used in collecting txs.
     #[serde(deserialize_with = "slimchain_utils::config::deserialize_duration_from_secs")]
     pub max_block_interval: Duration,
+}
+
+fn default_max_txs() -> usize {
+    usize::MAX - 1
 }
 
 #[derive(Debug, Copy, Clone, Deserialize)]
