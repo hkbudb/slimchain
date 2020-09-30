@@ -139,9 +139,7 @@ impl<Tx: TxTrait + Serialize>
                 );
                 self.worker.add_block_proposal(input);
             }
-            _ => {
-                unreachable!();
-            }
+            _ => {}
         }
     }
 }

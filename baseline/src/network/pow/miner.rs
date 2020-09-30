@@ -71,7 +71,7 @@ impl NetworkBehaviourEventProcess<PubSubEvent<SignedTxRequest, Block>> for Miner
                 );
                 self.worker.add_tx(input);
             }
-            _ => unreachable!(),
+            _ => {}
         }
     }
 }

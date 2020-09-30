@@ -70,7 +70,7 @@ impl NetworkBehaviourEventProcess<PubSubEvent<SignedTxRequest, Block>> for Clien
                 );
                 self.worker.add_block(input);
             }
-            _ => unreachable!(),
+            _ => {}
         }
     }
 }

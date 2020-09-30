@@ -92,9 +92,7 @@ impl<Tx: TxTrait + Serialize>
                 );
                 self.worker.add_tx_proposal(input);
             }
-            _ => {
-                unreachable!();
-            }
+            _ => {}
         }
     }
 }
