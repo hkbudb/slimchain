@@ -10,7 +10,7 @@ use slimchain_common::{
     error::{anyhow, bail, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
-use slimchain_network::http::send_tx_requests_with_shard;
+use slimchain_network::http::{send_record_event, send_tx_requests_with_shard};
 use slimchain_utils::{
     contract::{contract_address, Contract, Token},
     init_tracing_subscriber,
@@ -328,6 +328,7 @@ async fn main() -> Result<()> {
         io::stdin().read_line(&mut buf)?;
     }
 
+    send_record_event(&opts.endpoint, "start-send-tx").await?;
     let begin = Instant::now();
 
     let mut rng = thread_rng();
@@ -363,6 +364,8 @@ async fn main() -> Result<()> {
     }
 
     let total_time = Instant::now() - begin;
+    send_record_event(&opts.endpoint, "end-send-tx").await?;
+
     info!("Time: {:?}", total_time);
     info!(
         "Real rate: {:?} tx/s",

@@ -35,4 +35,14 @@ async fn test() {
         .unwrap();
     let req = handler.await.unwrap();
     assert_eq!(req.req, signed_tx_req);
+
+    send_record_event("127.0.0.1:8000", "test_event")
+        .await
+        .unwrap();
+    send_record_event_with_data("127.0.0.1:8000", "test_event", 42)
+        .await
+        .unwrap();
+    send_record_event_with_data("127.0.0.1:8000", "test_event", &vec![1, 2, 3])
+        .await
+        .unwrap();
 }

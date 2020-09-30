@@ -15,6 +15,7 @@ pin-project = "0.4"
 postcard = { version = "0.5", features = ["alloc"] }
 rand = "0.7"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 slimchain-chain = { path = "../slimchain-chain" }
 slimchain-common = { path = "../slimchain-common" }
 slimchain-tx-engine = { path = "../slimchain-tx-engine" }

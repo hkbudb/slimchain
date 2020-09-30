@@ -13,12 +13,16 @@ use slimchain_common::{
     error::{ensure, Error, Result},
     tx_req::SignedTxRequest,
 };
+use slimchain_utils::record_event;
 use std::{
     iter,
     net::SocketAddr,
     task::{Context, Poll},
 };
 use warp::Filter;
+
+const TX_REQ_ROUTE_PATH: &str = "tx_req";
+const RECORD_EVENT_ROUTE_PATH: &str = "record_event";
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxHttpRequest {
@@ -27,7 +31,20 @@ pub struct TxHttpRequest {
     pub shard_id: ShardId,
 }
 
-const TX_REQ_ROUTE_PATH: &str = "tx_req";
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RecordEventHttpRequest {
+    pub info: String,
+    pub data: Option<serde_json::Value>,
+}
+
+impl RecordEventHttpRequest {
+    fn emit_record_event(&self) {
+        match self.data.as_ref() {
+            Some(data) => record_event!("client_event", "info": self.info, "data": data),
+            None => record_event!("client_event", "info": self.info),
+        }
+    }
+}
 
 pub async fn send_tx_request(endpoint: &str, req: SignedTxRequest) -> Result<()> {
     send_tx_requests(endpoint, iter::once(req)).await
@@ -62,6 +79,45 @@ pub async fn send_tx_requests_with_shard(
     resp.body_json().await.map_err(Error::msg)
 }
 
+pub async fn send_record_event(endpoint: &str, info: &str) -> Result<()> {
+    send_record_event_inner(
+        endpoint,
+        RecordEventHttpRequest {
+            info: info.to_string(),
+            data: None,
+        },
+    )
+    .await
+}
+
+pub async fn send_record_event_with_data(
+    endpoint: &str,
+    info: &str,
+    data: impl Serialize,
+) -> Result<()> {
+    send_record_event_inner(
+        endpoint,
+        RecordEventHttpRequest {
+            info: info.to_string(),
+            data: Some(serde_json::to_value(data).map_err(Error::msg)?),
+        },
+    )
+    .await
+}
+
+async fn send_record_event_inner(endpoint: &str, req: RecordEventHttpRequest) -> Result<()> {
+    let mut resp = surf::post(&format!("http://{}/{}", endpoint, RECORD_EVENT_ROUTE_PATH))
+        .body(surf::Body::from_json(&req).map_err(Error::msg)?)
+        .await
+        .map_err(Error::msg)?;
+    ensure!(
+        resp.status().is_success(),
+        "Failed to send record event http req (status code: {})",
+        resp.status()
+    );
+    resp.body_json().await.map_err(Error::msg)
+}
+
 pub struct TxHttpServer {
     srv: BoxFuture<'static, ()>,
     recv: mpsc::Receiver<TxHttpRequest>,
@@ -77,7 +133,7 @@ impl TxHttpServer {
         info!("Create tx http server, listen on {}", endpoint);
         let listen_addr: SocketAddr = endpoint.parse()?;
         let (tx, rx) = mpsc::channel(1024);
-        let route = warp::post()
+        let tx_req_route = warp::post()
             .and(warp::path(TX_REQ_ROUTE_PATH))
             .and(warp::body::json())
             .and_then(move |reqs: Vec<TxHttpRequest>| {
@@ -90,6 +146,14 @@ impl TxHttpServer {
                     }
                 }
             });
+        let record_event_route = warp::post()
+            .and(warp::path(RECORD_EVENT_ROUTE_PATH))
+            .and(warp::body::json())
+            .map(move |req: RecordEventHttpRequest| {
+                req.emit_record_event();
+                warp::reply::json(&())
+            });
+        let route = tx_req_route.or(record_event_route);
         let srv = warp::serve(route).bind(listen_addr).boxed();
         Ok(Self { srv, recv: rx })
     }
