@@ -14,74 +14,17 @@ use crate::{
     db::DBPtr,
 };
 use futures::{channel::mpsc, prelude::*, stream::Fuse};
-use pin_project::pin_project;
 use slimchain_common::{
     basic::BlockHeight,
-    collections::HashMap,
     error::{bail, Result},
     tx_req::SignedTxRequest,
 };
+use slimchain_network::behaviors::pow::OrderedStream;
 use std::{
-    cmp::Ordering,
     pin::Pin,
     task::{Context, Poll},
 };
 use tokio::task::JoinHandle;
-
-#[pin_project]
-pub struct OrderedBlockStream<Input: Stream<Item = Block>> {
-    #[pin]
-    input: Fuse<Input>,
-    height: BlockHeight,
-    cache: HashMap<BlockHeight, Block>,
-}
-
-impl<Input: Stream<Item = Block>> OrderedBlockStream<Input> {
-    pub fn new(input: Input, height: BlockHeight) -> Self {
-        Self {
-            input: input.fuse(),
-            height,
-            cache: HashMap::new(),
-        }
-    }
-}
-
-impl<Input: Stream<Item = Block>> Stream for OrderedBlockStream<Input> {
-    type Item = Block;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        if let Some(item) = this.cache.remove(&this.height) {
-            *this.height = this.height.next_height();
-            return Poll::Ready(Some(item));
-        }
-
-        if let Poll::Ready(Some(item)) = this.input.as_mut().poll_next(cx) {
-            let item_height = item.block_height();
-            match item_height.cmp(this.height) {
-                Ordering::Equal => {
-                    *this.height = this.height.next_height();
-                    return Poll::Ready(Some(item));
-                }
-                Ordering::Greater => {
-                    this.cache.insert(item_height, item);
-                }
-                Ordering::Less => warn!(
-                    height = item_height.0,
-                    cur_height = this.height.0,
-                    "Received outdated block."
-                ),
-            }
-        }
-
-        if this.input.is_done() {
-            return Poll::Ready(None);
-        }
-
-        Poll::Pending
-    }
-}
 
 pub struct BlockImportWorker {
     handle: Option<JoinHandle<()>>,
@@ -91,7 +34,11 @@ pub struct BlockImportWorker {
 impl BlockImportWorker {
     pub fn new(db: DBPtr, height: BlockHeight) -> Self {
         let (blk_tx, blk_rx) = mpsc::unbounded::<Block>();
-        let mut blk_rx = OrderedBlockStream::new(blk_rx, height.next_height());
+        let mut blk_rx = OrderedStream::new(
+            blk_rx.map(|blk| (blk.block_height(), blk)),
+            height.next_height(),
+            |height| height.next_height(),
+        );
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             let mut height = height;

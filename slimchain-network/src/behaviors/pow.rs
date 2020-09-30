@@ -7,8 +7,10 @@ pub use miner::*;
 pub mod storage;
 pub use storage::*;
 
+pub mod ordered_stream;
+pub use ordered_stream::*;
+
 use futures::{channel::mpsc, prelude::*, stream::Fuse};
-use pin_project::pin_project;
 use serde::Serialize;
 use slimchain_chain::{
     behavior::{commit_block, commit_block_storage_node, propose_block, verify_block},
@@ -20,80 +22,15 @@ use slimchain_chain::{
     snapshot::Snapshot,
 };
 use slimchain_common::{
-    basic::BlockHeight,
-    collections::HashMap,
     error::{bail, Result},
     tx::TxTrait,
 };
 use slimchain_tx_state::{TxProposal, TxTrie, TxTrieTrait};
 use std::{
-    cmp::Ordering,
     pin::Pin,
     task::{Context, Poll},
 };
 use tokio::task::JoinHandle;
-
-#[pin_project]
-pub struct OrderedBlockProposalStream<
-    Tx: TxTrait + 'static,
-    Input: Stream<Item = BlockProposal<Block, Tx>>,
-> {
-    #[pin]
-    input: Fuse<Input>,
-    height: BlockHeight,
-    cache: HashMap<BlockHeight, BlockProposal<Block, Tx>>,
-}
-
-impl<Tx: TxTrait, Input: Stream<Item = BlockProposal<Block, Tx>>>
-    OrderedBlockProposalStream<Tx, Input>
-{
-    pub fn new(input: Input, height: BlockHeight) -> Self {
-        Self {
-            input: input.fuse(),
-            height,
-            cache: HashMap::new(),
-        }
-    }
-}
-
-impl<Tx: TxTrait, Input: Stream<Item = BlockProposal<Block, Tx>>> Stream
-    for OrderedBlockProposalStream<Tx, Input>
-{
-    type Item = BlockProposal<Block, Tx>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut this = self.project();
-
-        if let Some(item) = this.cache.remove(&this.height) {
-            *this.height = this.height.next_height();
-            return Poll::Ready(Some(item));
-        }
-
-        if let Poll::Ready(Some(item)) = this.input.as_mut().poll_next(cx) {
-            let item_height = item.get_block_height();
-            match item_height.cmp(this.height) {
-                Ordering::Equal => {
-                    *this.height = this.height.next_height();
-                    return Poll::Ready(Some(item));
-                }
-                Ordering::Greater => {
-                    this.cache.insert(item_height, item);
-                }
-                Ordering::Less => warn!(
-                    height = item_height.0,
-                    cur_height = this.height.0,
-                    "Received outdated block."
-                ),
-            }
-        }
-
-        if this.input.is_done() {
-            return Poll::Ready(None);
-        }
-
-        Poll::Pending
-    }
-}
 
 pub struct BlockImportWorker<Tx: TxTrait + 'static> {
     handle: Option<JoinHandle<()>>,
@@ -110,8 +47,11 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
         snapshot_to_db_tx: impl Fn(&Snapshot<Block, TxTrie>) -> Result<DBTx> + Send + Sync + 'static,
     ) -> Self {
         let (blk_tx, blk_rx) = mpsc::unbounded::<BlockProposal<Block, Tx>>();
-        let mut blk_rx =
-            OrderedBlockProposalStream::new(blk_rx, latest_block_header.get_height().next_height());
+        let mut blk_rx = OrderedStream::new(
+            blk_rx.map(|blk| (blk.get_block_height(), blk)),
+            latest_block_header.get_height().next_height(),
+            |height| height.next_height(),
+        );
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             while let Some(blk_proposal) = blk_rx.next().await {
