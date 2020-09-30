@@ -75,7 +75,7 @@ impl<Input: Stream<Item = Block>> Stream for OrderedBlockStream<Input> {
             }
         }
 
-        if this.input.is_done() && !this.cache.contains_key(&this.height) {
+        if this.input.is_done() {
             return Poll::Ready(None);
         }
 
