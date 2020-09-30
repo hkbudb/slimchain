@@ -10,39 +10,38 @@ use std::{
 };
 
 #[pin_project]
-pub struct OrderedStream<S, K, V>
+pub struct OrderedStream<S, K, V, F>
 where
     S: Stream<Item = (K, V)>,
+    F: Fn(&K) -> K + Sync + Send + 'static,
 {
     #[pin]
     stream: Fuse<S>,
     current: K,
     cache: HashMap<K, V>,
-    next_key_fn: Box<dyn Fn(&K) -> K + Sync + Send + 'static>,
+    next_key_fn: F,
 }
 
-impl<S, K, V> OrderedStream<S, K, V>
+impl<S, K, V, F> OrderedStream<S, K, V, F>
 where
     S: Stream<Item = (K, V)>,
+    F: Fn(&K) -> K + Sync + Send + 'static,
 {
-    pub fn new(
-        stream: S,
-        current: K,
-        next_key_fn: impl Fn(&K) -> K + Sync + Send + 'static,
-    ) -> Self {
+    pub fn new(stream: S, current: K, next_key_fn: F) -> Self {
         Self {
             stream: stream.fuse(),
             current,
             cache: HashMap::new(),
-            next_key_fn: Box::new(next_key_fn),
+            next_key_fn,
         }
     }
 }
 
-impl<S, K, V> Stream for OrderedStream<S, K, V>
+impl<S, K, V, F> Stream for OrderedStream<S, K, V, F>
 where
     K: Eq + Ord + Hash + Debug,
     S: Stream<Item = (K, V)>,
+    F: Fn(&K) -> K + Sync + Send + 'static,
 {
     type Item = V;
 
