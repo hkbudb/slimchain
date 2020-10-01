@@ -29,7 +29,7 @@ use tokio::time::{
     delay_for, delay_queue::Key as DelayQueueKey, Delay, DelayQueue, Duration, Instant,
 };
 
-const PEER_ENTRY_TTL_SECS: u64 = 600;
+const PEER_ENTRY_TTL: Duration = Duration::from_secs(600);
 
 create_id_type_u64!(QueryId);
 
@@ -177,14 +177,11 @@ impl Discovery {
                 trace!("Refresh node {} with role {}", peer_id, role);
                 let (role2, delay) = o.get();
                 debug_assert_eq!(&role, role2);
-                self.exp_peers
-                    .reset(delay, Duration::from_secs(PEER_ENTRY_TTL_SECS));
+                self.exp_peers.reset(delay, PEER_ENTRY_TTL);
             }
             Entry::Vacant(v) => {
                 trace!("Add node {} with role {}", peer_id, role);
-                let delay = self
-                    .exp_peers
-                    .insert(peer_id.clone(), Duration::from_secs(PEER_ENTRY_TTL_SECS));
+                let delay = self.exp_peers.insert(peer_id.clone(), PEER_ENTRY_TTL);
                 v.insert((role, delay));
                 self.peer_table.entry(role).or_default().insert(peer_id);
             }

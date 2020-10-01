@@ -172,7 +172,7 @@ impl Drop for TaskStateGuard {
     }
 }
 
-const ATTEST_REPORT_TTL_SECS: u64 = 21_600; // 6 hours
+const ATTEST_REPORT_TTL: Duration = Duration::from_secs(21_600); // 6 hours
 
 struct AttestTEEPublicKey {
     config: TEEConfig,
@@ -193,14 +193,14 @@ impl AttestTEEPublicKey {
     fn get_attest_report(self: &Arc<Self>) -> Result<AttestationReport> {
         let read_lock = self.attest_report.read();
         let now = Instant::now();
-        if now - read_lock.1 <= Duration::from_secs(ATTEST_REPORT_TTL_SECS) {
+        if now - read_lock.1 <= ATTEST_REPORT_TTL {
             return Ok(read_lock.0.clone());
         }
         mem::drop(read_lock);
 
         let mut write_lock = self.attest_report.write();
         let now = Instant::now();
-        if now - write_lock.1 <= Duration::from_secs(ATTEST_REPORT_TTL_SECS) {
+        if now - write_lock.1 <= ATTEST_REPORT_TTL {
             return Ok(write_lock.0.clone());
         }
         let new_attest_report = crate::ecall::quote_pk(&self.enclave, &self.config)?;
