@@ -4,13 +4,16 @@ extern crate tracing;
 use once_cell::sync::{Lazy, OnceCell};
 use rand::{distributions::Uniform, prelude::*};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{Address, ShardId, U256},
     ed25519::Keypair,
     error::{anyhow, bail, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
-use slimchain_network::http::{send_record_event, send_tx_requests_with_shard};
+use slimchain_network::http::{
+    send_record_event, send_record_event_with_data, send_tx_requests_with_shard,
+};
 use slimchain_utils::{
     contract::{contract_address, Contract, Token},
     init_tracing_subscriber,
@@ -22,7 +25,7 @@ use std::{
     sync::Mutex,
 };
 use structopt::StructOpt;
-use tokio::time::{delay_for, Duration, Instant};
+use tokio::time::{delay_until, Duration, Instant};
 
 static YCSB: OnceCell<Mutex<io::BufReader<File>>> = OnceCell::new();
 static YCSB_READ_RE: Lazy<Regex> =
@@ -30,7 +33,8 @@ static YCSB_READ_RE: Lazy<Regex> =
 static YCSB_WRITE_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^UPDATE usertable (\w+) \[ field\d+=(.+) \]$").unwrap());
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 enum ContractArg {
     CpuHeavy,
     DoNothing,
@@ -242,7 +246,7 @@ fn create_deploy_tx(contract: ContractArg, shard_id: ShardId) -> (Address, Signe
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Serialize, Deserialize)]
 struct Opts {
     /// Endpoint to http tx server.
     #[structopt(long, default_value = "127.0.0.1:8000")]
@@ -295,6 +299,8 @@ async fn main() -> Result<()> {
             .map_err(|_e| anyhow!("Failed to set YCSB."))?;
     }
 
+    send_record_event_with_data(&opts.endpoint, "send-tx-opts", &opts).await?;
+
     let mut contracts: Vec<(Address, ShardId, ContractArg)> =
         Vec::with_capacity(opts.contract.len());
     let deploy_txs: Vec<(SignedTxRequest, ShardId)> = opts
@@ -330,10 +336,12 @@ async fn main() -> Result<()> {
 
     send_record_event(&opts.endpoint, "start-send-tx").await?;
     let begin = Instant::now();
+    const ONE_SECOND: Duration = Duration::from_secs(1);
+    let mut next_epoch = begin + ONE_SECOND;
 
     let mut rng = thread_rng();
     let mut reqs = Vec::with_capacity(opts.rate + 1);
-    let mut next_epoch = delay_for(Duration::from_secs(1));
+    let mut next_epoch_fut = delay_until(next_epoch);
     for (i, key) in keys.iter().enumerate() {
         let (address, shard_id, contract) = contracts
             .choose(&mut rng)
@@ -349,9 +357,10 @@ async fn main() -> Result<()> {
 
         if reqs.len() == opts.rate {
             send_tx_requests_with_shard(&opts.endpoint, reqs.drain(..)).await?;
-            next_epoch.await;
+            next_epoch_fut.await;
 
-            next_epoch = delay_for(Duration::from_secs(1));
+            next_epoch += ONE_SECOND;
+            next_epoch_fut = delay_until(next_epoch);
         }
 
         if (i + 1) % 1_000 == 0 {
@@ -364,13 +373,19 @@ async fn main() -> Result<()> {
     }
 
     let total_time = Instant::now() - begin;
-    send_record_event(&opts.endpoint, "end-send-tx").await?;
+    let real_rate = (opts.total as f64) / total_time.as_secs_f64();
+    send_record_event_with_data(
+        &opts.endpoint,
+        "end-send-tx",
+        serde_json::json! {{
+            "total_time_in_us": total_time.as_micros() as u64,
+            "real_rate": real_rate,
+        }},
+    )
+    .await?;
 
     info!("Time: {:?}", total_time);
-    info!(
-        "Real rate: {:?} tx/s",
-        (opts.total as f64) / total_time.as_secs_f64()
-    );
+    info!("Real rate: {:?} tx/s", real_rate);
 
     Ok(())
 }
