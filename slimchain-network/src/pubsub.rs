@@ -17,9 +17,11 @@ use slimchain_common::{
 use std::{
     collections::VecDeque,
     task::{Context, Poll},
+    time::Duration,
 };
 
 const MAX_MESSAGE_SIZE: usize = 50_000_000;
+const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(300);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
@@ -77,6 +79,7 @@ where
     pub fn new(keypair: Keypair, sub_topics: &[PubSubTopic]) -> Self {
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id(&b"/slimchain/pubsub/1"[..])
+            .duplicate_cache_time(DUPLICATE_CACHE_TTL)
             .message_id_fn(|msg: &GossipsubMessage| {
                 let hash = msg.data.to_digest();
                 MessageId::new(hash.as_bytes())
