@@ -81,6 +81,18 @@ where
             warn!("Tx proposal is too new.");
             continue;
         }
+
+        if chain_cfg.conflict_check.has_conflict(
+            &snapshot.access_map,
+            tx_block_height,
+            tx.tx_reads(),
+            tx.tx_writes(),
+        ) {
+            debug!("Received a tx with conflict");
+            record_event!("tx_conflict", "tx_id": tx_id);
+            continue;
+        }
+
         let tx_block = snapshot
             .get_block(tx_block_height)
             .context("Failed to get the block for tx")?;
@@ -97,17 +109,6 @@ where
 
         if let Err(e) = write_trie.verify(tx_block.state_root()) {
             warn!("Received a tx with invalid write trie. Error: {:?}", e);
-            continue;
-        }
-
-        if chain_cfg.conflict_check.has_conflict(
-            &snapshot.access_map,
-            tx_block_height,
-            tx.tx_reads(),
-            tx.tx_writes(),
-        ) {
-            debug!("Received a tx with conflict");
-            record_event!("tx_conflict", "tx_id": tx_id);
             continue;
         }
 
