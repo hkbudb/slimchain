@@ -94,6 +94,8 @@ where
     let new_blk =
         tokio::task::spawn_blocking(move || new_block_fn(block_header, &last_block)).await?;
 
-    info!(time = ?(Instant::now() - begin));
+    let end = Instant::now();
+    record_event!("propose_end", "height": new_blk.block_height().0);
+    info!(time = ?(end - begin));
     Ok(Some((new_blk, update)))
 }

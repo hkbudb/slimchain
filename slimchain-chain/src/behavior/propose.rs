@@ -149,6 +149,8 @@ where
     snapshot.remove_oldest_block()?;
     snapshot.commit_block(blk_proposal.get_block().clone());
 
-    info!(time = ?(Instant::now() - begin));
+    let end = Instant::now();
+    record_event!("propose_end", "height": blk_proposal.get_block_height().0);
+    info!(time = ?(end - begin));
     Ok(Some(blk_proposal))
 }
