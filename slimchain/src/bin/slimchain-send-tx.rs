@@ -12,7 +12,8 @@ use slimchain_common::{
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
 use slimchain_network::http::{
-    send_record_event, send_record_event_with_data, send_tx_requests_with_shard,
+    get_block_height, get_tx_count, send_record_event, send_record_event_with_data,
+    send_tx_requests_with_shard,
 };
 use slimchain_utils::{
     contract::{contract_address, Contract, Token},
@@ -25,7 +26,7 @@ use std::{
     sync::Mutex,
 };
 use structopt::StructOpt;
-use tokio::time::{delay_until, Duration, Instant};
+use tokio::time::{delay_for, delay_until, Duration, Instant};
 
 static YCSB: OnceCell<Mutex<io::BufReader<File>>> = OnceCell::new();
 static YCSB_READ_RE: Lazy<Regex> =
@@ -316,8 +317,19 @@ async fn main() -> Result<()> {
             (deploy_tx, shard_id)
         })
         .collect();
+
     info!("Deploy txs");
+    let tx_count = get_tx_count(&opts.endpoint).await?;
     send_tx_requests_with_shard(&opts.endpoint, deploy_txs.into_iter()).await?;
+
+    loop {
+        delay_for(Duration::from_millis(500)).await;
+        let tx_count2 = get_tx_count(&opts.endpoint).await?;
+
+        if tx_count2 >= tx_count + opts.contract.len() {
+            break;
+        }
+    }
     info!("Deploy finished");
 
     let keys: Vec<Keypair> = {
@@ -326,13 +338,6 @@ async fn main() -> Result<()> {
             .take(opts.total)
             .collect()
     };
-
-    {
-        print!("Press Enter to continue");
-        io::stdout().flush().ok();
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf)?;
-    }
 
     send_record_event(&opts.endpoint, "start-send-tx").await?;
     let begin = Instant::now();
@@ -386,6 +391,22 @@ async fn main() -> Result<()> {
 
     info!("Time: {:?}", total_time);
     info!("Real rate: {:?} tx/s", real_rate);
+
+    let block_height = get_block_height(&opts.endpoint).await?;
+    let wait_start_time = Instant::now();
+
+    loop {
+        delay_for(Duration::from_millis(500)).await;
+        let block_height2 = get_block_height(&opts.endpoint).await?;
+
+        if block_height2 > block_height
+            || (Instant::now() - wait_start_time) > Duration::from_secs(30)
+        {
+            break;
+        }
+    }
+
+    info!("You can stop the nodes now by: kill -INT <pid>");
 
     Ok(())
 }
