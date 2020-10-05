@@ -9,3 +9,6 @@ insert_final_newline = true
 
 [{m,M}akefile]
 indent_style = tab
+
+[*.rb]
+indent_size = 2
