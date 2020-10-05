@@ -6,6 +6,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
+use slimchain_chain::latest::LatestTxCount;
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
 use slimchain_network::{
     control::Shutdown,
@@ -30,9 +31,19 @@ impl ClientBehavior {
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns)?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal]);
-        let http_server = TxHttpServer::new(&net_cfg.http_listen)?;
         let height = db.get_block_height()?.unwrap_or_default();
-        let worker = BlockImportWorker::new(db, height);
+        let latest_tx_count = LatestTxCount::new(0);
+        let worker = BlockImportWorker::new(db.clone(), height, latest_tx_count.clone());
+
+        let http_server = TxHttpServer::new(
+            &net_cfg.http_listen,
+            move || latest_tx_count.get(),
+            move || {
+                db.get_block_height()
+                    .expect("Failed to get the block height.")
+                    .unwrap_or_default()
+            },
+        )?;
 
         Ok(Self {
             discv,

@@ -16,6 +16,7 @@ use slimchain_chain::{
     config::{ChainConfig, MinerConfig},
     consensus::pow::Block,
     db::DBPtr,
+    latest::LatestTxCount,
     role::Role,
     snapshot::Snapshot,
 };
@@ -45,11 +46,13 @@ impl<Tx: TxTrait + Serialize> MinerBehavior<Tx> {
         let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal]);
         let snapshot = Snapshot::<Block, TxTrie>::load_from_db(&db, chain_cfg.state_len)?;
         let latest_block_header = snapshot.to_latest_block_header();
+        let latest_tx_count = LatestTxCount::new(0);
         let worker = BlockProposalWorker::new(
             chain_cfg.clone(),
             miner_cfg.clone(),
             snapshot,
             latest_block_header,
+            latest_tx_count,
             db,
         );
 

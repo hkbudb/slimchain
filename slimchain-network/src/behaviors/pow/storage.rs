@@ -18,7 +18,7 @@ use libp2p::{
 use serde::Serialize;
 use slimchain_chain::{
     behavior::TxExecuteStream, block_proposal::BlockProposal, config::ChainConfig,
-    consensus::pow::Block, db::DBPtr, role::Role, snapshot::Snapshot,
+    consensus::pow::Block, db::DBPtr, latest::LatestTxCount, role::Role, snapshot::Snapshot,
 };
 use slimchain_common::{basic::ShardId, error::Result, tx::TxTrait, tx_req::SignedTxRequest};
 use slimchain_tx_engine::TxEngine;
@@ -61,6 +61,7 @@ impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
         let snapshot =
             Snapshot::<Block, StorageTxTrie>::load_from_db(&db, chain_cfg.state_len, shard_id)?;
         let latest_block_header = snapshot.to_latest_block_header();
+        let latest_tx_count = LatestTxCount::new(0);
 
         let (tx_req_tx, tx_req_rx) = mpsc::unbounded::<SignedTxRequest>();
         let tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
@@ -70,6 +71,7 @@ impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
             chain_cfg.clone(),
             snapshot,
             latest_block_header,
+            latest_tx_count,
             db,
             |snapshot| snapshot.write_db_tx(),
         );

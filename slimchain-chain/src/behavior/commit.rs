@@ -2,20 +2,24 @@ use crate::{
     block::BlockTrait,
     block_proposal::BlockProposal,
     db::{DBPtr, Transaction},
-    latest::LatestBlockHeaderPtr,
+    latest::{LatestBlockHeaderPtr, LatestTxCountPtr},
 };
 use serde::Serialize;
 use slimchain_common::{error::Result, tx::TxTrait};
 use slimchain_tx_state::TxStateUpdate;
 use slimchain_utils::record_event;
 
-fn record_txs<Tx, Block>(blk_proposal: &BlockProposal<Block, Tx>)
-where
+fn record_txs<Tx, Block>(
+    blk_proposal: &BlockProposal<Block, Tx>,
+    latest_tx_count: &LatestTxCountPtr,
+) where
     Tx: TxTrait,
     Block: BlockTrait,
 {
     let txs = blk_proposal.get_txs();
-    info!("Commit {} TX.", txs.len());
+    let tx_len = txs.len();
+    info!("Commit {} TX.", tx_len);
+    latest_tx_count.add(tx_len);
     let tx_ids: Vec<_> = txs.iter().map(|tx| tx.id()).collect();
     record_event!("tx_commit", "tx_ids": tx_ids, "height": blk_proposal.get_block_height().0);
 }
@@ -26,6 +30,7 @@ pub async fn commit_block<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
     db: &DBPtr,
     latest_block_header: &LatestBlockHeaderPtr,
+    latest_tx_count: &LatestTxCountPtr,
 ) -> Result<()>
 where
     Tx: TxTrait + Serialize,
@@ -36,7 +41,7 @@ where
     db_tx.insert_block(blk)?;
     db.write_async(db_tx).await?;
     latest_block_header.set_from_block(blk);
-    record_txs(blk_proposal);
+    record_txs(blk_proposal, latest_tx_count);
     Ok(())
 }
 
@@ -47,6 +52,7 @@ pub async fn commit_block_storage_node<Tx, Block>(
     state_update: &TxStateUpdate,
     db: &DBPtr,
     latest_block_header: &LatestBlockHeaderPtr,
+    latest_tx_count: &LatestTxCountPtr,
 ) -> Result<()>
 where
     Tx: TxTrait + Serialize,
@@ -65,6 +71,6 @@ where
 
     db.write_async(db_tx).await?;
     latest_block_header.set_from_block(blk);
-    record_txs(blk_proposal);
+    record_txs(blk_proposal, latest_tx_count);
     Ok(())
 }

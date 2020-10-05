@@ -15,7 +15,7 @@ use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
 use serde::Serialize;
 use slimchain_chain::{
     block_proposal::BlockProposal, config::ChainConfig, consensus::pow::Block, db::DBPtr,
-    role::Role, snapshot::Snapshot,
+    latest::LatestTxCount, role::Role, snapshot::Snapshot,
 };
 use slimchain_common::{
     basic::H256, collections::HashMap, error::Result, tx::TxTrait, tx_req::SignedTxRequest,
@@ -44,18 +44,26 @@ impl<Tx: TxTrait + Serialize> ClientBehavior<Tx> {
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns)?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal]);
-        let http_server = TxHttpServer::new(&net_cfg.http_listen)?;
         let rpc_client = create_request_response_client("/tx_req/1");
+
         let snapshot = Snapshot::<Block, TxTrie>::load_from_db(&db, chain_cfg.state_len)?;
         let latest_block_header = snapshot.to_latest_block_header();
+        let latest_tx_count = LatestTxCount::new(0);
         let worker = BlockImportWorker::new(
             false,
             chain_cfg.clone(),
             snapshot,
-            latest_block_header,
+            latest_block_header.clone(),
+            latest_tx_count.clone(),
             db,
             |snapshot| snapshot.write_db_tx(),
         );
+
+        let http_server = TxHttpServer::new(
+            &net_cfg.http_listen,
+            move || latest_tx_count.get(),
+            move || latest_block_header.get_height(),
+        )?;
 
         Ok(Self {
             discv,

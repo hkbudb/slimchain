@@ -10,6 +10,7 @@ use crate::{
         Consensus,
     },
     db::DB,
+    latest::LatestTxCount,
     snapshot::Snapshot,
 };
 use futures::{channel::mpsc::unbounded, prelude::*};
@@ -61,12 +62,16 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
     )
     .unwrap();
 
-    let client_latest = client_snapshot.to_latest_block_header();
-    let miner_latest = miner_snapshot.to_latest_block_header();
-    let storage_latest = storage_snapshot.to_latest_block_header();
+    let client_blk_latest = client_snapshot.to_latest_block_header();
+    let miner_blk_latest = miner_snapshot.to_latest_block_header();
+    let storage_blk_latest = storage_snapshot.to_latest_block_header();
+
+    let client_tx_latest = LatestTxCount::new(0);
+    let miner_tx_latest = LatestTxCount::new(0);
+    let storage_tx_latest = LatestTxCount::new(0);
 
     let (mut req_tx, req_rx) = unbounded();
-    let mut tx_rx = TxExecuteStream::new(req_rx, task_engine, &storage_db, &storage_latest);
+    let mut tx_rx = TxExecuteStream::new(req_rx, task_engine, &storage_db, &storage_blk_latest);
 
     let mut tx_reqs = vec![TxRequest::Create {
         nonce: U256::from(0).into(),
@@ -116,21 +121,38 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
         .await
         .unwrap();
 
-        commit_block(&blk_proposal, &miner_db, &miner_latest)
-            .await
-            .unwrap();
-        commit_block(&blk_proposal, &client_db, &client_latest)
-            .await
-            .unwrap();
-        commit_block_storage_node(&blk_proposal, &storage_update, &storage_db, &storage_latest)
-            .await
-            .unwrap();
+        commit_block(
+            &blk_proposal,
+            &miner_db,
+            &miner_blk_latest,
+            &miner_tx_latest,
+        )
+        .await
+        .unwrap();
+        commit_block(
+            &blk_proposal,
+            &client_db,
+            &client_blk_latest,
+            &client_tx_latest,
+        )
+        .await
+        .unwrap();
+        commit_block_storage_node(
+            &blk_proposal,
+            &storage_update,
+            &storage_db,
+            &storage_blk_latest,
+            &storage_tx_latest,
+        )
+        .await
+        .unwrap();
     }
 
     let client2_db = DB::load_test();
     let mut client2_snapshot =
         Snapshot::<Block, TxTrie>::load_from_db(&client2_db, chain_cfg.state_len).unwrap();
-    let client2_latest = client2_snapshot.to_latest_block_header();
+    let client2_blk_latest = client2_snapshot.to_latest_block_header();
+    let client2_tx_latest = LatestTxCount::new(0);
     for i in 1..=6 {
         let blk_proposal: BlockProposal<Block, SignedTx> =
             BlockProposal::from_db(&storage_db, i.into()).unwrap();
@@ -142,9 +164,14 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
         )
         .await
         .unwrap();
-        commit_block(&blk_proposal, &client_db, &client2_latest)
-            .await
-            .unwrap();
+        commit_block(
+            &blk_proposal,
+            &client_db,
+            &client2_blk_latest,
+            &client2_tx_latest,
+        )
+        .await
+        .unwrap();
     }
 
     let latest_blk = miner_snapshot.get_latest_block();
@@ -180,6 +207,10 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
         storage_snapshot2.recent_blocks
     );
     assert_eq!(storage_snapshot.access_map, storage_snapshot2.access_map);
+
+    assert_eq!(client_tx_latest.get(), client2_tx_latest.get());
+    assert_eq!(client_tx_latest.get(), miner_tx_latest.get());
+    assert_eq!(client_tx_latest.get(), storage_tx_latest.get());
 }
 
 #[tokio::test]

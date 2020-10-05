@@ -14,6 +14,7 @@ use crate::{
     db::DBPtr,
 };
 use futures::{channel::mpsc, prelude::*, stream::Fuse};
+use slimchain_chain::latest::LatestTxCountPtr;
 use slimchain_common::{
     basic::BlockHeight,
     error::{bail, Result},
@@ -32,7 +33,7 @@ pub struct BlockImportWorker {
 }
 
 impl BlockImportWorker {
-    pub fn new(db: DBPtr, height: BlockHeight) -> Self {
+    pub fn new(db: DBPtr, height: BlockHeight, latest_tx_count: LatestTxCountPtr) -> Self {
         let (blk_tx, blk_rx) = mpsc::unbounded::<Block>();
         let mut blk_rx = OrderedStream::new(
             blk_rx.map(|blk| (blk.block_height(), blk)),
@@ -51,7 +52,7 @@ impl BlockImportWorker {
                     }
                 };
 
-                commit_block(&db, &blk, &state_update)
+                commit_block(&db, &blk, &state_update, &latest_tx_count)
                     .await
                     .expect("Failed to commit the block.");
 
@@ -89,7 +90,12 @@ pub struct BlockProposalWorker {
 }
 
 impl BlockProposalWorker {
-    pub fn new(miner_cfg: MinerConfig, db: DBPtr, height: BlockHeight) -> Self {
+    pub fn new(
+        miner_cfg: MinerConfig,
+        db: DBPtr,
+        height: BlockHeight,
+        latest_tx_count: LatestTxCountPtr,
+    ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<SignedTxRequest>();
         let mut tx_rx = tx_rx.fuse();
 
@@ -103,7 +109,7 @@ impl BlockProposalWorker {
                     .await
                     .expect("Failed to build the new block.")
             {
-                commit_block(&db, &block, &state_update)
+                commit_block(&db, &block, &state_update, &latest_tx_count)
                     .await
                     .expect("Failed to commit the block.");
 

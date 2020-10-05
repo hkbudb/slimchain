@@ -18,7 +18,7 @@ use slimchain_chain::{
     config::{ChainConfig, MinerConfig},
     consensus::pow::{create_new_block, verify_consensus, Block},
     db::{DBPtr, Transaction as DBTx},
-    latest::LatestBlockHeaderPtr,
+    latest::{LatestBlockHeaderPtr, LatestTxCountPtr},
     snapshot::Snapshot,
 };
 use slimchain_common::{
@@ -43,6 +43,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
         chain_cfg: ChainConfig,
         mut snapshot: Snapshot<Block, TxTrie>,
         latest_block_header: LatestBlockHeaderPtr,
+        latest_tx_count: LatestTxCountPtr,
         db: DBPtr,
         snapshot_to_db_tx: impl Fn(&Snapshot<Block, TxTrie>) -> Result<DBTx> + Send + Sync + 'static,
     ) -> Self {
@@ -74,10 +75,11 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
                         &state_update,
                         &db,
                         &latest_block_header,
+                        &latest_tx_count,
                     )
                     .await
                 } else {
-                    commit_block(&blk_proposal, &db, &latest_block_header).await
+                    commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count).await
                 };
 
                 if let Err(e) = commit_res {
@@ -128,6 +130,7 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
         miner_cfg: MinerConfig,
         mut snapshot: Snapshot<Block, TxTrie>,
         latest_block_header: LatestBlockHeaderPtr,
+        latest_tx_count: LatestTxCountPtr,
         db: DBPtr,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<TxProposal<Tx>>();
@@ -157,7 +160,9 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
 
                 match blk_proposal {
                     Some(blk_proposal) => {
-                        if let Err(e) = commit_block(&blk_proposal, &db, &latest_block_header).await
+                        if let Err(e) =
+                            commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count)
+                                .await
                         {
                             snapshot_backup.write_async(&db).await.ok();
                             panic!("Failed to commit the new block. Error: {}", e);

@@ -9,6 +9,7 @@ use libp2p::{
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour,
 };
+use slimchain_chain::latest::LatestTxCount;
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
 use slimchain_network::{
     control::Shutdown,
@@ -33,7 +34,8 @@ impl MinerBehavior {
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal]);
         let height = db.get_block_height()?.unwrap_or_default();
-        let worker = BlockProposalWorker::new(miner_cfg.clone(), db, height);
+        let latest_tx_count = LatestTxCount::new(0);
+        let worker = BlockProposalWorker::new(miner_cfg.clone(), db, height, latest_tx_count);
 
         Ok(Self {
             discv,

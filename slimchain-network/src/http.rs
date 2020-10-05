@@ -9,7 +9,7 @@ use libp2p::{
 };
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
-    basic::ShardId,
+    basic::{BlockHeight, ShardId},
     error::{ensure, Error, Result},
     tx_req::SignedTxRequest,
 };
@@ -17,12 +17,15 @@ use slimchain_utils::record_event;
 use std::{
     iter,
     net::SocketAddr,
+    sync::Arc,
     task::{Context, Poll},
 };
 use warp::Filter;
 
 const TX_REQ_ROUTE_PATH: &str = "tx_req";
 const RECORD_EVENT_ROUTE_PATH: &str = "record_event";
+const TX_COUNT_ROUTE_PATH: &str = "tx_count";
+const BLOCK_HEIGHT_ROUTE_PATH: &str = "block_height";
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxHttpRequest {
@@ -118,6 +121,30 @@ async fn send_record_event_inner(endpoint: &str, req: RecordEventHttpRequest) ->
     resp.body_json().await.map_err(Error::msg)
 }
 
+pub async fn get_tx_count(endpoint: &str) -> Result<usize> {
+    let mut resp = surf::get(&format!("http://{}/{}", endpoint, TX_COUNT_ROUTE_PATH))
+        .await
+        .map_err(Error::msg)?;
+    ensure!(
+        resp.status().is_success(),
+        "Failed to get tx count (status code: {})",
+        resp.status()
+    );
+    resp.body_json().await.map_err(Error::msg)
+}
+
+pub async fn get_block_height(endpoint: &str) -> Result<BlockHeight> {
+    let mut resp = surf::get(&format!("http://{}/{}", endpoint, BLOCK_HEIGHT_ROUTE_PATH))
+        .await
+        .map_err(Error::msg)?;
+    ensure!(
+        resp.status().is_success(),
+        "Failed to get block height count (status code: {})",
+        resp.status()
+    );
+    resp.body_json().await.map_err(Error::msg)
+}
+
 pub struct TxHttpServer {
     srv: BoxFuture<'static, ()>,
     recv: mpsc::Receiver<TxHttpRequest>,
@@ -129,7 +156,11 @@ pub struct TxHttpServerErr(Error);
 impl warp::reject::Reject for TxHttpServerErr {}
 
 impl TxHttpServer {
-    pub fn new(endpoint: &str) -> Result<Self> {
+    pub fn new(
+        endpoint: &str,
+        tx_count_fn: impl Fn() -> usize + Send + Sync + 'static,
+        block_height_fn: impl Fn() -> BlockHeight + Send + Sync + 'static,
+    ) -> Result<Self> {
         info!("Create tx http server, listen on {}", endpoint);
         let listen_addr: SocketAddr = endpoint.parse()?;
         let (tx, rx) = mpsc::channel(1024);
@@ -153,7 +184,25 @@ impl TxHttpServer {
                 req.emit_record_event();
                 warp::reply::json(&())
             });
-        let route = tx_req_route.or(record_event_route);
+        let tx_count_fn = Arc::new(tx_count_fn);
+        let tx_count_route = warp::get()
+            .and(warp::path(TX_COUNT_ROUTE_PATH))
+            .map(move || {
+                let tx_count = tx_count_fn();
+                warp::reply::json(&tx_count)
+            });
+        let block_height_fn = Arc::new(block_height_fn);
+        let block_height_route =
+            warp::get()
+                .and(warp::path(BLOCK_HEIGHT_ROUTE_PATH))
+                .map(move || {
+                    let block_height = block_height_fn();
+                    warp::reply::json(&block_height)
+                });
+        let route = tx_req_route
+            .or(record_event_route)
+            .or(tx_count_route)
+            .or(block_height_route);
         let srv = warp::serve(route).bind(listen_addr).boxed();
         Ok(Self { srv, recv: rx })
     }
