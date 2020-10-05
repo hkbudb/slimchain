@@ -28,7 +28,7 @@ pub struct MinerConfig {
 }
 
 fn default_max_txs() -> usize {
-    100_000
+    512
 }
 
 #[derive(Debug, Copy, Clone, Deserialize)]
