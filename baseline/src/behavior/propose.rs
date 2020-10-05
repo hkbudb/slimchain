@@ -91,8 +91,7 @@ where
         BlockTxList(txs),
         new_state_root,
     );
-    let new_blk =
-        tokio::task::spawn_blocking(move || new_block_fn(block_header, &last_block)).await?;
+    let new_blk = tokio::task::block_in_place(move || new_block_fn(block_header, &last_block));
 
     let end = Instant::now();
     record_event!("propose_end", "height": new_blk.block_height().0);

@@ -141,9 +141,7 @@ where
         tx_list,
         new_state_root,
     );
-    let last_block = last_block.clone();
-    let new_blk =
-        tokio::task::spawn_blocking(move || new_block_fn(block_header, &last_block)).await?;
+    let new_blk = tokio::task::block_in_place(move || new_block_fn(block_header, last_block));
     let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(merged_diff));
 
     snapshot.remove_oldest_block()?;
