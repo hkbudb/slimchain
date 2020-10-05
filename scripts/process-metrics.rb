@@ -254,7 +254,7 @@ def cal_tx_statistics!
   $result["90percentile_latency_in_us"] = percentile(latency, 0.9, sorted: true)
   $result["95percentile_latency_in_us"] = percentile(latency, 0.95, sorted: true)
 
-  tx_exec_time = committed_tx.map { |_, tx| tx.exec_time }.to_a.sort
+  tx_exec_time = committed_tx.map { |_, tx| tx.exec_time || 0 }.to_a.sort
   $result["avg_tx_exec_time_in_us"] = mean(tx_exec_time)
   $result["50percentile_tx_exec_time_in_us"] = percentile(tx_exec_time, 0.5, sorted: true)
   $result["90percentile_tx_exec_time_in_us"] = percentile(tx_exec_time, 0.9, sorted: true)
@@ -314,7 +314,7 @@ def cal_storage_node_statistics!
   end
 end
 
-def report!
+def report!(storage: true)
   puts <<~EOS
     # Sucess Rate
     total\tcommitted\tconflicted\toudated
@@ -339,6 +339,11 @@ def report!
     #tx\t#{$result["avg_tx_in_block"]}\t#{$result["50percentile_tx_in_block"]}\t#{$result["90percentile_tx_in_block"]}\t#{$result["95percentile_tx_in_block"]}
     mining\t#{format_time $result["avg_blk_mining_time_in_us"]}\t#{format_time $result["50percentile_blk_mining_time_in_us"]}\t#{format_time $result["90percentile_blk_mining_time_in_us"]}\t#{format_time $result["95percentile_blk_mining_time_in_us"]}
     verify\t#{format_time $result["avg_blk_verify_time_in_us"]}\t#{format_time $result["50percentile_blk_verify_time_in_us"]}\t#{format_time $result["90percentile_blk_verify_time_in_us"]}\t#{format_time $result["95percentile_blk_verify_time_in_us"]}
+  EOS
+
+  return unless storage
+
+  puts <<~EOS
 
     # Storage Node Statistics
     node\t#exec txs
@@ -389,14 +394,12 @@ if $PROGRAM_NAME == __FILE__
   process_node_metrics! options[:client], client: true
   options[:node].each do |f|
     process_node_metrics! f, client: false
-  end
+  end if options[:node]
   options[:storage].each_with_index do |f, i|
     process_storage_node_metrics! f, storage_node_id: i + 1
-  end
+  end if options[:storage]
   post_process!
-  report!
+  report!(storage: options[:storage]&.any?)
 
-  if options[:output]
-    File.write(options[:output], JSON.pretty_generate($result))
-  end
+  File.write(options[:output], JSON.pretty_generate($result)) if options[:output]
 end
