@@ -51,6 +51,16 @@ class Block
 
     true
   end
+
+  def to_hash
+    {
+      height: height,
+      tx_list: tx_list,
+      commit_ts: commit_ts&.iso8601(6),
+      verify_time_in_us: verify_time,
+      propose_end_ts: propose_end_ts&.iso8601(6),
+    }
+  end
 end
 
 class Tx
@@ -66,7 +76,7 @@ class Tx
   end
 
   def outdated?
-    @outdated
+    !!@outdated
   end
 
   def set_conflicted
@@ -74,7 +84,7 @@ class Tx
   end
 
   def conflicted?
-    @conflicted
+    !!@conflicted
   end
 
   def committed?
@@ -92,6 +102,8 @@ class Tx
 
   def propose_time
     @propose_time ||= begin
+      return nil unless @block_height
+
       end_ts = $blocks[@block_height]&.propose_end_ts
       time_difference_in_us(@propose_recv_ts, end_ts) if @propose_recv_ts && end_ts
     end
@@ -99,12 +111,16 @@ class Tx
 
   def blk_mining_time
     @mining_time ||= begin
+      return nil unless @block_height
+
       $blocks[@block_height].mining_time
     end
   end
 
   def blk_verify_time
     @verify_time ||= begin
+      return nil unless @block_height
+
       $blocks[@block_height].verify_time
     end
   end
@@ -113,6 +129,25 @@ class Tx
     @latency ||= begin
       time_difference_in_us(@send_ts, @commit_ts) if @send_ts && @commit_ts
     end
+  end
+
+  def to_hash
+    {
+      id: id,
+      block_height: block_height,
+      send_ts: send_ts&.iso8601(6),
+      propose_recv_ts: propose_recv_ts&.iso8601(6),
+      commit_ts: propose_recv_ts&.iso8601(6),
+      exec_storage_node_id: exec_storage_node,
+      latency_in_us: latency,
+      exec_time_in_us: exec_time,
+      propose_time_in_us: propose_time,
+      block_mining_time_in_us: blk_mining_time,
+      block_verify_time_in_us: blk_verify_time,
+      committed: committed?,
+      outdated: outdated?,
+      conflicted: conflicted?,
+    }
   end
 end
 
@@ -357,7 +392,6 @@ def report!(storage: true)
   end
 end
 
-
 if $PROGRAM_NAME == __FILE__
   options = {}
   opts = OptionParser.new do |opts|
@@ -379,6 +413,10 @@ if $PROGRAM_NAME == __FILE__
       options[:output] = file
     end
 
+    opts.on("--raw-output FILE", "Save raw data to json file") do |file|
+      options[:raw_output] = file
+    end
+
     opts.on("-h", "--help") do
       puts opts
       exit
@@ -392,14 +430,24 @@ if $PROGRAM_NAME == __FILE__
   end
 
   process_node_metrics! options[:client], client: true
-  options[:node].each do |f|
-    process_node_metrics! f, client: false
-  end if options[:node]
-  options[:storage].each_with_index do |f, i|
-    process_storage_node_metrics! f, storage_node_id: i + 1
-  end if options[:storage]
+  if options[:node]
+    options[:node].each do |f|
+      process_node_metrics! f, client: false
+    end
+  end
+  if options[:storage]
+    options[:storage].each_with_index do |f, i|
+      process_storage_node_metrics! f, storage_node_id: i + 1
+    end
+  end
   post_process!
   report!(storage: options[:storage]&.any?)
 
   File.write(options[:output], JSON.pretty_generate($result)) if options[:output]
+  if options[:raw_output]
+    raw_result = {}
+    raw_result["tx"] = $txs.map { |_, tx| tx.to_hash }
+    raw_result["block"] = $blocks.map { |_, blk| blk.to_hash }
+    File.write(options[:raw_output], JSON.pretty_generate(raw_result))
+  end
 end
