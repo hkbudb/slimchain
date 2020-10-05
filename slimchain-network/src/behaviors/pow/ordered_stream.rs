@@ -59,7 +59,7 @@ where
             if let Some((key, value)) = item {
                 match key.cmp(this.current) {
                     Ordering::Less => {
-                        warn!(
+                        debug!(
                             "Received outdated item. Got {:?}. Expect {:?}.",
                             key, this.current
                         );
