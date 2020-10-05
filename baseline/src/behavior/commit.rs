@@ -9,7 +9,7 @@ use slimchain_tx_state::TxStateUpdate;
 use slimchain_utils::record_event;
 
 #[allow(clippy::unit_arg)]
-#[tracing::instrument(level = "info", skip(db, new_block, update), fields(height = new_block.block_height().0), err)]
+#[tracing::instrument(level = "info", skip(db, new_block, update, latest_tx_count), fields(height = new_block.block_height().0), err)]
 pub async fn commit_block<Block>(
     db: &DBPtr,
     new_block: &Block,
