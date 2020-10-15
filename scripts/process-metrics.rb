@@ -4,8 +4,12 @@ require "date"
 require "json"
 require "optparse"
 
+def warn(msg)
+  $stderr.puts "#{"\033[33m" if $stderr.tty?}WARN#{"\033[0m" if $stderr.tty?} #{msg}"
+end
+
 def mean(values)
-  values.reduce(0, :+).to_f / values.size.to_f
+  values.reduce(0, :+).to_f / values.size
 end
 
 def percentile(values, percentile, sorted: false)
@@ -110,7 +114,7 @@ class Tx
   end
 
   def blk_mining_time
-    @mining_time ||= begin
+    @blk_mining_time ||= begin
       return nil unless @block_height
 
       $blocks[@block_height].mining_time
@@ -118,7 +122,7 @@ class Tx
   end
 
   def blk_verify_time
-    @verify_time ||= begin
+    @blk_verify_time ||= begin
       return nil unless @block_height
 
       $blocks[@block_height].verify_time
@@ -287,9 +291,9 @@ def cal_success_rate!
   $result["committed_tx"] = committed
   $result["conflicted_tx"] = conflicted
   $result["outdated_tx"] = outdated
-  $result["committed_tx_percentage"] = committed.to_f / total.to_f
-  $result["conflicted_tx_percentage"] = conflicted.to_f / total.to_f
-  $result["outdated_tx_percentage"] = outdated.to_f / total.to_f
+  $result["committed_tx_percentage"] = committed.to_f / total
+  $result["conflicted_tx_percentage"] = conflicted.to_f / total
+  $result["outdated_tx_percentage"] = outdated.to_f / total
 end
 
 def cal_tx_statistics!
@@ -407,7 +411,7 @@ end
 if $PROGRAM_NAME == __FILE__
   options = {}
   opts = OptionParser.new do |opts|
-    opts.banner = "Usage: #{$0} [options]"
+    opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
     opts.on("-c", "--client FILE", "Client's metrics log file (required)") do |file|
       options[:client] = file
