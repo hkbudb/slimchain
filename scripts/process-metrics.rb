@@ -157,12 +157,20 @@ $tx_send_start_ts = nil
 $tx_send_end_ts = nil
 $result = {}
 
-def process_common(file, &block)
-  File.readlines(file).map { |l| JSON.parse l }.each_with_index(&block)
+def process_common(file)
+  File.readlines(file).each_with_index do |line, line_no|
+    line.strip!
+    begin
+      data = JSON.parse line
+    rescue StandardError => e
+      raise "Failed to parse #{file}:#{line_no} `#{line}`. Reason: #{e}"
+    end
+    yield data, line_no
+  end
 end
 
 def process_node_metrics!(file, client: false)
-  process_common(file) do |data, line|
+  process_common(file) do |data, line_no|
     case data["k"]
     when "event"
       case data["l"]
@@ -180,7 +188,7 @@ def process_node_metrics!(file, client: false)
           $tx_send_end_ts = DateTime.iso8601 data["ts"]
           $result["send_tx_real_rate"] = data["v"]["data"]["real_rate"]
         else
-          warn "Unknown client_event #{data["v"]["info"]} in #{file}:#{line}"
+          warn "Unknown client_event #{data["v"]["info"]} in #{file}:#{line_no}"
         end
       when "tx_begin"
         next unless client
@@ -206,7 +214,7 @@ def process_node_metrics!(file, client: false)
       when "propose_end"
         $blocks[data["v"]["height"]].propose_end_ts = DateTime.iso8601 data["ts"]
       else
-        warn "Unknown event #{data["l"]} in #{file}:#{line}"
+        warn "Unknown event #{data["l"]} in #{file}:#{line_no}"
       end
     when "time"
       case data["l"]
@@ -215,20 +223,22 @@ def process_node_metrics!(file, client: false)
       when "mining"
         $blocks[data["v"]["height"]].mining_time = data["t_in_us"]
       else
-        warn "Unknown time record #{data["l"]} in #{file}:#{line}"
+        warn "Unknown time record #{data["l"]} in #{file}:#{line_no}"
       end
+    else
+      warn "Invalid entry in #{file}:#{line_no}"
     end
   end
 end
 
 def process_storage_node_metrics!(file, storage_node_id:)
-  process_common(file) do |data, line|
+  process_common(file) do |data, line_no|
     case data["k"]
     when "event"
       case data["l"]
       when "tx_commit"
       else
-        warn "Unknown event #{data["l"]} in #{file}:#{line}"
+        warn "Unknown event #{data["l"]} in #{file}:#{line_no}"
       end
     when "time"
       case data["l"]
@@ -238,8 +248,10 @@ def process_storage_node_metrics!(file, storage_node_id:)
         tx.exec_storage_node = storage_node_id
       when "verify_block"
       else
-        warn "Unknown time record #{data["l"]} in #{file}:#{line}"
+        warn "Unknown time record #{data["l"]} in #{file}:#{line_no}"
       end
+    else
+      warn "Invalid entry in #{file}:#{line_no}"
     end
   end
 end
