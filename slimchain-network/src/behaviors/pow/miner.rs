@@ -87,15 +87,12 @@ impl<Tx: TxTrait + Serialize>
     for MinerBehavior<Tx>
 {
     fn inject_event(&mut self, event: PubSubEvent<TxProposal<Tx>, BlockProposal<Block, Tx>>) {
-        match event {
-            PubSubEvent::TxProposal(input) => {
-                debug!(
-                    tx_id = %input.tx.id(),
-                    "Recv tx proposal."
-                );
-                self.worker.add_tx_proposal(input);
-            }
-            _ => {}
+        if let PubSubEvent::TxProposal(input) = event {
+            debug!(
+                tx_id = %input.tx.id(),
+                "Recv tx proposal."
+            );
+            self.worker.add_tx_proposal(input);
         }
     }
 }

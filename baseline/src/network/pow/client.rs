@@ -72,16 +72,13 @@ impl NetworkBehaviourEventProcess<DiscoveryEvent> for ClientBehavior {
 
 impl NetworkBehaviourEventProcess<PubSubEvent<SignedTxRequest, Block>> for ClientBehavior {
     fn inject_event(&mut self, event: PubSubEvent<SignedTxRequest, Block>) {
-        match event {
-            PubSubEvent::BlockProposal(input) => {
-                debug!(
-                    height = input.block_height().0,
-                    txs = input.tx_list().len(),
-                    "Recv block proposal."
-                );
-                self.worker.add_block(input);
-            }
-            _ => {}
+        if let PubSubEvent::BlockProposal(input) = event {
+            debug!(
+                height = input.block_height().0,
+                txs = input.tx_list().len(),
+                "Recv block proposal."
+            );
+            self.worker.add_block(input);
         }
     }
 }

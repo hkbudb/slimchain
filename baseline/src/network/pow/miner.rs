@@ -65,15 +65,12 @@ impl NetworkBehaviourEventProcess<DiscoveryEvent> for MinerBehavior {
 
 impl NetworkBehaviourEventProcess<PubSubEvent<SignedTxRequest, Block>> for MinerBehavior {
     fn inject_event(&mut self, event: PubSubEvent<SignedTxRequest, Block>) {
-        match event {
-            PubSubEvent::TxProposal(input) => {
-                debug!(
-                    tx_id = %input.id(),
-                    "Recv tx proposal."
-                );
-                self.worker.add_tx(input);
-            }
-            _ => {}
+        if let PubSubEvent::TxProposal(input) = event {
+            debug!(
+                tx_id = %input.id(),
+                "Recv tx proposal."
+            );
+            self.worker.add_tx(input);
         }
     }
 }

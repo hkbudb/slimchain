@@ -138,16 +138,13 @@ impl<Tx: TxTrait + Serialize>
     for ClientBehavior<Tx>
 {
     fn inject_event(&mut self, event: PubSubEvent<TxProposal<Tx>, BlockProposal<Block, Tx>>) {
-        match event {
-            PubSubEvent::BlockProposal(input) => {
-                debug!(
-                    height = input.get_block_height().0,
-                    txs = input.get_txs().len(),
-                    "Recv block proposal."
-                );
-                self.worker.add_block_proposal(input);
-            }
-            _ => {}
+        if let PubSubEvent::BlockProposal(input) = event {
+            debug!(
+                height = input.get_block_height().0,
+                txs = input.get_txs().len(),
+                "Recv block proposal."
+            );
+            self.worker.add_block_proposal(input);
         }
     }
 }
