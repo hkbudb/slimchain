@@ -27,7 +27,7 @@ tracing = "0.1"
 ureq = { version = "1.2", features = ["json"] }
 
 [dev-dependencies]
-tokio = { version = "0.2", features = ["rt-threaded", "macros"] }
+tokio = { version = "0.2", features = ["rt-threaded", "macros", "parking_lot"] }
 
 [build-dependencies]
 bindgen = "0.54"
