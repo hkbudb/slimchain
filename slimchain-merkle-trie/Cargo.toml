@@ -26,6 +26,6 @@ read = []
 write = []
 
 [dependencies]
-crossbeam-utils = { version = "0.7", optional = true, default-features = false }
+crossbeam-utils = { version = "0.8", optional = true, default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc", "rc"] }
 slimchain-common = { path = "../slimchain-common", default-features = false }

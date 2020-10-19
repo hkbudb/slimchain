@@ -145,7 +145,7 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
     pub fn push_task(&self, task: TxTask) {
         self.remaining_tasks.fetch_add(1, Ordering::SeqCst);
         self.task_queue.push(task);
-        if let Ok(unparker) = self.unparker_queue.pop() {
+        if let Some(unparker) = self.unparker_queue.pop() {
             unparker.unpark();
         }
     }
@@ -185,7 +185,7 @@ impl<Tx: TxTrait + 'static> Drop for TxEngine<Tx> {
         self.shutdown_flag.store(true, Ordering::Release);
 
         thread::sleep(Duration::from_millis(10));
-        while let Ok(unpacker) = self.unparker_queue.pop() {
+        while let Some(unpacker) = self.unparker_queue.pop() {
             unpacker.unpark();
         }
 

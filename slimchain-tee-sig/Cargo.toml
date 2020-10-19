@@ -7,7 +7,7 @@ publish = false
 build = "build.rs"
 
 [dependencies]
-base64 = "0.12"
+base64 = "0.13"
 chrono = "0.4"
 pem = "0.8"
 serde = { version = "1.0", features = ["derive"] }

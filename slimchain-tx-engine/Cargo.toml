@@ -6,7 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-crossbeam = "0.7"
+crossbeam = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 slimchain-common = { path = "../slimchain-common" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
