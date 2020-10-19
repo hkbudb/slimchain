@@ -23,6 +23,10 @@ use slimchain_common::{
 use slimchain_network::behaviors::pow::OrderedStream;
 use std::{
     pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     task::{Context, Poll},
 };
 use tokio::task::JoinHandle;
@@ -87,6 +91,7 @@ pub struct BlockProposalWorker {
     handle: Option<JoinHandle<()>>,
     tx_tx: mpsc::UnboundedSender<SignedTxRequest>,
     blk_rx: Fuse<mpsc::UnboundedReceiver<Block>>,
+    shutdown_flag: Arc<AtomicBool>,
 }
 
 impl BlockProposalWorker {
@@ -96,6 +101,9 @@ impl BlockProposalWorker {
         height: BlockHeight,
         latest_tx_count: LatestTxCountPtr,
     ) -> Self {
+        let shutdown_flag = Arc::new(AtomicBool::new(false));
+        let shutdown_flag_copy = shutdown_flag.clone();
+
         let (tx_tx, tx_rx) = mpsc::unbounded::<SignedTxRequest>();
         let mut tx_rx = tx_rx.fuse();
 
@@ -117,6 +125,10 @@ impl BlockProposalWorker {
                     panic!("Failed to send the block. Error: {}", e);
                 }
 
+                if shutdown_flag_copy.load(Ordering::Acquire) {
+                    break;
+                }
+
                 height = height.next_height();
             }
         });
@@ -125,6 +137,7 @@ impl BlockProposalWorker {
             handle: Some(handle),
             tx_tx,
             blk_rx,
+            shutdown_flag,
         }
     }
 
@@ -142,6 +155,7 @@ impl BlockProposalWorker {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.tx_tx.close_channel();
+        self.shutdown_flag.store(true, Ordering::Release);
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
