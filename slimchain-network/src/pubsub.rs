@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use slimchain_common::{
     collections::HashMap,
     digest::Digestible,
-    error::{anyhow, bail, Result},
+    error::{anyhow, ensure, Result},
 };
 use std::{
     collections::VecDeque,
@@ -21,6 +21,7 @@ use std::{
 };
 
 const MAX_MESSAGE_SIZE: usize = 50_000_000;
+const MAX_TRANSMIT_SIZE: usize = (MAX_MESSAGE_SIZE as f64 * 1.1) as usize;
 const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(300);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
@@ -84,7 +85,7 @@ where
                 let hash = msg.data.to_digest();
                 MessageId::new(hash.as_bytes())
             })
-            .max_transmit_size(MAX_MESSAGE_SIZE)
+            .max_transmit_size(MAX_TRANSMIT_SIZE)
             .build();
         let mut gossipsub = Gossipsub::new(MessageAuthenticity::Signed(keypair), cfg);
         for topic in sub_topics {
@@ -117,9 +118,11 @@ where
 {
     pub fn publish_tx_proposal(&mut self, input: &TxProposal) -> Result<()> {
         let data = postcard::to_allocvec(input)?;
-        if data.len() >= MAX_MESSAGE_SIZE {
-            bail!("PubSub: data is too large. Size={}.", data.len());
-        }
+        ensure!(
+            data.len() < MAX_MESSAGE_SIZE,
+            "PubSub: data is too large. Size={}.",
+            data.len()
+        );
         self.gossipsub
             .publish(&PubSubTopic::TxProposal.into_topic(), data)
             .map_err(|e| anyhow!("PubSub: Failed to publish tx proposal. Error: {:?}", e))
@@ -127,9 +130,11 @@ where
 
     pub fn publish_block_proposal(&mut self, input: &BlockProposal) -> Result<()> {
         let data = postcard::to_allocvec(input)?;
-        if data.len() >= MAX_MESSAGE_SIZE {
-            bail!("PubSub: data is too large. Size={}.", data.len());
-        }
+        ensure!(
+            data.len() < MAX_MESSAGE_SIZE,
+            "PubSub: data is too large. Size={}.",
+            data.len()
+        );
         self.gossipsub
             .publish(&PubSubTopic::BlockProposal.into_topic(), data)
             .map_err(|e| anyhow!("PubSub: Failed to publish block proposal. Error: {:?}", e))
