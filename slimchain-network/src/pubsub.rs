@@ -122,7 +122,11 @@ where
                 ?topic,
                 "PubSub: Failed to publish message due to insufficient peers. Too many retries."
             );
-        } else if warning {
+
+            return;
+        }
+
+        if warning {
             warn!(
                 ?topic,
                 "PubSub: Failed to publish message due to insufficient peers. Retry."
