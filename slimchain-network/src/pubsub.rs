@@ -114,7 +114,10 @@ where
         match self.gossipsub.publish(&topic, data.clone()) {
             Ok(_) => return,
             Err(PublishError::InsufficientPeers) => {}
-            Err(e) => error!("PubSub: Failed to publish message. Error: {:?}", e),
+            Err(e) => {
+                error!("PubSub: Failed to publish message. Error: {:?}", e);
+                return;
+            }
         }
 
         if ttl == 0 {
