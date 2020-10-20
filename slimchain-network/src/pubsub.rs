@@ -1,7 +1,7 @@
 use libp2p::{
     gossipsub::{
-        error::PublishError, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage,
-        MessageAuthenticity, MessageId, Topic, TopicHash,
+        Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, MessageAuthenticity,
+        MessageId, Topic, TopicHash,
     },
     identity::Keypair,
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
@@ -12,19 +12,16 @@ use serde::{Deserialize, Serialize};
 use slimchain_common::{
     collections::HashMap,
     digest::Digestible,
-    error::{ensure, Result},
+    error::{anyhow, bail, Result},
 };
 use std::{
     collections::VecDeque,
     task::{Context, Poll},
     time::Duration,
 };
-use tokio::time::DelayQueue;
 
 const MAX_MESSAGE_SIZE: usize = 50_000_000;
 const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(300);
-const PUBLISH_TTL: usize = 5;
-const PUBLISH_RETRY_INIT_WAIT: Duration = Duration::from_millis(500);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
@@ -72,8 +69,6 @@ where
     gossipsub: Gossipsub,
     #[behaviour(ignore)]
     pending_events: VecDeque<PubSubEvent<TxProposal, BlockProposal>>,
-    #[behaviour(ignore)]
-    retry_queue: DelayQueue<(Topic, Vec<u8>, usize, Duration)>,
 }
 
 impl<TxProposal, BlockProposal> PubSub<TxProposal, BlockProposal>
@@ -99,59 +94,16 @@ where
         Self {
             gossipsub,
             pending_events: VecDeque::new(),
-            retry_queue: DelayQueue::new(),
         }
-    }
-
-    fn try_publish(
-        &mut self,
-        topic: Topic,
-        data: Vec<u8>,
-        ttl: usize,
-        wait: Duration,
-        warning: bool,
-    ) {
-        match self.gossipsub.publish(&topic, data.clone()) {
-            Ok(_) => return,
-            Err(PublishError::InsufficientPeers) => {}
-            Err(e) => {
-                error!("PubSub: Failed to publish message. Error: {:?}", e);
-                return;
-            }
-        }
-
-        if ttl == 0 {
-            error!(
-                ?topic,
-                "PubSub: Failed to publish message due to insufficient peers. Too many retries."
-            );
-
-            return;
-        }
-
-        if warning {
-            warn!(
-                ?topic,
-                "PubSub: Failed to publish message due to insufficient peers. Retry."
-            );
-        }
-
-        self.retry_queue
-            .insert((topic, data, ttl - 1, wait * 2), wait);
     }
 
     fn poll_inner<T>(
         &mut self,
-        cx: &mut Context,
+        _: &mut Context,
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<T, PubSubEvent<TxProposal, BlockProposal>>> {
         if let Some(event) = self.pending_events.pop_front() {
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
-        }
-
-        while let Poll::Ready(Some(Ok(entry))) = self.retry_queue.poll_expired(cx) {
-            let (topic, data, ttl, wait) = entry.into_inner();
-            self.try_publish(topic, data, ttl, wait, false);
         }
 
         Poll::Pending
@@ -165,36 +117,22 @@ where
 {
     pub fn publish_tx_proposal(&mut self, input: &TxProposal) -> Result<()> {
         let data = postcard::to_allocvec(input)?;
-        ensure!(
-            data.len() < MAX_MESSAGE_SIZE,
-            "PubSub: data is too large. Size={}.",
-            data.len()
-        );
-        self.try_publish(
-            PubSubTopic::TxProposal.into_topic(),
-            data,
-            PUBLISH_TTL,
-            PUBLISH_RETRY_INIT_WAIT,
-            true,
-        );
-        Ok(())
+        if data.len() >= MAX_MESSAGE_SIZE {
+            bail!("PubSub: data is too large. Size={}.", data.len());
+        }
+        self.gossipsub
+            .publish(&PubSubTopic::TxProposal.into_topic(), data)
+            .map_err(|e| anyhow!("PubSub: Failed to publish tx proposal. Error: {:?}", e))
     }
 
     pub fn publish_block_proposal(&mut self, input: &BlockProposal) -> Result<()> {
         let data = postcard::to_allocvec(input)?;
-        ensure!(
-            data.len() < MAX_MESSAGE_SIZE,
-            "PubSub: data is too large. Size={}.",
-            data.len()
-        );
-        self.try_publish(
-            PubSubTopic::BlockProposal.into_topic(),
-            data,
-            PUBLISH_TTL,
-            PUBLISH_RETRY_INIT_WAIT,
-            true,
-        );
-        Ok(())
+        if data.len() >= MAX_MESSAGE_SIZE {
+            bail!("PubSub: data is too large. Size={}.", data.len());
+        }
+        self.gossipsub
+            .publish(&PubSubTopic::BlockProposal.into_topic(), data)
+            .map_err(|e| anyhow!("PubSub: Failed to publish block proposal. Error: {:?}", e))
     }
 }
 
