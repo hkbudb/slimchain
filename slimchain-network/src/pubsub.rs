@@ -10,7 +10,7 @@ use libp2p::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     digest::Digestible,
     error::{anyhow, ensure, Result},
 };
@@ -32,7 +32,7 @@ static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     map
 });
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub enum PubSubTopic {
     TxProposal,
     BlockProposal,
@@ -70,6 +70,8 @@ where
     gossipsub: Gossipsub,
     #[behaviour(ignore)]
     pending_events: VecDeque<PubSubEvent<TxProposal, BlockProposal>>,
+    #[behaviour(ignore)]
+    topics: HashSet<PubSubTopic>,
 }
 
 impl<TxProposal, BlockProposal> PubSub<TxProposal, BlockProposal>
@@ -77,7 +79,7 @@ where
     TxProposal: Send + 'static,
     BlockProposal: Send + 'static,
 {
-    pub fn new(keypair: Keypair, sub_topics: &[PubSubTopic]) -> Self {
+    pub fn new(keypair: Keypair, topics: &[PubSubTopic]) -> Self {
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id(&b"/slimchain/pubsub/1"[..])
             .duplicate_cache_time(DUPLICATE_CACHE_TTL)
@@ -88,13 +90,14 @@ where
             .max_transmit_size(MAX_TRANSMIT_SIZE)
             .build();
         let mut gossipsub = Gossipsub::new(MessageAuthenticity::Signed(keypair), cfg);
-        for topic in sub_topics {
+        for topic in &[PubSubTopic::BlockProposal, PubSubTopic::TxProposal] {
             gossipsub.subscribe(topic.into_topic());
         }
 
         Self {
             gossipsub,
             pending_events: VecDeque::new(),
+            topics: topics.iter().copied().collect(),
         }
     }
 
@@ -156,6 +159,11 @@ where
                     return;
                 }
             };
+
+            if !self.topics.contains(topic) {
+                return;
+            }
+
             match topic {
                 PubSubTopic::TxProposal => {
                     let input = postcard::from_bytes(data.as_slice())
