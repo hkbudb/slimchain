@@ -9,7 +9,7 @@ use baseline::{
 use slimchain_common::error::{bail, Result};
 use slimchain_network::{config::NetworkConfig, control::Swarmer};
 use slimchain_utils::{config::Config, path::binary_directory};
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -71,14 +71,24 @@ async fn main() -> Result<()> {
                 Role::Client => {
                     let behavior = ClientBehavior::new(db, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    swarmer.app_run(&net_cfg.listen).await?;
+                    let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
+                    ctrl.call_with_sender(|swarm, ret| {
+                        swarm.discv_mut().find_random_peer_with_ret(
+                            Role::Miner,
+                            Duration::from_secs(60),
+                            ret,
+                        )
+                    })
+                    .await??;
+                    ctrl.run_until_interrupt().await?;
                 }
                 Role::Miner => {
                     let miner_cfg: MinerConfig = cfg.get("miner")?;
                     info!("Miner Cfg: {:#?}", miner_cfg);
                     let behavior = MinerBehavior::new(db, &miner_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    swarmer.app_run(&net_cfg.listen).await?;
+                    let ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
+                    ctrl.run_until_interrupt().await?;
                 }
                 _ => bail!("Role can only be client or miner."),
             }

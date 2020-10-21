@@ -129,16 +129,11 @@ where
         Control { tx, swarm_rx, handler }
     }
 
-    pub async fn app_run(mut self, address: &str) -> Result<()> {
+    pub async fn spawn_app(mut self, address: &str) -> Result<Control<Behaviour>> {
         let listen_addr = self.listen_on_str(address).await?;
         let peer_cfg = crate::config::PeerConfig::new(self.peer_id().clone(), listen_addr);
         peer_cfg.print_config_msg();
-        let ctrl = self.spawn();
-        info!("Press Ctrl-C to quit.");
-        tokio::signal::ctrl_c().await?;
-        info!("Quitting.");
-        ctrl.shutdown().await?;
-        Ok(())
+        Ok(self.spawn())
     }
 }
 
@@ -203,6 +198,14 @@ where
             )))
             .await?;
         Ok(rx.await?)
+    }
+
+    pub async fn run_until_interrupt(self) -> Result<()> {
+        info!("Press Ctrl-C to quit.");
+        tokio::signal::ctrl_c().await?;
+        info!("Quitting.");
+        self.shutdown().await?;
+        Ok(())
     }
 }
 

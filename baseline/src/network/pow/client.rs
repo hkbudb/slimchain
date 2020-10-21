@@ -52,6 +52,10 @@ impl ClientBehavior {
             worker,
         })
     }
+
+    pub fn discv_mut(&mut self) -> &mut Discovery {
+        &mut self.discv
+    }
 }
 
 impl NetworkBehaviourEventProcess<TxHttpRequest> for ClientBehavior {

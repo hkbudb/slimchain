@@ -9,7 +9,7 @@ use slimchain_common::{error::Result, tx::TxTrait};
 use slimchain_network::{config::NetworkConfig, control::Swarmer};
 use slimchain_tx_engine::TxEngine;
 use slimchain_utils::{config::Config, init_tracing, path::binary_directory};
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -76,21 +76,40 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                 Role::Client => {
                     let behavior = ClientBehavior::<Tx>::new(db, &chain_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    swarmer.app_run(&net_cfg.listen).await?;
+                    let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
+                    ctrl.call_with_sender(|swarm, ret| {
+                        swarm.discv_mut().find_random_peer_with_ret(
+                            Role::Miner,
+                            Duration::from_secs(60),
+                            ret,
+                        )
+                    })
+                    .await??;
+                    ctrl.run_until_interrupt().await?;
                 }
                 Role::Miner => {
                     let miner_cfg: MinerConfig = cfg.get("miner")?;
                     info!("Miner Cfg: {:#?}", miner_cfg);
                     let behavior = MinerBehavior::<Tx>::new(db, &chain_cfg, &miner_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    swarmer.app_run(&net_cfg.listen).await?;
+                    let ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
+                    ctrl.run_until_interrupt().await?;
                 }
                 Role::Storage(shard_id) => {
                     let engine = create_tx_engine(&cfg, &opts.enclave)?;
                     let behavior =
                         StorageBehavior::<Tx>::new(db, engine, shard_id, &chain_cfg, &net_cfg)?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
-                    swarmer.app_run(&net_cfg.listen).await?;
+                    let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
+                    ctrl.call_with_sender(|swarm, ret| {
+                        swarm.discv_mut().find_random_peer_with_ret(
+                            Role::Miner,
+                            Duration::from_secs(60),
+                            ret,
+                        )
+                    })
+                    .await??;
+                    ctrl.run_until_interrupt().await?;
                 }
             }
         }

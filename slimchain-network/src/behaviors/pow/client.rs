@@ -75,6 +75,10 @@ impl<Tx: TxTrait + Serialize> ClientBehavior<Tx> {
             pending_rpc_queries: HashMap::new(),
         })
     }
+
+    pub fn discv_mut(&mut self) -> &mut Discovery {
+        &mut self.discv
+    }
 }
 
 impl<Tx: TxTrait + Serialize> NetworkBehaviourEventProcess<TxHttpRequest> for ClientBehavior<Tx> {

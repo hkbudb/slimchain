@@ -83,6 +83,10 @@ impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
         })
     }
 
+    pub fn discv_mut(&mut self) -> &mut Discovery {
+        &mut self.discv
+    }
+
     fn poll_inner<T>(
         &mut self,
         cx: &mut Context,

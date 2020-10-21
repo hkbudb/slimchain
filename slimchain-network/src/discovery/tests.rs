@@ -10,17 +10,12 @@ use std::ops::{Deref, DerefMut};
 #[derive(NetworkBehaviour)]
 struct DiscoveryTest {
     discv: Discovery,
-    #[behaviour(ignore)]
-    queries: HashMap<QueryId, oneshot::Sender<Result<PeerId>>>,
 }
 
 impl DiscoveryTest {
     fn new(pk: PublicKey, role: Role, enable_mdns: bool) -> Result<Self> {
         let discv = Discovery::new(pk, role, enable_mdns)?;
-        Ok(Self {
-            discv,
-            queries: HashMap::new(),
-        })
+        Ok(Self { discv })
     }
 
     fn try_find_peer(
@@ -29,20 +24,12 @@ impl DiscoveryTest {
         timeout: Duration,
         ret: oneshot::Sender<Result<PeerId>>,
     ) {
-        let id = self.discv.find_random_peer(role, timeout);
-        self.queries.insert(id, ret);
+        self.discv.find_random_peer_with_ret(role, timeout, ret);
     }
 }
 
 impl NetworkBehaviourEventProcess<DiscoveryEvent> for DiscoveryTest {
-    fn inject_event(&mut self, event: DiscoveryEvent) {
-        match event {
-            DiscoveryEvent::FindPeerResult { query_id, peer } => {
-                let tx = self.queries.remove(&query_id).unwrap();
-                tx.send(peer).ok();
-            }
-        }
-    }
+    fn inject_event(&mut self, _: DiscoveryEvent) {}
 }
 
 #[async_trait::async_trait]

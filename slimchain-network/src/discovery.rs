@@ -1,5 +1,5 @@
 use crate::config::NetworkConfig;
-use futures::prelude::*;
+use futures::{channel::oneshot, prelude::*};
 use libp2p::{
     identify::{Identify, IdentifyEvent},
     identity::PublicKey,
@@ -64,6 +64,8 @@ pub struct Discovery {
     exp_queries: DelayQueue<KadQueryId>,
     #[behaviour(ignore)]
     pending_events: VecDeque<DiscoveryEvent>,
+    #[behaviour(ignore)]
+    pending_queries2: HashMap<QueryId, oneshot::Sender<Result<PeerId>>>,
 }
 
 impl Discovery {
@@ -102,6 +104,7 @@ impl Discovery {
             pending_queries: HashMap::new(),
             exp_queries: DelayQueue::new(),
             pending_events: VecDeque::new(),
+            pending_queries2: HashMap::new(),
         })
     }
 
@@ -169,6 +172,16 @@ impl Discovery {
         query_id
     }
 
+    pub fn find_random_peer_with_ret(
+        &mut self,
+        role: Role,
+        timeout: Duration,
+        ret: oneshot::Sender<Result<PeerId>>,
+    ) {
+        let id = self.find_random_peer(role, timeout);
+        self.pending_queries2.insert(id, ret);
+    }
+
     fn peer_table_add_node(&mut self, peer_id: PeerId, role: Role) {
         use slimchain_common::collections::hash_map::Entry;
 
@@ -207,7 +220,14 @@ impl Discovery {
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<T, DiscoveryEvent>> {
         if let Some(event) = self.pending_events.pop_front() {
-            return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
+            let DiscoveryEvent::FindPeerResult { query_id, peer } = event;
+            if let Some(tx) = self.pending_queries2.remove(&query_id) {
+                tx.send(peer).ok();
+            } else {
+                return Poll::Ready(NetworkBehaviourAction::GenerateEvent(
+                    DiscoveryEvent::FindPeerResult { query_id, peer },
+                ));
+            }
         }
 
         while let Poll::Ready(Some(Ok(peer_id))) = self.exp_peers.poll_expired(cx) {
