@@ -91,6 +91,7 @@ impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
         if let Poll::Ready(Some(tx_proposal)) = Pin::new(&mut self.tx_exec_stream).poll_next(cx) {
             if let Err(e) = self.pubsub.publish_tx_proposal(&tx_proposal) {
                 self.discv.report_known_peers();
+                self.pubsub.report_known_peers();
                 panic!("Failed to publish tx proposal. Error: {:?}", e);
             }
         }

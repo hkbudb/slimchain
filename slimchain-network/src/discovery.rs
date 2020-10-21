@@ -116,9 +116,9 @@ impl Discovery {
     }
 
     pub fn report_known_peers(&self) {
-        println!("Known peers:");
+        println!("[Discovery] Known peers:");
         for (role, list) in &self.peer_table {
-            println!(" {} => {:?}", role, list);
+            println!(" {} => {:#?}", role, list);
         }
     }
 

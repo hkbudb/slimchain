@@ -112,6 +112,19 @@ where
 
         Poll::Pending
     }
+
+    pub fn report_known_peers(&self) {
+        println!("[PubSub] Known peers:");
+        for topic in &[PubSubTopic::TxProposal, PubSubTopic::BlockProposal] {
+            println!(
+                " {:?} => {:#?}",
+                topic,
+                self.gossipsub
+                    .peers(&topic.into_topic_hash())
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
 }
 
 impl<TxProposal, BlockProposal> PubSub<TxProposal, BlockProposal>
