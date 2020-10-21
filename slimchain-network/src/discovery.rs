@@ -261,9 +261,9 @@ impl NetworkBehaviourEventProcess<IdentifyEvent> for Discovery {
             };
             self.peer_table_add_node(peer_id.clone(), role);
 
-            for addr in info.listen_addrs {
-                self.kad.add_address(&peer_id, addr);
-            }
+            // for addr in info.listen_addrs {
+            //     self.kad.add_address(&peer_id, addr);
+            // }
         }
     }
 }
