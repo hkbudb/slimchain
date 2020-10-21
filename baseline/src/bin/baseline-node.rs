@@ -6,7 +6,7 @@ use baseline::{
     db::DB,
     init_tracing,
 };
-use slimchain_common::error::{bail, Result};
+use slimchain_common::error::{bail, Context as _, Result};
 use slimchain_network::{config::NetworkConfig, control::Swarmer};
 use slimchain_utils::{config::Config, path::binary_directory};
 use std::{path::PathBuf, time::Duration};
@@ -79,7 +79,8 @@ async fn main() -> Result<()> {
                             ret,
                         )
                     })
-                    .await??;
+                    .await?
+                    .context("Failed to find miner.")?;
                     ctrl.run_until_interrupt().await?;
                 }
                 Role::Miner => {

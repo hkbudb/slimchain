@@ -5,7 +5,10 @@ use slimchain_chain::{
     db::DB,
     role::Role,
 };
-use slimchain_common::{error::Result, tx::TxTrait};
+use slimchain_common::{
+    error::{Context as _, Result},
+    tx::TxTrait,
+};
 use slimchain_network::{config::NetworkConfig, control::Swarmer};
 use slimchain_tx_engine::TxEngine;
 use slimchain_utils::{config::Config, init_tracing, path::binary_directory};
@@ -84,7 +87,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                             ret,
                         )
                     })
-                    .await??;
+                    .await?
+                    .context("Failed to find miner.")?;
                     ctrl.run_until_interrupt().await?;
                 }
                 Role::Miner => {
@@ -108,7 +112,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                             ret,
                         )
                     })
-                    .await??;
+                    .await?
+                    .context("Failed to find miner.")?;
                     ctrl.run_until_interrupt().await?;
                 }
             }
