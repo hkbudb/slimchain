@@ -111,7 +111,7 @@ impl Discovery {
 
     pub fn add_address_from_net_config(&mut self, cfg: &NetworkConfig) {
         for peer in cfg.peers.iter() {
-            self.add_address(&peer.peer_id, peer.address.clone())
+            self.add_address(&peer.peer_id, peer.address.clone());
         }
     }
 
@@ -261,9 +261,9 @@ impl NetworkBehaviourEventProcess<IdentifyEvent> for Discovery {
             };
             self.peer_table_add_node(peer_id.clone(), role);
 
-            // for addr in info.listen_addrs {
-            //     self.kad.add_address(&peer_id, addr);
-            // }
+            for addr in info.listen_addrs {
+                self.add_address(&peer_id, addr);
+            }
         }
     }
 }
