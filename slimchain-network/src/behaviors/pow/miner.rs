@@ -69,9 +69,10 @@ impl<Tx: TxTrait + Serialize> MinerBehavior<Tx> {
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<T, ()>> {
         if let Poll::Ready(blk_proposal) = self.worker.poll_block_proposal(cx) {
-            self.pubsub
-                .publish_block_proposal(&blk_proposal)
-                .expect("Failed to publish block proposal.");
+            if let Err(e) = self.pubsub.publish_block_proposal(&blk_proposal) {
+                self.discv.report_known_peers();
+                panic!("Failed to publish block proposal. Error: {:?}", e);
+            }
         }
 
         Poll::Pending
