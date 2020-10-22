@@ -68,6 +68,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
                             continue;
                         }
                     };
+                std::mem::drop(snapshot_backup);
 
                 let commit_res = if storage_node {
                     commit_block_storage_node(
