@@ -2,6 +2,7 @@ use super::SubTree;
 use crate::{hash::branch_node_hash, nibbles::Nibbles, u4::U4};
 use alloc::{boxed::Box, sync::Arc};
 use core::mem;
+#[cfg(feature = "cache_hash")]
 use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{basic::H256, digest::Digestible};
@@ -9,12 +10,14 @@ use slimchain_common::{basic::H256, digest::Digestible};
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct BranchNode {
     pub(crate) children: [Option<Arc<SubTree>>; 16],
+    #[cfg(feature = "cache_hash")]
     #[serde(skip)]
     node_hash: AtomicCell<Option<H256>>,
 }
 
 impl Digestible for BranchNode {
     fn to_digest(&self) -> H256 {
+        #[cfg(feature = "cache_hash")]
         if let Some(h) = self.node_hash.load() {
             return h;
         }
@@ -24,6 +27,7 @@ impl Digestible for BranchNode {
             .iter()
             .map(|c| c.as_ref().map(|n| n.to_digest()));
         let h = branch_node_hash(children);
+        #[cfg(feature = "cache_hash")]
         self.node_hash.store(Some(h));
         h
     }
@@ -33,6 +37,7 @@ impl Clone for BranchNode {
     fn clone(&self) -> Self {
         Self {
             children: self.children.clone(),
+            #[cfg(feature = "cache_hash")]
             node_hash: AtomicCell::new(self.node_hash.load()),
         }
     }
@@ -79,6 +84,7 @@ impl BranchNode {
     pub(crate) fn new(children: [Option<Arc<SubTree>>; 16]) -> Self {
         Self {
             children,
+            #[cfg(feature = "cache_hash")]
             node_hash: AtomicCell::new(None),
         }
     }
