@@ -1,6 +1,7 @@
 use super::{AccountTrieDiff, AccountWriteSetTrie, TxTrieDiff, TxTrieTrait, TxWriteSetTrie};
 use crate::write::TxStateUpdate;
 use alloc::format;
+#[cfg(feature = "cache_hash")]
 use crossbeam_utils::atomic::AtomicCell;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
@@ -17,6 +18,7 @@ pub(crate) struct AccountTrie {
     nonce: Nonce,
     code_hash: H256,
     state_trie: PartialTrie,
+    #[cfg(feature = "cache_hash")]
     #[serde(skip)]
     acc_hash: AtomicCell<Option<H256>>,
 }
@@ -27,6 +29,7 @@ impl Clone for AccountTrie {
             nonce: self.nonce,
             code_hash: self.code_hash,
             state_trie: self.state_trie.clone(),
+            #[cfg(feature = "cache_hash")]
             acc_hash: AtomicCell::new(self.acc_hash.load()),
         }
     }
@@ -44,6 +47,7 @@ impl Eq for AccountTrie {}
 
 impl AccountTrie {
     fn reset_acc_hash(&mut self) {
+        #[cfg(feature = "cache_hash")]
         self.acc_hash.store(None);
     }
 
@@ -52,6 +56,7 @@ impl AccountTrie {
             nonce,
             code_hash,
             state_trie,
+            #[cfg(feature = "cache_hash")]
             acc_hash: AtomicCell::new(None),
         }
     }
@@ -62,11 +67,13 @@ impl AccountTrie {
     }
 
     fn acc_hash(&self) -> H256 {
+        #[cfg(feature = "cache_hash")]
         if let Some(acc_hash) = self.acc_hash.load() {
             return acc_hash;
         }
 
         let acc_hash = self.acc_hash_inner();
+        #[cfg(feature = "cache_hash")]
         self.acc_hash.store(Some(acc_hash));
         acc_hash
     }

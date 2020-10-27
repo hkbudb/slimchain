@@ -7,6 +7,7 @@ publish = false
 
 [features]
 default = [
+    "cache_hash",
     "partial_trie",
     "read",
     "std",
@@ -18,12 +19,14 @@ std = [
     "slimchain-merkle-trie/std",
 ]
 partial_trie = [
-    "crossbeam-utils",
     "im",
     "read",
     "slimchain-merkle-trie/partial_trie",
     "std",
     "write",
+]
+cache_hash = [
+    "crossbeam-utils",
 ]
 read = [
     "slimchain-merkle-trie/read",
