@@ -3,8 +3,6 @@ use crate::{
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
     error::{Error, Result},
 };
-#[cfg(feature = "multi-signed-tx")]
-use alloc::vec::Vec;
 use serde::{de::Error as DeError, Deserialize, Deserializer, Serialize, Serializer};
 
 pub use ed25519_dalek;
@@ -48,16 +46,6 @@ impl Digestible for PubSigPair {
         let hash = hash_state.finalize();
         blake2b_hash_to_h256(hash)
     }
-}
-
-#[cfg(feature = "multi-signed-tx")]
-pub fn verify_multi_signature(msg_hash: H256, pk_sig_pairs: &[PubSigPair]) -> Result<()> {
-    let msgs: Vec<_> = core::iter::repeat(msg_hash.as_bytes())
-        .take(pk_sig_pairs.len())
-        .collect();
-    let pks: Vec<_> = pk_sig_pairs.iter().map(|pair| *pair.public()).collect();
-    let sigs: Vec<_> = pk_sig_pairs.iter().map(|pair| *pair.signature()).collect();
-    ed25519_dalek::verify_batch(&msgs[..], &sigs[..], &pks[..]).map_err(Error::msg)
 }
 
 pub mod keypair_serde_impl {
@@ -198,19 +186,5 @@ mod tests {
         let keypair = Keypair::generate(&mut rng);
         let pk_sig = PubSigPair::create(&keypair, hash);
         assert!(pk_sig.verify(hash).is_ok());
-    }
-
-    #[cfg(feature = "multi-signed-tx")]
-    #[test]
-    fn test_multi_sign_and_verify() {
-        let mut rng = rand::thread_rng();
-        let hash = H256::repeat_byte(0x12);
-        let mut pk_sig_pairs = Vec::new();
-        for _ in 0..10 {
-            let keypair = Keypair::generate(&mut rng);
-            let pk_sig = PubSigPair::create(&keypair, hash);
-            pk_sig_pairs.push(pk_sig);
-        }
-        assert!(verify_multi_signature(hash, &pk_sig_pairs).is_ok());
     }
 }

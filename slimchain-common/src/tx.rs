@@ -12,11 +12,6 @@ pub use raw_tx::*;
 pub mod signed_tx;
 pub use signed_tx::*;
 
-#[cfg(feature = "multi-signed-tx")]
-pub mod multi_signed_tx;
-#[cfg(feature = "multi-signed-tx")]
-pub use multi_signed_tx::*;
-
 pub trait TxTrait: Digestible + Clone + Sized + Send + Sync {
     fn tx_caller(&self) -> Address;
     fn tx_input(&self) -> &TxRequest;
