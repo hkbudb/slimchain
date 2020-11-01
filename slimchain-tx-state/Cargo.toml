@@ -27,6 +27,7 @@ partial_trie = [
 ]
 cache_hash = [
     "crossbeam-utils",
+    "slimchain-merkle-trie/cache_hash",
 ]
 read = [
     "slimchain-merkle-trie/read",
