@@ -80,7 +80,7 @@ where
         writes.merge(tx.tx_writes());
     }
 
-    let update = snapshot.tx_trie.apply_writes(&writes)?;
+    let update = tokio::task::block_in_place(|| snapshot.tx_trie.apply_writes(&writes))?;
     ensure!(
         blk_proposal.get_block().state_root() == snapshot.tx_trie.root_hash(),
         "Invalid state root in the block proposal (expect: {}, actual: {}).",

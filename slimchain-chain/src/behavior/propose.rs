@@ -128,7 +128,7 @@ where
         .unwrap_or_default();
 
     snapshot.tx_trie.apply_diff(&merged_diff, false)?;
-    snapshot.tx_trie.apply_writes(&writes)?;
+    tokio::task::block_in_place(|| snapshot.tx_trie.apply_writes(&writes))?;
 
     let new_state_root = snapshot.tx_trie.root_hash();
     let tx_list: BlockTxList = txs.iter().collect();
