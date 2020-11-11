@@ -10,7 +10,7 @@ async-trait = "0.1"
 bs58 = "0.4"
 futures = "0.3"
 libp2p = "0.30"
-once_cell = "1.4"
+once_cell = "1.5"
 pin-project = "1.0"
 postcard = { version = "0.5", features = ["alloc"] }
 rand = "0.7"
