@@ -11,7 +11,7 @@ use slimchain_common::{
     error::{anyhow, bail, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
-use slimchain_network::http::{
+use slimchain_network::http::client_rpc::{
     get_block_height, get_tx_count, send_record_event, send_record_event_with_data,
     send_tx_requests_with_shard,
 };

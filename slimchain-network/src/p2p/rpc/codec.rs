@@ -48,7 +48,7 @@ where
     Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
     Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
-    type Protocol = crate::rpc::RpcProtocol;
+    type Protocol = crate::p2p::rpc::RpcProtocol;
     type Request = Req;
     type Response = Resp;
 

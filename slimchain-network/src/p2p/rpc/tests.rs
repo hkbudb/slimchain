@@ -1,5 +1,5 @@
 use super::*;
-use crate::control::{Shutdown, Swarmer};
+use crate::p2p::control::{Shutdown, Swarmer};
 use libp2p::identity::Keypair;
 use slimchain_utils::init_tracing_for_test;
 

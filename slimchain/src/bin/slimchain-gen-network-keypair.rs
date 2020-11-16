@@ -1,4 +1,4 @@
-use slimchain_network::config::KeypairConfig;
+use slimchain_network::p2p::config::KeypairConfig;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

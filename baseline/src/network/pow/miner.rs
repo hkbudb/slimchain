@@ -11,7 +11,7 @@ use libp2p::{
 };
 use slimchain_chain::latest::LatestTxCount;
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
-use slimchain_network::{
+use slimchain_network::p2p::{
     control::Shutdown,
     discovery::{Discovery, DiscoveryEvent},
     pubsub::{PubSub, PubSubEvent, PubSubTopic},

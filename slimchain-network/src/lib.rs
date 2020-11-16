@@ -1,10 +1,6 @@
 #[macro_use]
 extern crate tracing;
 
-pub mod behaviors;
-pub mod config;
-pub mod control;
-pub mod discovery;
+pub mod behavior;
 pub mod http;
-pub mod pubsub;
-pub mod rpc;
+pub mod p2p;

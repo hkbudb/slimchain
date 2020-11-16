@@ -1,4 +1,4 @@
-use crate::config::NetworkConfig;
+use crate::p2p::config::NetworkConfig;
 use futures::{channel::oneshot, prelude::*};
 use libp2p::{
     identify::{Identify, IdentifyEvent},

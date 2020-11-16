@@ -7,7 +7,7 @@ use baseline::{
     init_tracing,
 };
 use slimchain_common::error::{bail, Context as _, Result};
-use slimchain_network::{config::NetworkConfig, control::Swarmer};
+use slimchain_network::p2p::{config::NetworkConfig, control::Swarmer};
 use slimchain_utils::{config::Config, path::binary_directory};
 use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;

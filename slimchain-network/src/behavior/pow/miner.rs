@@ -1,5 +1,5 @@
 use super::BlockProposalWorker;
-use crate::{
+use crate::p2p::{
     config::NetworkConfig,
     control::Shutdown,
     discovery::{Discovery, DiscoveryEvent},

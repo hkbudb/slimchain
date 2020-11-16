@@ -5,7 +5,7 @@ pub use slimchain_chain::{
     consensus::Consensus,
     role::Role,
 };
-pub use slimchain_network::config::NetworkConfig;
+pub use slimchain_network::p2p::config::NetworkConfig;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChainConfig {

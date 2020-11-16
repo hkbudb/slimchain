@@ -9,7 +9,7 @@ use slimchain_common::{
     error::{Context as _, Result},
     tx::TxTrait,
 };
-use slimchain_network::{config::NetworkConfig, control::Swarmer};
+use slimchain_network::p2p::{config::NetworkConfig, control::Swarmer};
 use slimchain_tx_engine::TxEngine;
 use slimchain_utils::{config::Config, init_tracing, path::binary_directory};
 use std::{path::PathBuf, time::Duration};
@@ -69,7 +69,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
     match chain_cfg.consensus {
         Consensus::PoW => {
             use slimchain_chain::config::PoWConfig;
-            use slimchain_network::behaviors::pow::*;
+            use slimchain_network::behavior::pow::*;
 
             let pow_cfg: PoWConfig = cfg.get("pow").unwrap_or_default();
             info!("PoW initial difficulty: {}", pow_cfg.init_diff);

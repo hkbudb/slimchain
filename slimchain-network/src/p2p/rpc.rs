@@ -191,7 +191,7 @@ where
 }
 
 #[async_trait]
-impl<Req, Resp> crate::control::Shutdown for RpcClient<Req, Resp>
+impl<Req, Resp> crate::p2p::control::Shutdown for RpcClient<Req, Resp>
 where
     Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
     Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,

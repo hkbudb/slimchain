@@ -1,5 +1,5 @@
 use super::*;
-use crate::control::{Control, Shutdown, Swarmer};
+use crate::p2p::control::{Control, Shutdown, Swarmer};
 use futures::channel::oneshot;
 use libp2p::identity::Keypair;
 use serial_test::serial;

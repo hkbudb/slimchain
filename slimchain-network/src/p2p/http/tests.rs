@@ -1,4 +1,5 @@
 use super::*;
+use crate::http::client_rpc::*;
 use rand::SeedableRng;
 use slimchain_common::{ed25519::Keypair, tx_req::TxRequest};
 use slimchain_utils::init_tracing_for_test;
@@ -14,7 +15,7 @@ async fn test() {
         let transport = libp2p::build_development_transport(keypair).unwrap();
         libp2p::swarm::Swarm::new(
             transport,
-            TxHttpServer::new(endpoint, || 1, || 1.into()).unwrap(),
+            ClientHttpServer::new(endpoint, || 1, || 1.into()).unwrap(),
             peer_id,
         )
     };

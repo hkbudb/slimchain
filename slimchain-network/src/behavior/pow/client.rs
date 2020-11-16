@@ -1,9 +1,9 @@
 use super::BlockImportWorker;
-use crate::{
+use crate::p2p::{
     config::NetworkConfig,
     control::Shutdown,
     discovery::{Discovery, DiscoveryEvent, QueryId as DiscoveryQueryId},
-    http::{TxHttpRequest, TxHttpServer},
+    http::{ClientHttpServer, TxHttpRequest},
     pubsub::{PubSub, PubSubEvent, PubSubTopic},
     rpc::{
         create_request_response_client, handle_request_response_client_event, RpcInstant,
@@ -28,7 +28,7 @@ use std::time::Duration;
 pub struct ClientBehavior<Tx: TxTrait + Serialize + 'static> {
     discv: Discovery,
     pubsub: PubSub<TxProposal<Tx>, BlockProposal<Block, Tx>>,
-    http_server: TxHttpServer,
+    http_server: ClientHttpServer,
     rpc_client: RpcInstant<SignedTxRequest, ()>,
     #[behaviour(ignore)]
     worker: BlockImportWorker<Tx>,
@@ -59,7 +59,7 @@ impl<Tx: TxTrait + Serialize> ClientBehavior<Tx> {
             |snapshot| snapshot.write_db_tx(),
         );
 
-        let http_server = TxHttpServer::new(
+        let http_server = ClientHttpServer::new(
             &net_cfg.http_listen,
             move || latest_tx_count.get(),
             move || latest_block_header.get_height(),

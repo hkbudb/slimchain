@@ -8,10 +8,10 @@ use async_trait::async_trait;
 use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
 use slimchain_chain::latest::LatestTxCount;
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
-use slimchain_network::{
+use slimchain_network::p2p::{
     control::Shutdown,
     discovery::{Discovery, DiscoveryEvent},
-    http::{TxHttpRequest, TxHttpServer},
+    http::{ClientHttpServer, TxHttpRequest},
     pubsub::{PubSub, PubSubEvent, PubSubTopic},
 };
 use slimchain_utils::record_event;
@@ -20,7 +20,7 @@ use slimchain_utils::record_event;
 pub struct ClientBehavior {
     discv: Discovery,
     pubsub: PubSub<SignedTxRequest, Block>,
-    http_server: TxHttpServer,
+    http_server: ClientHttpServer,
     #[behaviour(ignore)]
     worker: BlockImportWorker,
 }
@@ -35,7 +35,7 @@ impl ClientBehavior {
         let latest_tx_count = LatestTxCount::new(0);
         let worker = BlockImportWorker::new(db.clone(), height, latest_tx_count.clone());
 
-        let http_server = TxHttpServer::new(
+        let http_server = ClientHttpServer::new(
             &net_cfg.http_listen,
             move || latest_tx_count.get(),
             move || {
