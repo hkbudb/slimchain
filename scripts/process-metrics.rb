@@ -145,7 +145,7 @@ class Tx
       block_height: block_height,
       send_ts: send_ts&.iso8601(6),
       propose_recv_ts: propose_recv_ts&.iso8601(6),
-      commit_ts: propose_recv_ts&.iso8601(6),
+      commit_ts: commit_ts&.iso8601(6),
       exec_storage_node_id: exec_storage_node,
       latency_in_us: latency,
       exec_time_in_us: exec_time,
@@ -216,10 +216,7 @@ def process_node_metrics!(file, client: false)
       when "blk_recv_tx"
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
-
-        next unless tx.status_known?
-
-        tx.propose_recv_ts = DateTime.iso8601 data["ts"]
+        tx.propose_recv_ts = DateTime.iso8601 data["ts"] unless tx.propose_recv_ts
       when "tx_outdated"
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
