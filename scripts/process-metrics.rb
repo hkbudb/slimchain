@@ -95,6 +95,10 @@ class Tx
     !@commit_ts.nil? && !conflicted? &&!outdated?
   end
 
+  def status_known?
+    committed? || outdated? || conflicted?
+  end
+
   def keep?
     return false unless @send_ts
     return false if @send_ts <= $tx_send_start_ts
@@ -210,11 +214,26 @@ def process_node_metrics!(file, client: false)
           tx.commit_ts = block.commit_ts
         end
       when "blk_recv_tx"
-        $txs[data["v"]["tx_id"]].propose_recv_ts = DateTime.iso8601 data["ts"]
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+
+        next unless tx.status_known?
+
+        tx.propose_recv_ts = DateTime.iso8601 data["ts"]
       when "tx_outdated"
-        $txs[data["v"]["tx_id"]].set_outdated
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+
+        next unless tx.status_known?
+
+        tx.set_outdated
       when "tx_conflict"
-        $txs[data["v"]["tx_id"]].set_conflicted
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+
+        next unless tx.status_known?
+
+        tx.set_conflicted
       when "propose_end"
         $blocks[data["v"]["height"]].propose_end_ts = DateTime.iso8601 data["ts"]
       else
