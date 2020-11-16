@@ -92,7 +92,7 @@ class Tx
   end
 
   def committed?
-    !@commit_ts.nil? && !conflicted?
+    !@commit_ts.nil? && !conflicted? &&!outdated?
   end
 
   def keep?
