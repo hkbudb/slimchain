@@ -1,0 +1,44 @@
+# vim: set ft=toml:
+
+# The role of the node.
+[role]
+# Possible values: client, miner
+role = "client"
+
+# Chain configure.
+[chain]
+# Consensus method. Possible values: pow, raft.
+consensus = "raft"
+
+# Configure for miners.
+[miner]
+# The following three configures control when to create a new block.
+# A block is created if:
+#   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs
+
+# Max number of txs in one block. If missing, default to 512.
+max_txs = 8
+# Min number of txs in one block.
+min_txs = 0
+# Max time span used in collecting txs.
+max_block_interval = 2
+
+# Network configure.
+[network]
+# The peer id of this node.
+peer_id = 0
+# Listen address for HTTP server
+http_listen = "127.0.0.1:8000"
+
+# Known peers
+[[network.peers]]
+peer_id = 1
+address = "a.b.c.d:8000"
+
+# Configure used in Proof-of-Work.
+[raft]
+# List of peer id of client nodes
+client_peers = [1, 2, 3]
+
+# List of peer id of storage nodes
+storage_peers = [4, 5, 6]
