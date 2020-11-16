@@ -22,7 +22,7 @@ use std::{
 
 const MAX_MESSAGE_SIZE: usize = 50_000_000;
 const MAX_TRANSMIT_SIZE: usize = (MAX_MESSAGE_SIZE as f64 * 1.1) as usize;
-const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(300);
+const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(1_800);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
