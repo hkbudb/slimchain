@@ -43,7 +43,7 @@ impl<Tx: TxTrait + Serialize> MinerBehavior<Tx> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
         let mut discv = Discovery::new(keypair.public(), Role::Miner, net_cfg.mdns)?;
         discv.add_address_from_net_config(net_cfg);
-        let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal]);
+        let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal], &[]);
         let snapshot = Snapshot::<Block, TxTrie>::load_from_db(&db, chain_cfg.state_len)?;
         let latest_block_header = snapshot.to_latest_block_header();
         let latest_tx_count = LatestTxCount::new(0);

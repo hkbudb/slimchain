@@ -43,7 +43,7 @@ impl<Tx: TxTrait + Serialize> ClientBehavior<Tx> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns)?;
         discv.add_address_from_net_config(net_cfg);
-        let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal]);
+        let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal], &[]);
         let rpc_client = create_request_response_client("/tx_req/1");
 
         let snapshot = Snapshot::<Block, TxTrie>::load_from_db(&db, chain_cfg.state_len)?;

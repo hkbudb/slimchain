@@ -71,7 +71,7 @@ where
     #[behaviour(ignore)]
     pending_events: VecDeque<PubSubEvent<TxProposal, BlockProposal>>,
     #[behaviour(ignore)]
-    topics: HashSet<PubSubTopic>,
+    sub_topics: HashSet<PubSubTopic>,
 }
 
 impl<TxProposal, BlockProposal> PubSub<TxProposal, BlockProposal>
@@ -79,7 +79,7 @@ where
     TxProposal: Send + 'static,
     BlockProposal: Send + 'static,
 {
-    pub fn new(keypair: Keypair, topics: &[PubSubTopic]) -> Self {
+    pub fn new(keypair: Keypair, sub_topics: &[PubSubTopic], relay_topics: &[PubSubTopic]) -> Self {
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id(&b"/slimchain/pubsub/1"[..])
             .duplicate_cache_time(DUPLICATE_CACHE_TTL)
@@ -89,15 +89,21 @@ where
             })
             .max_transmit_size(MAX_TRANSMIT_SIZE)
             .build();
+
         let mut gossipsub = Gossipsub::new(MessageAuthenticity::Signed(keypair), cfg);
-        for topic in &[PubSubTopic::BlockProposal, PubSubTopic::TxProposal] {
+
+        for topic in sub_topics {
+            gossipsub.subscribe(topic.into_topic());
+        }
+
+        for topic in relay_topics {
             gossipsub.subscribe(topic.into_topic());
         }
 
         Self {
             gossipsub,
             pending_events: VecDeque::new(),
-            topics: topics.iter().copied().collect(),
+            sub_topics: sub_topics.iter().copied().collect(),
         }
     }
 
@@ -173,7 +179,7 @@ where
                 }
             };
 
-            if !self.topics.contains(topic) {
+            if !self.sub_topics.contains(topic) {
                 return;
             }
 
