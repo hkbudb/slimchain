@@ -235,7 +235,12 @@ def process_node_metrics!(file, client: false)
 
         tx.set_conflicted
       when "propose_end"
-        $blocks[data["v"]["height"]].propose_end_ts = DateTime.iso8601 data["ts"]
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+
+        next unless tx.status_known?
+
+        tx.propose_end_ts = DateTime.iso8601 data["ts"]
       else
         warn "Unknown event #{data["l"]} in #{file}:#{line_no}"
       end
