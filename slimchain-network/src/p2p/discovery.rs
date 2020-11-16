@@ -49,6 +49,8 @@ pub struct Discovery {
     identify: Identify,
     mdns: Toggle<Mdns>,
     #[behaviour(ignore)]
+    peer_id: PeerId,
+    #[behaviour(ignore)]
     peer_table: HashMap<Role, HashSet<PeerId>>,
     #[behaviour(ignore)]
     rev_peer_table: HashMap<PeerId, (Role, DelayQueueKey)>,
@@ -75,7 +77,11 @@ impl Discovery {
         let mut kad = {
             let mut config = KademliaConfig::default();
             config.set_protocol_name(&b"/slimchain/discv/kad/1"[..]);
-            Kademlia::with_config(peer_id.clone(), KadMemoryStore::new(peer_id), config)
+            Kademlia::with_config(
+                peer_id.clone(),
+                KadMemoryStore::new(peer_id.clone()),
+                config,
+            )
         };
         kad.start_providing(role_to_kad_key(role))
             .map_err(|e| anyhow!("Failed to announce role. Error:{:?}", e))?;
@@ -96,6 +102,7 @@ impl Discovery {
             kad,
             identify,
             mdns: mdns.into(),
+            peer_id,
             peer_table: HashMap::new(),
             rev_peer_table: HashMap::new(),
             exp_peers: DelayQueue::new(),
@@ -109,7 +116,9 @@ impl Discovery {
     }
 
     pub fn add_address(&mut self, peer_id: &PeerId, address: Multiaddr) {
-        self.kad.add_address(peer_id, address);
+        if peer_id != &self.peer_id {
+            self.kad.add_address(peer_id, address);
+        }
     }
 
     pub fn add_address_from_net_config(&mut self, cfg: &NetworkConfig) {
