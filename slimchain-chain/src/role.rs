@@ -12,6 +12,12 @@ pub enum Role {
     Storage(ShardId),
 }
 
+impl Default for Role {
+    fn default() -> Self {
+        Role::Client
+    }
+}
+
 impl<'de> Deserialize<'de> for Role {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -25,8 +31,15 @@ impl<'de> Deserialize<'de> for Role {
             Storage,
         }
 
+        impl Default for RoleType {
+            fn default() -> Self {
+                RoleType::Client
+            }
+        }
+
         #[derive(Deserialize)]
         struct RoleData {
+            #[serde(default)]
             role: RoleType,
             #[serde(default)]
             shard_id: Option<u64>,
