@@ -5,7 +5,7 @@ use crate::{
     latest::{LatestBlockHeader, LatestBlockHeaderPtr},
     loader::BlockLoaderTrait,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use slimchain_common::{
     basic::{BlockHeight, ShardId, H256},
     error::{Context as _, Result},
@@ -110,6 +110,43 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
                 state_len,
             ))
         }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct SnapshotData<Block: BlockTrait> {
+    recent_blocks: im::Vector<Block>,
+    tx_trie: TxTrie,
+    access_map: AccessMap,
+}
+
+impl<Block: BlockTrait + Serialize> Serialize for Snapshot<Block, TxTrie> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let data = SnapshotData {
+            recent_blocks: self.recent_blocks.clone(),
+            tx_trie: self.tx_trie.clone(),
+            access_map: self.access_map.clone(),
+        };
+        data.serialize(serializer)
+    }
+}
+
+impl<'de1, Block: BlockTrait + for<'de2> Deserialize<'de2>> Deserialize<'de1>
+    for Snapshot<Block, TxTrie>
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de1>,
+    {
+        let data = SnapshotData::<Block>::deserialize(deserializer)?;
+        Ok(Self {
+            recent_blocks: data.recent_blocks,
+            tx_trie: data.tx_trie,
+            access_map: data.access_map,
+        })
     }
 }
 
