@@ -369,4 +369,32 @@ impl TxTrieTrait for TxTrie {
         }
         Ok(())
     }
+
+    #[cfg(feature = "dump")]
+    fn dump(&self, dir: impl AsRef<std::path::Path>) -> Result<()> {
+        use slimchain_merkle_trie::draw::partial_trie_to_draw;
+        use std::fs;
+
+        let dir = dir.as_ref().to_path_buf();
+        fs::create_dir_all(&dir)?;
+
+        partial_trie_to_draw(&self.main_trie).draw(&dir.join("main_trie"))?;
+
+        for (acc_addr, acc_trie) in &self.acc_tries {
+            let acc_dir = dir.join(format!("{}", acc_addr));
+            fs::create_dir(&acc_dir)?;
+            partial_trie_to_draw(&acc_trie.state_trie).draw(&acc_dir.join("state_trie"))?;
+            fs::write(
+                &acc_dir.join("data"),
+                format!(
+                    "nonce = {}\ncode_hash = {}\nhash = {}\n",
+                    acc_trie.nonce,
+                    acc_trie.code_hash,
+                    acc_trie.acc_hash()
+                ),
+            )?;
+        }
+
+        Ok(())
+    }
 }
