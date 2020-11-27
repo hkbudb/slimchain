@@ -35,10 +35,5 @@ http_listen = "127.0.0.1:8000"
 peer_id = 1
 address = "a.b.c.d:8000"
 
-# Configure used in Proof-of-Work.
+# Configure used in Raft
 [raft]
-# List of peer id of client nodes
-client_peers = [1, 2, 3]
-
-# List of peer id of storage nodes
-storage_peers = [4, 5, 6]

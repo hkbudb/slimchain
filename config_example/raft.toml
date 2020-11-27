@@ -51,11 +51,11 @@ http_listen = "127.0.0.1:8000"
 [[network.peers]]
 peer_id = 1
 address = "a.b.c.d:8000"
+# Possible values: client, storage.
+role = "client"
+# Shard Id for storage node. Only valid when role = "storage".
+# shard_id = 0
+# shard_total = 1
 
-# Configure used in Proof-of-Work.
+# Configure used in Raft
 [raft]
-# List of peer id of client nodes
-client_peers = [1, 2, 3]
-
-# List of peer id of storage nodes
-storage_peers = [4, 5, 6]
