@@ -479,3 +479,33 @@ fn test_partial_trie_prune() {
     assert_eq!(t1.root_hash(), t9.root_hash());
     assert!(partial_trie_is_a_hash_node(&t9));
 }
+
+#[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
+#[test]
+fn test_partial_trie_prune2() {
+    let mut ctx: WritePartialTrieContext<Key> =
+        WritePartialTrieContext::new(PartialTrie::default());
+    ctx.insert_with_value(&key!("0000"), &Value(1)).unwrap();
+    ctx.insert_with_value(&key!("1000"), &Value(2)).unwrap();
+    let t1 = ctx.finish();
+    let t2 = prune_key2(&t1, &key!("0000"), core::iter::once(key!("1000")), true).unwrap();
+
+    assert_eq!(t1.root_hash(), t2.root_hash());
+    assert_eq!(t2.value_hash(&key!("0000")), None);
+    assert_eq!(t2.value_hash(&key!("1000")), Some(Value(2).to_digest()));
+}
+
+#[cfg(all(feature = "partial_trie", feature = "read", feature = "write"))]
+#[test]
+fn test_partial_trie_prune3() {
+    let mut ctx: WritePartialTrieContext<Key> =
+        WritePartialTrieContext::new(PartialTrie::default());
+    ctx.insert_with_value(&key!("0000"), &Value(1)).unwrap();
+    ctx.insert_with_value(&key!("0001"), &Value(2)).unwrap();
+    let t1 = ctx.finish();
+    let t2 = prune_key2(&t1, &key!("0000"), core::iter::once(key!("0001")), true).unwrap();
+
+    assert_eq!(t1.root_hash(), t2.root_hash());
+    assert_eq!(t2.value_hash(&key!("0000")), None);
+    assert_eq!(t2.value_hash(&key!("0001")), Some(Value(2).to_digest()));
+}
