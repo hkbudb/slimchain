@@ -5,7 +5,7 @@
 * OS: Ubuntu 18.04 LTS.
 * Install [Rust](https://rustup.rs).
 * Run `sudo ./scripts/install_deps.sh`.
-* Install [SGX Driver](https://github.com/intel/linux-sgx-driver).
+* Install [SGX Driver](https://github.com/intel/linux-sgx-driver) by running `sudo ./scripts/install_sgx_driver.sh`.
 * Enable SGX Aesm service: `sudo /opt/intel/sgx-aesm-service/startup.sh`.
 
 ## Build and Test

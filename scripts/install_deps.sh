@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+SGX_SDK_VERSION="2.12.100.3"
+
 set -e
 
 error() {
@@ -29,7 +31,8 @@ apt-get update -y
 apt-get install -y libsgx-uae-service libsgx-urts sgx-aesm-service
 apt-get install -y nodejs
 
-curl -L https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.12.100.3.bin -o /tmp/sgx_linux_x64_sdk.bin
+curl -L "https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_$SGX_SDK_VERSION.bin" \
+    -o /tmp/sgx_linux_x64_sdk.bin
 chmod +x /tmp/sgx_linux_x64_sdk.bin
 mkdir -p /opt/intel
 cd /opt/intel
