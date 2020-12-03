@@ -1,5 +1,5 @@
-SGX_SDK ?= /opt/intel/sgxsdk
-SGX_MODE ?= HW
+export SGX_SDK ?= /opt/intel/sgxsdk
+export SGX_MODE ?= HW
 DEBUG ?= 0
 
 RUST_BUILD_FLAGS :=
