@@ -95,6 +95,9 @@ impl BranchNode {
     }
 
     pub(crate) fn get_child_mut(&mut self, index: U4) -> &'_ mut Option<Arc<SubTree>> {
+        #[cfg(feature = "cache_hash")]
+        self.node_hash.store(None);
+
         let index: usize = index.into();
         unsafe { self.children.get_unchecked_mut(index) }
     }
