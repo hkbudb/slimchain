@@ -111,7 +111,9 @@ fn prune_key_inner(
         }
     }
 
-    Ok(PartialTrie::from_subtree(root))
+    let new_trie = PartialTrie::from_subtree(root);
+    debug_assert_eq!(trie.root_hash(), new_trie.root_hash());
+    Ok(new_trie)
 }
 
 pub fn prune_key(
