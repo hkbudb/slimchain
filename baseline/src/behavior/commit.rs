@@ -24,7 +24,7 @@ where
     let tx_len = txs.len();
 
     let mut db_tx = Transaction::with_capacity(1);
-    db_tx.insert_block_height(block_height)?;
+    db_tx.insert_meta_object("height", &block_height)?;
     db_tx.insert_block(new_block)?;
     db_tx.update_state(update)?;
     db.write_async(db_tx).await?;

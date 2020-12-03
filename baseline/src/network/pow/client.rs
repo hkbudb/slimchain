@@ -31,7 +31,7 @@ impl ClientBehavior {
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns)?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal], &[]);
-        let height = db.get_block_height()?.unwrap_or_default();
+        let height = db.get_meta_object("height")?.unwrap_or_default();
         let latest_tx_count = LatestTxCount::new(0);
         let worker = BlockImportWorker::new(db.clone(), height, latest_tx_count.clone());
 
@@ -39,7 +39,7 @@ impl ClientBehavior {
             &net_cfg.http_listen,
             move || latest_tx_count.get(),
             move || {
-                db.get_block_height()
+                db.get_meta_object("height")
                     .expect("Failed to get the block height.")
                     .unwrap_or_default()
             },

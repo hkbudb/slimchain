@@ -1,35 +1,27 @@
 use crate::{
-    access_map::AccessMap,
     block::BlockTrait,
     loader::{BlockLoaderTrait, TxLoaderTrait},
     role::Role,
 };
-use kvdb::{DBKey, DBTransaction, DBValue, KeyValueDB};
-use once_cell::sync::Lazy;
+use kvdb::{DBKey, DBTransaction, KeyValueDB};
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
-    basic::{AccountData, Address, BlockHeight, ShardId, StateValue, H256},
+    basic::{AccountData, Address, BlockHeight, StateValue, H256},
     error::{Context as _, Error, Result},
     tx::TxTrait,
 };
-use slimchain_tx_state::{OutShardData, TrieNode, TxStateUpdate, TxStateView, TxTrie};
+use slimchain_tx_state::{TrieNode, TxStateUpdate, TxStateView};
 use std::{path::Path, sync::Arc};
 
-const TOTAL_COLS: u32 = 5;
+pub const TOTAL_COLS: u32 = 4;
 // store meta data
-const META_DB_COL: u32 = 0;
+pub const META_DB_COL: u32 = 0;
 // store block height <-> block
-const BLOCK_DB_COL: u32 = 1;
+pub const BLOCK_DB_COL: u32 = 1;
 // store tx_hash <-> tx
-const TX_DB_COL: u32 = 2;
+pub const TX_DB_COL: u32 = 2;
 // store state addr <-> node
-const STATE_DB_COL: u32 = 3;
-
-static META_BLOCK_HEIGHT_KEY: Lazy<DBKey> = Lazy::new(|| str_to_db_key("height"));
-static META_SHARD_ID_KEY: Lazy<DBKey> = Lazy::new(|| str_to_db_key("shard-id"));
-static META_ACCESS_MAP_KEY: Lazy<DBKey> = Lazy::new(|| str_to_db_key("access-map"));
-static META_TX_TRIE_KEY: Lazy<DBKey> = Lazy::new(|| str_to_db_key("tx-trie"));
-static META_OUT_SHARD_DATA_KEY: Lazy<DBKey> = Lazy::new(|| str_to_db_key("out-shard-data"));
+pub const STATE_DB_COL: u32 = 3;
 
 #[inline]
 fn h256_to_db_key(input: H256) -> DBKey {
@@ -80,16 +72,14 @@ impl DB {
         Arc::new(Self { db: Box::new(db) })
     }
 
-    fn get_raw(&self, col: u32, key: &DBKey) -> Result<Option<DBValue>> {
-        self.db.get(col, key).map_err(Error::msg)
-    }
-
     pub fn get_object<T: for<'de> Deserialize<'de>>(
         &self,
         col: u32,
         key: &DBKey,
     ) -> Result<Option<T>> {
-        self.get_raw(col, key)?
+        self.db
+            .get(col, key)
+            .map_err(Error::msg)?
             .map(|bin| postcard::from_bytes::<T>(&bin[..]).map_err(Error::msg))
             .transpose()
     }
@@ -103,29 +93,16 @@ impl DB {
             .context("Object not available in the database.")
     }
 
-    pub fn get_block_height(&self) -> Result<Option<BlockHeight>> {
-        self.get_object(META_DB_COL, &(*META_BLOCK_HEIGHT_KEY))
-            .context("Failed to get block height from the database.")
+    pub fn get_meta_object<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<Option<T>> {
+        self.get_object(META_DB_COL, &str_to_db_key(key))
     }
 
-    pub fn get_shard_id(&self) -> Result<Option<ShardId>> {
-        self.get_object(META_DB_COL, &(*META_SHARD_ID_KEY))
-            .context("Failed to get shard id from the database.")
+    pub fn get_existing_meta_object<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<T> {
+        self.get_existing_object(META_DB_COL, &str_to_db_key(key))
     }
 
-    pub fn get_access_map(&self) -> Result<AccessMap> {
-        self.get_existing_object(META_DB_COL, &(*META_ACCESS_MAP_KEY))
-            .context("Failed to get access map from the database.")
-    }
-
-    pub fn get_tx_trie(&self) -> Result<TxTrie> {
-        self.get_existing_object(META_DB_COL, &(*META_TX_TRIE_KEY))
-            .context("Failed to get tx trie from the database.")
-    }
-
-    pub fn get_out_shard_data(&self) -> Result<OutShardData> {
-        self.get_existing_object(META_DB_COL, &(*META_OUT_SHARD_DATA_KEY))
-            .context("Failed to get out shard data from the database.")
+    pub fn get_table_size(&self, col: u32) -> usize {
+        self.db.iter(col).map(|(k, v)| k.len() + v.len()).sum()
     }
 
     pub fn write_sync(&self, tx: Transaction) -> Result<()> {
@@ -206,6 +183,10 @@ impl Transaction {
         Ok(())
     }
 
+    pub fn insert_meta_object<T: Serialize>(&mut self, key: &str, value: &T) -> Result<()> {
+        self.insert_object(META_DB_COL, &str_to_db_key(key), value)
+    }
+
     pub fn insert_block<Block: BlockTrait + Serialize>(&mut self, block: &Block) -> Result<()> {
         self.insert_object(
             BLOCK_DB_COL,
@@ -230,25 +211,5 @@ impl Transaction {
         }
 
         Ok(())
-    }
-
-    pub fn insert_block_height(&mut self, block_height: BlockHeight) -> Result<()> {
-        self.insert_object(META_DB_COL, &(*META_BLOCK_HEIGHT_KEY), &block_height)
-    }
-
-    pub fn insert_shard_id(&mut self, shard_id: ShardId) -> Result<()> {
-        self.insert_object(META_DB_COL, &(*META_SHARD_ID_KEY), &shard_id)
-    }
-
-    pub fn insert_access_map(&mut self, access_map: &AccessMap) -> Result<()> {
-        self.insert_object(META_DB_COL, &(*META_ACCESS_MAP_KEY), access_map)
-    }
-
-    pub fn insert_tx_trie(&mut self, tx_trie: &TxTrie) -> Result<()> {
-        self.insert_object(META_DB_COL, &(*META_TX_TRIE_KEY), tx_trie)
-    }
-
-    pub fn insert_out_shard_data(&mut self, data: &OutShardData) -> Result<()> {
-        self.insert_object(META_DB_COL, &(*META_OUT_SHARD_DATA_KEY), data)
     }
 }

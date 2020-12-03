@@ -58,8 +58,8 @@ where
     let end = match opts.end {
         Some(end) => end,
         None => db
-            .get_block_height()?
-            .context("Failed to get the latest block")?,
+            .get_existing_meta_object("height")
+            .context("Failed to get block height from the database.")?,
     };
 
     let mut height = start;

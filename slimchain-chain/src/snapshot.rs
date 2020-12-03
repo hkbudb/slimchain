@@ -80,9 +80,9 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
     pub fn write_db_tx(&self) -> Result<Transaction> {
         debug!("Saving snapshot...");
         let mut tx = Transaction::with_capacity(3);
-        tx.insert_block_height(self.current_height())?;
-        tx.insert_access_map(&self.access_map)?;
-        tx.insert_tx_trie(&self.tx_trie)?;
+        tx.insert_meta_object("height", &self.current_height())?;
+        tx.insert_meta_object("access-map", &self.access_map)?;
+        tx.insert_meta_object("tx-trie", &self.tx_trie)?;
         Ok(tx)
     }
 
@@ -96,10 +96,17 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
 
     pub fn load_from_db(db: &DBPtr, state_len: usize) -> Result<Self> {
         debug!("Loading snapshot...");
-        if let Some(height) = db.get_block_height()? {
+        if let Some(height) = db
+            .get_meta_object("height")
+            .context("Failed to get block height from the database.")?
+        {
             let recent_blocks = load_recent_blocks::<Block>(db, height, state_len)?;
-            let tx_trie = db.get_tx_trie()?;
-            let access_map = db.get_access_map()?;
+            let tx_trie: TxTrie = db
+                .get_existing_meta_object("tx-trie")
+                .context("Failed to get tx trie from the database.")?;
+            let access_map: AccessMap = db
+                .get_existing_meta_object("access-map")
+                .context("Failed to get access map from the database.")?;
             assert_eq!(height, access_map.latest_block_height());
             Ok(Self::new(recent_blocks, tx_trie, access_map))
         } else {
@@ -154,10 +161,9 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTri
     pub fn write_db_tx(&self) -> Result<Transaction> {
         debug!("Saving snapshot...");
         let mut tx = Transaction::with_capacity(4);
-        tx.insert_block_height(self.current_height())?;
-        tx.insert_shard_id(self.tx_trie.get_shard_id())?;
-        tx.insert_access_map(&self.access_map)?;
-        tx.insert_out_shard_data(self.tx_trie.get_out_shard_data())?;
+        tx.insert_meta_object("height", &self.current_height())?;
+        tx.insert_meta_object("access-map", &self.access_map)?;
+        tx.insert_meta_object("out-shard-data", self.tx_trie.get_out_shard_data())?;
         Ok(tx)
     }
 
@@ -171,16 +177,23 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTri
 
     pub fn load_from_db(db: &DBPtr, state_len: usize, shard_id: ShardId) -> Result<Self> {
         debug!("Loading snapshot...");
-        if let Some(height) = db.get_block_height()? {
+        if let Some(height) = db
+            .get_meta_object("height")
+            .context("Failed to get block height from the database.")?
+        {
             let recent_blocks = load_recent_blocks::<Block>(db, height, state_len)?;
             let root = recent_blocks
                 .back()
                 .context("Failed to access the latest block.")?
                 .state_root();
-            let out_shard_data = db.get_out_shard_data()?;
+            let out_shard_data: OutShardData = db
+                .get_existing_meta_object("out-shard-data")
+                .context("Failed to get out shard data from the database.")?;
             let tx_trie =
                 StorageTxTrie::new(shard_id, InShardData::new(db.clone(), root), out_shard_data);
-            let access_map = db.get_access_map()?;
+            let access_map: AccessMap = db
+                .get_existing_meta_object("access-map")
+                .context("Failed to get access map from the database.")?;
             assert_eq!(height, access_map.latest_block_height());
             Ok(Self::new(recent_blocks, tx_trie, access_map))
         } else {

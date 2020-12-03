@@ -2,8 +2,7 @@ use crate::{
     block::{BlockLoaderTrait, BlockTrait},
     config::Role,
 };
-use kvdb::{DBKey, DBTransaction, DBValue, KeyValueDB};
-use once_cell::sync::Lazy;
+use kvdb::{DBKey, DBTransaction, KeyValueDB};
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{AccountData, Address, BlockHeight, StateValue, H256},
@@ -12,15 +11,7 @@ use slimchain_common::{
 use slimchain_tx_state::{TrieNode, TxStateUpdate, TxStateView};
 use std::{path::Path, sync::Arc};
 
-const TOTAL_COLS: u32 = 3;
-// store meta data
-const META_DB_COL: u32 = 0;
-// store block height <-> block
-const BLOCK_DB_COL: u32 = 1;
-// store state addr <-> node
-const STATE_DB_COL: u32 = 2;
-
-static META_BLOCK_HEIGHT_KEY: Lazy<DBKey> = Lazy::new(|| str_to_db_key("height"));
+pub use slimchain_chain::db::{BLOCK_DB_COL, META_DB_COL, STATE_DB_COL, TOTAL_COLS};
 
 #[inline]
 fn h256_to_db_key(input: H256) -> DBKey {
@@ -65,16 +56,14 @@ impl DB {
         Self::open_or_create(&dir.join(db_file))
     }
 
-    fn get_raw(&self, col: u32, key: &DBKey) -> Result<Option<DBValue>> {
-        self.db.get(col, key).map_err(Error::msg)
-    }
-
     pub fn get_object<T: for<'de> Deserialize<'de>>(
         &self,
         col: u32,
         key: &DBKey,
     ) -> Result<Option<T>> {
-        self.get_raw(col, key)?
+        self.db
+            .get(col, key)
+            .map_err(Error::msg)?
             .map(|bin| postcard::from_bytes::<T>(&bin[..]).map_err(Error::msg))
             .transpose()
     }
@@ -88,9 +77,12 @@ impl DB {
             .context("Object not available in the database.")
     }
 
-    pub fn get_block_height(&self) -> Result<Option<BlockHeight>> {
-        self.get_object(META_DB_COL, &(*META_BLOCK_HEIGHT_KEY))
-            .context("Failed to get block height from the database.")
+    pub fn get_meta_object<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<Option<T>> {
+        self.get_object(META_DB_COL, &str_to_db_key(key))
+    }
+
+    pub fn get_existing_meta_object<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<T> {
+        self.get_existing_object(META_DB_COL, &str_to_db_key(key))
     }
 
     pub fn write_sync(&self, tx: Transaction) -> Result<()> {
@@ -163,6 +155,10 @@ impl Transaction {
         Ok(())
     }
 
+    pub fn insert_meta_object<T: Serialize>(&mut self, key: &str, value: &T) -> Result<()> {
+        self.insert_object(META_DB_COL, &str_to_db_key(key), value)
+    }
+
     pub fn insert_block<Block: BlockTrait + Serialize>(&mut self, block: &Block) -> Result<()> {
         self.insert_object(
             BLOCK_DB_COL,
@@ -183,9 +179,5 @@ impl Transaction {
         }
 
         Ok(())
-    }
-
-    pub fn insert_block_height(&mut self, block_height: BlockHeight) -> Result<()> {
-        self.insert_object(META_DB_COL, &(*META_BLOCK_HEIGHT_KEY), &block_height)
     }
 }
