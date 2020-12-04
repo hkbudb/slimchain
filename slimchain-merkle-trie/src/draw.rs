@@ -1,222 +1,460 @@
 #[cfg(feature = "partial_trie")]
-use crate::partial_trie::{PartialTrie, SubTree};
+use crate::partial_trie::{PartialTrie, PartialTrieDiff, SubTree};
 use crate::{
     proof::{Proof, SubProof},
     storage::{NodeLoader, TrieNode},
     traits::Value,
 };
-use alloc::{collections::VecDeque, format, string::String, vec::Vec};
+use alloc::{
+    collections::{BTreeMap, VecDeque},
+    format,
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
 use core::fmt;
 use slimchain_common::{basic::H256, digest::Digestible, error::Result};
 
-#[derive(Debug, Default)]
-pub struct Draw {
-    edges: Vec<(u32, u32, String)>,
-    vertices: Vec<(u32, String)>,
+#[derive(Debug)]
+struct Vertex {
+    id: u32,
+    label: String,
+    styles: Vec<String>,
+}
+
+impl Vertex {
+    fn add_style(&mut self, style: impl ToString) {
+        self.styles.push(style.to_string());
+    }
+}
+
+#[derive(Debug)]
+struct Edge {
+    parent_vertex: u32,
+    child_vertex: u32,
+    label: Option<String>,
+    styles: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct Graph {
+    name: String,
+    label: Option<String>,
+    styles: Vec<String>,
+    edges: BTreeMap<(u32, u32), Edge>,
+    vertices: BTreeMap<u32, Vertex>,
     next_id: u32,
 }
 
-impl Draw {
-    fn get_next_vertex_id(&mut self) -> u32 {
+impl Graph {
+    fn new(name: String) -> Self {
+        Self {
+            name,
+            label: None,
+            styles: Vec::new(),
+            edges: BTreeMap::new(),
+            vertices: BTreeMap::new(),
+            next_id: 0,
+        }
+    }
+
+    pub fn set_label(&mut self, label: impl ToString) {
+        self.label = Some(label.to_string());
+    }
+
+    pub fn add_style(&mut self, style: impl ToString) {
+        self.styles.push(style.to_string());
+    }
+
+    fn next_vertex_id(&mut self) -> u32 {
         let id = self.next_id;
         self.next_id += 1;
         id
     }
 
     fn add_vertex(&mut self, id: u32, label: String) {
-        self.vertices.push((id, label));
+        self.vertices.insert(
+            id,
+            Vertex {
+                id,
+                label,
+                styles: Vec::new(),
+            },
+        );
     }
 
-    fn add_edge(&mut self, parent: u32, child: u32, label: String) {
-        self.edges.push((parent, child, label))
+    fn add_edge(&mut self, parent_vertex: u32, child_vertex: u32, label: Option<String>) {
+        self.edges.insert(
+            (parent_vertex, child_vertex),
+            Edge {
+                parent_vertex,
+                child_vertex,
+                label,
+                styles: Vec::new(),
+            },
+        );
     }
 
-    pub fn to_dot(&self) -> String {
+    pub fn to_dot(&self, subgraph: bool) -> String {
         let mut out = String::new();
-        out += "digraph MerkleTrie {\n";
-        for (id, label) in &self.vertices {
-            let style = if *id == 0 { ",color=blue" } else { "" };
-            out += &format!("    {} [label=\"{}\"{}];\n", id, label, style);
+
+        if subgraph {
+            out.push_str(&format!("subgraph cluster_{} {{\n", self.name));
+        } else {
+            out.push_str(&format!("digraph {} {{\n", self.name));
         }
-        for (parent, child, label) in &self.edges {
-            out += &format!("    {} -> {} [label=\"{}\"];\n", parent, child, label);
+
+        if let Some(label) = &self.label {
+            out.push_str(&format!("    label=\"{}\";\n", label));
         }
-        out += "}";
+
+        for style in &self.styles {
+            out.push_str(&format!("    {};\n", style));
+        }
+
+        if self.label.is_some() || self.styles.len() > 0 {
+            out.push_str("\n");
+        }
+
+        for Vertex { id, label, styles } in self.vertices.values() {
+            let mut meta = Vec::new();
+            meta.push(format!("label=\"{}\"", label));
+            meta.extend(styles.iter().cloned());
+            out.push_str(&format!("    {}_{} [{}];\n", self.name, id, meta.join(",")));
+        }
+
+        for Edge {
+            parent_vertex,
+            child_vertex,
+            label,
+            styles,
+        } in self.edges.values()
+        {
+            let mut meta = Vec::new();
+            if let Some(label) = label {
+                meta.push(format!("label=\"{}\"", label));
+            }
+            meta.extend(styles.iter().cloned());
+            out.push_str(&format!(
+                "    {}_{} -> {}_{} [{}];\n",
+                self.name,
+                parent_vertex,
+                self.name,
+                child_vertex,
+                meta.join(",")
+            ));
+        }
+
+        out.push_str("}\n");
         out
     }
 
-    #[cfg(feature = "std")]
-    pub fn draw<P: AsRef<std::path::Path>>(&self, path: P) -> Result<()> {
-        use std::process::Command;
+    pub fn from_trie<V: Value + fmt::Display>(
+        name: impl ToString,
+        trie: &impl NodeLoader<V>,
+        root: H256,
+    ) -> Result<Self> {
+        let mut out = Self::new(name.to_string());
+        let mut queue: VecDeque<(H256, u32, Option<String>)> = VecDeque::new();
+        queue.push_back((root, 0, None));
+
+        while let Some((cur, parent_id, edge_label)) = queue.pop_front() {
+            let cur_id = out.next_vertex_id();
+
+            let node = match trie.check_address_and_load_node(cur)? {
+                Some(n) => n,
+                None => continue,
+            };
+
+            if cur_id != 0 {
+                out.add_edge(parent_id, cur_id, edge_label);
+            }
+
+            match &node {
+                TrieNode::Extension(n) => {
+                    out.add_vertex(
+                        cur_id,
+                        format!("Extension(n={})\n{}", n.nibbles, n.to_digest()),
+                    );
+                    queue.push_back((n.child, cur_id, None));
+                }
+                TrieNode::Branch(n) => {
+                    out.add_vertex(cur_id, format!("Branch\n{}", n.to_digest()));
+                    for (i, child) in n.children.iter().enumerate() {
+                        if let Some(c) = child {
+                            queue.push_back((*c, cur_id, Some(format!("{:x}", i))));
+                        }
+                    }
+                }
+                TrieNode::Leaf(n) => {
+                    out.add_vertex(
+                        cur_id,
+                        format!("Leaf(n={},v={})\n{}", n.nibbles, n.value, n.to_digest()),
+                    );
+                }
+            }
+        }
+
+        if let Some(root_vertex) = out.vertices.get_mut(&0) {
+            root_vertex.add_style("style=filled");
+            root_vertex.add_style("fillcolor=cyan");
+        }
+
+        Ok(out)
+    }
+
+    pub fn from_proof(name: impl ToString, proof: &Proof) -> Self {
+        let mut out = Self::new(name.to_string());
+        let root_node = match proof.root.as_ref() {
+            Some(root) => root,
+            None => return out,
+        };
+
+        let mut queue: VecDeque<(&SubProof, u32, Option<String>)> = VecDeque::new();
+        queue.push_back((root_node, 0, None));
+
+        while let Some((cur, parent_id, edge_label)) = queue.pop_front() {
+            let cur_id = out.next_vertex_id();
+
+            if cur_id != 0 {
+                out.add_edge(parent_id, cur_id, edge_label);
+            }
+
+            match cur {
+                SubProof::Hash(h) => {
+                    out.add_vertex(cur_id, format!("Hash\n{}", h));
+                }
+                SubProof::Extension(n) => {
+                    out.add_vertex(
+                        cur_id,
+                        format!("Extension(n={})\n{}", n.nibbles, n.to_digest()),
+                    );
+                    queue.push_back((&n.child, cur_id, None));
+                }
+                SubProof::Branch(n) => {
+                    out.add_vertex(cur_id, format!("Branch\n{}", n.to_digest()));
+                    for (i, child) in n.children.iter().enumerate() {
+                        if let Some(c) = child.as_ref() {
+                            queue.push_back((c, cur_id, Some(format!("{:x}", i))));
+                        }
+                    }
+                }
+                SubProof::Leaf(n) => {
+                    out.add_vertex(
+                        cur_id,
+                        format!(
+                            "Leaf(n={},v={})\n{}",
+                            n.nibbles,
+                            n.value_hash,
+                            n.to_digest(),
+                        ),
+                    );
+                }
+            }
+        }
+
+        if let Some(root_vertex) = out.vertices.get_mut(&0) {
+            root_vertex.add_style("style=filled");
+            root_vertex.add_style("fillcolor=cyan");
+        }
+
+        out
+    }
+
+    #[cfg(feature = "partial_trie")]
+    fn from_subtree(name: impl ToString, subtree: &Arc<SubTree>) -> Self {
+        let mut out = Self::new(name.to_string());
+        let mut queue: VecDeque<(&SubTree, u32, Option<String>)> = VecDeque::new();
+        queue.push_back((subtree, 0, None));
+
+        while let Some((cur, parent_id, edge_label)) = queue.pop_front() {
+            let cur_id = out.next_vertex_id();
+
+            if cur_id != 0 {
+                out.add_edge(parent_id, cur_id, edge_label);
+            }
+
+            match cur {
+                SubTree::Hash(h) => {
+                    out.add_vertex(cur_id, format!("Hash\n{}", h));
+                }
+                SubTree::Extension(n) => {
+                    out.add_vertex(
+                        cur_id,
+                        format!("Extension(n={})\n{}", n.nibbles, n.to_digest()),
+                    );
+                    queue.push_back((&n.child, cur_id, None));
+                }
+                SubTree::Branch(n) => {
+                    out.add_vertex(cur_id, format!("Branch\n{}", n.to_digest()));
+                    for (i, child) in n.children.iter().enumerate() {
+                        if let Some(c) = child.as_ref() {
+                            queue.push_back((c, cur_id, Some(format!("{:x}", i))));
+                        }
+                    }
+                }
+                SubTree::Leaf(n) => {
+                    out.add_vertex(
+                        cur_id,
+                        format!(
+                            "Leaf(n={},v={})\n{}",
+                            n.nibbles,
+                            n.value_hash,
+                            n.to_digest(),
+                        ),
+                    );
+                }
+            }
+        }
+
+        if let Some(root_vertex) = out.vertices.get_mut(&0) {
+            root_vertex.add_style("style=filled");
+            root_vertex.add_style("fillcolor=cyan");
+        }
+
+        out
+    }
+
+    #[cfg(feature = "partial_trie")]
+    pub fn from_partial_trie(name: impl ToString, trie: &PartialTrie) -> Self {
+        match trie.root.as_ref() {
+            Some(root) => Self::from_subtree(name, root),
+            None => Self::new(name.to_string()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct MultiGraph {
+    name: String,
+    label: Option<String>,
+    styles: Vec<String>,
+    sub_graphs: Vec<String>,
+}
+
+impl MultiGraph {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            label: None,
+            styles: Vec::new(),
+            sub_graphs: Vec::new(),
+        }
+    }
+
+    pub fn set_label(&mut self, label: impl ToString) {
+        self.label = Some(label.to_string());
+    }
+
+    pub fn add_style(&mut self, style: impl ToString) {
+        self.styles.push(style.to_string());
+    }
+
+    pub fn add_sub_graph(&mut self, sub_graph: &Graph) {
+        self.sub_graphs.push(sub_graph.to_dot(true));
+    }
+
+    pub fn add_sub_multi_graph(&mut self, sub_graph: &MultiGraph) {
+        self.sub_graphs.push(sub_graph.to_dot(true));
+    }
+
+    pub fn to_dot(&self, subgraph: bool) -> String {
+        let mut out = String::new();
+
+        if subgraph {
+            out.push_str(&format!("subgraph cluster_{} {{\n", self.name));
+        } else {
+            out.push_str(&format!("digraph {} {{\n", self.name));
+        }
+
+        if let Some(label) = &self.label {
+            out.push_str(&format!("    label=\"{}\";\n", label));
+        }
+
+        for style in &self.styles {
+            out.push_str(&format!("    {};\n", style));
+        }
+
+        if self.label.is_some() || self.styles.len() > 0 {
+            out.push_str("\n");
+        }
+
+        for sub_graph in &self.sub_graphs {
+            for line in sub_graph.lines() {
+                out.push_str(&format!("    {}\n", line));
+            }
+
+            out.push_str("\n");
+        }
+
+        out.push_str("}\n");
+        out
+    }
+
+    #[cfg(feature = "partial_trie")]
+    pub fn from_partial_trie_diff(name: impl ToString, diff: &PartialTrieDiff) -> Self {
+        let name = name.to_string();
+        let mut out = Self::new(name.to_string());
+
+        for (i, (prefix, subtree)) in diff.0.iter().enumerate() {
+            let sub_graph_name = format!("{}_diff{}", name, i);
+            let mut sub_graph = Graph::from_subtree(sub_graph_name, subtree);
+            sub_graph.set_label(format!("prefix={}", prefix));
+            out.add_sub_graph(&sub_graph);
+        }
+
+        out
+    }
+}
+
+#[cfg(feature = "std")]
+mod draw_graph {
+    use super::*;
+    use std::{fs, path::Path, process::Command};
+
+    pub fn draw_dot(dot: String, path: impl AsRef<Path>) -> Result<()> {
         let path = path.as_ref();
-        std::fs::write(path, self.to_dot())?;
+        if let Some(parent_dir) = path.parent() {
+            fs::create_dir_all(parent_dir)?;
+        }
+        fs::write(path, dot)?;
         Command::new("dot")
-            .arg("-Tpng")
+            .arg("-Tpdf")
             .arg(path)
             .arg("-o")
-            .arg(format!("{}.png", path.to_string_lossy()))
+            .arg(format!("{}.pdf", path.to_string_lossy()))
             .status()?;
         Ok(())
     }
-}
 
-pub fn trie_to_draw<V: Value + fmt::Display>(
-    trie: &impl NodeLoader<V>,
-    root: H256,
-) -> Result<Draw> {
-    let mut draw = Draw::default();
-    let mut queue: VecDeque<(H256, u32, String)> = VecDeque::new();
-    queue.push_back((root, 0, String::new()));
-
-    while let Some((cur, parent_id, edge_label)) = queue.pop_front() {
-        let cur_id = draw.get_next_vertex_id();
-
-        let node = match trie.check_address_and_load_node(cur)? {
-            Some(n) => n,
-            None => {
-                continue;
-            }
-        };
-
-        if cur_id != 0 {
-            draw.add_edge(parent_id, cur_id, edge_label);
-        }
-
-        match &node {
-            TrieNode::Extension(n) => {
-                draw.add_vertex(
-                    cur_id,
-                    format!("Extension(n={})\n{}", n.nibbles, n.to_digest()),
-                );
-                queue.push_back((n.child, cur_id, String::new()));
-            }
-            TrieNode::Branch(n) => {
-                draw.add_vertex(cur_id, format!("Branch\n{}", n.to_digest()));
-                for (i, child) in n.children.iter().enumerate() {
-                    if let Some(c) = child {
-                        queue.push_back((*c, cur_id, format!("{:x}", i)));
-                    }
-                }
-            }
-            TrieNode::Leaf(n) => {
-                draw.add_vertex(
-                    cur_id,
-                    format!("Leaf(n={},v={})\n{}", n.nibbles, n.value, n.to_digest()),
-                );
-            }
-        }
+    pub fn draw_trie<V: Value + fmt::Display>(
+        trie: &impl NodeLoader<V>,
+        root: H256,
+        path: impl AsRef<Path>,
+    ) -> Result<()> {
+        draw_dot(Graph::from_trie("trie", trie, root)?.to_dot(false), path)
     }
 
-    Ok(draw)
-}
-
-pub fn proof_to_draw(trie: &Proof) -> Draw {
-    let mut draw = Draw::default();
-    let root_node = match trie.root.as_ref() {
-        Some(root) => root,
-        None => {
-            return draw;
-        }
-    };
-
-    let mut queue: VecDeque<(&SubProof, u32, String)> = VecDeque::new();
-    queue.push_back((root_node, 0, String::new()));
-
-    while let Some((cur, parent_id, edge_label)) = queue.pop_front() {
-        let cur_id = draw.get_next_vertex_id();
-
-        if cur_id != 0 {
-            draw.add_edge(parent_id, cur_id, edge_label);
-        }
-
-        match cur {
-            SubProof::Hash(h) => {
-                draw.add_vertex(cur_id, format!("Hash\n{}", h));
-            }
-            SubProof::Extension(n) => {
-                draw.add_vertex(
-                    cur_id,
-                    format!("Extension(n={})\n{}", n.nibbles, n.to_digest()),
-                );
-                queue.push_back((&n.child, cur_id, String::new()));
-            }
-            SubProof::Branch(n) => {
-                draw.add_vertex(cur_id, format!("Branch\n{}", n.to_digest()));
-                for (i, child) in n.children.iter().enumerate() {
-                    if let Some(c) = child.as_ref() {
-                        queue.push_back((c, cur_id, format!("{:x}", i)));
-                    }
-                }
-            }
-            SubProof::Leaf(n) => {
-                draw.add_vertex(
-                    cur_id,
-                    format!(
-                        "Leaf(n={},v={})\n{}",
-                        n.nibbles,
-                        n.value_hash,
-                        n.to_digest(),
-                    ),
-                );
-            }
-        }
+    pub fn draw_proof(proof: &Proof, path: impl AsRef<Path>) -> Result<()> {
+        draw_dot(Graph::from_proof("proof", proof).to_dot(false), path)
     }
 
-    draw
-}
-
-#[cfg(feature = "partial_trie")]
-pub fn partial_trie_to_draw(trie: &PartialTrie) -> Draw {
-    let mut draw = Draw::default();
-    let root_node = match trie.root.as_ref() {
-        Some(root) => root,
-        None => {
-            return draw;
-        }
-    };
-
-    let mut queue: VecDeque<(&SubTree, u32, String)> = VecDeque::new();
-    queue.push_back((root_node, 0, String::new()));
-
-    while let Some((cur, parent_id, edge_label)) = queue.pop_front() {
-        let cur_id = draw.get_next_vertex_id();
-
-        if cur_id != 0 {
-            draw.add_edge(parent_id, cur_id, edge_label);
-        }
-
-        match cur {
-            SubTree::Hash(h) => {
-                draw.add_vertex(cur_id, format!("Hash\n{}", h));
-            }
-            SubTree::Extension(n) => {
-                draw.add_vertex(
-                    cur_id,
-                    format!("Extension(n={})\n{}", n.nibbles, n.to_digest()),
-                );
-                queue.push_back((&n.child, cur_id, String::new()));
-            }
-            SubTree::Branch(n) => {
-                draw.add_vertex(cur_id, format!("Branch\n{}", n.to_digest()));
-                for (i, child) in n.children.iter().enumerate() {
-                    if let Some(c) = child.as_ref() {
-                        queue.push_back((c, cur_id, format!("{:x}", i)));
-                    }
-                }
-            }
-            SubTree::Leaf(n) => {
-                draw.add_vertex(
-                    cur_id,
-                    format!(
-                        "Leaf(n={},v={})\n{}",
-                        n.nibbles,
-                        n.value_hash,
-                        n.to_digest(),
-                    ),
-                );
-            }
-        }
+    #[cfg(feature = "partial_trie")]
+    pub fn draw_partial_trie(trie: &PartialTrie, path: impl AsRef<Path>) -> Result<()> {
+        draw_dot(
+            Graph::from_partial_trie("partial_trie", trie).to_dot(false),
+            path,
+        )
     }
 
-    draw
+    #[cfg(feature = "partial_trie")]
+    pub fn draw_partial_trie_diff(diff: &PartialTrieDiff, path: impl AsRef<Path>) -> Result<()> {
+        draw_dot(
+            MultiGraph::from_partial_trie_diff("partial_trie_diff", diff).to_dot(false),
+            path,
+        )
+    }
 }
+
+#[cfg(feature = "std")]
+pub use draw_graph::*;
