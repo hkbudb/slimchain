@@ -24,6 +24,6 @@ pub trait TxTrieTrait: Clone + Send + Sync {
         other_keys: impl Iterator<Item = StateKey>,
     ) -> Result<()>;
 
-    #[cfg(feature = "dump")]
-    fn dump(&self, dir: impl AsRef<std::path::Path>) -> Result<()>;
+    #[cfg(feature = "draw")]
+    fn draw(&self, dir: impl AsRef<std::path::Path>) -> Result<()>;
 }

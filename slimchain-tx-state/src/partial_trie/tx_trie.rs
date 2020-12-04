@@ -370,31 +370,34 @@ impl TxTrieTrait for TxTrie {
         Ok(())
     }
 
-    #[cfg(feature = "dump")]
-    fn dump(&self, dir: impl AsRef<std::path::Path>) -> Result<()> {
-        use slimchain_merkle_trie::draw::partial_trie_to_draw;
-        use std::fs;
+    #[cfg(feature = "draw")]
+    fn draw(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
+        use alloc::{string::ToString, vec};
+        use slimchain_merkle_trie::draw::*;
 
-        let dir = dir.as_ref().to_path_buf();
-        fs::create_dir_all(&dir)?;
+        let mut graph = MultiGraph::new("tx_trie");
+        let main_trie_graph = Graph::from_partial_trie("main_trie", &self.main_trie);
+        graph.add_sub_graph(&main_trie_graph);
 
-        partial_trie_to_draw(&self.main_trie).draw(&dir.join("main_trie"))?;
+        for (i, (acc_addr, acc_trie)) in self.acc_tries.iter().enumerate() {
+            let mut acc_trie_graph =
+                Graph::from_partial_trie(format!("acc_trie_{}", i), &acc_trie.state_trie);
+            acc_trie_graph.set_label(format!(
+                "addr = {}\nnonce = {}\ncode_hash = {}\nhash = {}",
+                acc_addr,
+                acc_trie.nonce,
+                acc_trie.code_hash,
+                acc_trie.acc_hash()
+            ));
+            graph.add_sub_graph(&acc_trie_graph);
 
-        for (acc_addr, acc_trie) in &self.acc_tries {
-            let acc_dir = dir.join(format!("{}", acc_addr));
-            fs::create_dir(&acc_dir)?;
-            partial_trie_to_draw(&acc_trie.state_trie).draw(&acc_dir.join("state_trie"))?;
-            fs::write(
-                &acc_dir.join("data"),
-                format!(
-                    "nonce = {}\ncode_hash = {}\nhash = {}\n",
-                    acc_trie.nonce,
-                    acc_trie.code_hash,
-                    acc_trie.acc_hash()
-                ),
-            )?;
+            if let Some(parent_id) = main_trie_graph.vertex_dot_id(acc_addr) {
+                if let Some(child_id) = acc_trie_graph.vertex_dot_id(NibbleBuf::default()) {
+                    graph.add_edge(parent_id, child_id, None, vec!["style=dashed".to_string()]);
+                }
+            }
         }
 
-        Ok(())
+        draw_dot(graph.to_dot(false), path)
     }
 }

@@ -299,20 +299,19 @@ impl TxTrieTrait for StorageTxTrie {
         Ok(())
     }
 
-    #[cfg(feature = "dump")]
-    fn dump(&self, dir: impl AsRef<std::path::Path>) -> Result<()> {
-        use slimchain_merkle_trie::draw::partial_trie_to_draw;
-        use std::fs;
+    #[cfg(feature = "draw")]
+    fn draw(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
+        use slimchain_merkle_trie::draw::*;
 
-        let dir = dir.as_ref().to_path_buf();
-        fs::create_dir_all(&dir)?;
+        let mut graph = MultiGraph::new("storage_tx_trie");
 
-        for (acc_addr, acc_trie) in &self.out_shard.0 {
-            let acc_dir = dir.join(format!("{}", acc_addr));
-            fs::create_dir(&acc_dir)?;
-            partial_trie_to_draw(&acc_trie.state_trie).draw(&acc_dir.join("state_trie"))?;
+        for (i, (acc_addr, acc_trie)) in self.out_shard.iter().enumerate() {
+            let mut acc_trie_graph =
+                Graph::from_partial_trie(format!("acc_trie_{}", i), &acc_trie.state_trie);
+            acc_trie_graph.set_label(format!("addr = {}", acc_addr));
+            graph.add_sub_graph(&acc_trie_graph);
         }
 
-        Ok(())
+        draw_dot(graph.to_dot(false), path)
     }
 }

@@ -12,7 +12,7 @@ default = [
     "read",
     "std",
     "write",
-    "dump",
+    "draw",
 ]
 std = [
     "serde/std",
@@ -36,7 +36,7 @@ read = [
 write = [
     "slimchain-merkle-trie/write",
 ]
-dump = [
+draw = [
     "std",
     "slimchain-merkle-trie/draw",
 ]
