@@ -383,17 +383,26 @@ impl TxTrieTrait for TxTrie {
             let mut acc_trie_graph =
                 Graph::from_partial_trie(format!("acc_trie_{}", i), &acc_trie.state_trie);
             acc_trie_graph.set_label(format!(
-                "addr = {}\nnonce = {}\ncode_hash = {}\nhash = {}",
+                "addr = {}\nnonce = {}\ncode_hash = {}\nstate_hash = {}\nhash = {}",
                 acc_addr,
                 acc_trie.nonce,
                 acc_trie.code_hash,
+                acc_trie.state_trie.root_hash(),
                 acc_trie.acc_hash()
             ));
             graph.add_sub_graph(&acc_trie_graph);
 
             if let Some(parent_id) = main_trie_graph.vertex_dot_id(acc_addr) {
                 if let Some(child_id) = acc_trie_graph.vertex_dot_id(NibbleBuf::default()) {
-                    graph.add_edge(parent_id, child_id, None, vec!["style=dashed".to_string()]);
+                    graph.add_edge(
+                        parent_id,
+                        child_id,
+                        None,
+                        vec![
+                            "style=dashed".to_string(),
+                            format!("lhead=cluster_{}", acc_trie_graph.get_name()),
+                        ],
+                    );
                 }
             }
         }

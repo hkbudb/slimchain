@@ -62,6 +62,10 @@ impl Graph {
         }
     }
 
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+
     pub fn set_label(&mut self, label: impl ToString) {
         self.label = Some(label.to_string());
     }
@@ -125,7 +129,7 @@ impl Graph {
         }
 
         if self.label.is_some() || self.styles.len() > 0 {
-            out.push_str("\n");
+            out.push('\n');
         }
 
         for Vertex { id, label, styles } in self.vertices.values() {
@@ -391,6 +395,10 @@ impl MultiGraph {
         }
     }
 
+    pub fn get_name(&self) -> &String {
+        &self.name
+    }
+
     pub fn set_label(&mut self, label: impl ToString) {
         self.label = Some(label.to_string());
     }
@@ -435,20 +443,28 @@ impl MultiGraph {
             out.push_str(&format!("    label=\"{}\";\n", label.replace("\n", "\\n")));
         }
 
+        if !subgraph {
+            out.push_str("    compound=true;\n");
+        }
+
         for style in &self.styles {
             out.push_str(&format!("    {};\n", style));
         }
 
-        if self.label.is_some() || self.styles.len() > 0 {
-            out.push_str("\n");
+        if self.label.is_some() || !subgraph || self.styles.len() > 0 {
+            out.push('\n');
         }
 
         for sub_graph in &self.sub_graphs {
             for line in sub_graph.lines() {
-                out.push_str(&format!("    {}\n", line));
+                if line.is_empty() {
+                    out.push('\n');
+                } else {
+                    out.push_str(&format!("    {}\n", line));
+                }
             }
 
-            out.push_str("\n");
+            out.push('\n');
         }
 
         for MultiGraphEdge {

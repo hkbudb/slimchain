@@ -103,4 +103,56 @@ impl TxWriteSetTrie {
 
         Ok(())
     }
+
+    #[cfg(feature = "draw")]
+    pub fn to_graph(
+        &self,
+        name: impl alloc::string::ToString,
+    ) -> slimchain_merkle_trie::draw::MultiGraph {
+        use alloc::{string::ToString, vec};
+        use slimchain_merkle_trie::draw::*;
+
+        let name = name.to_string();
+        let mut graph = MultiGraph::new(name.clone());
+        let main_trie_graph =
+            Graph::from_partial_trie(format!("{}_main_trie", name), &self.main_trie);
+        graph.add_sub_graph(&main_trie_graph);
+
+        for (i, (acc_addr, acc_trie)) in self.acc_tries.iter().enumerate() {
+            let mut acc_trie_graph =
+                Graph::from_partial_trie(format!("{}_acc_trie_{}", name, i), &acc_trie.state_trie);
+            acc_trie_graph.set_label(format!(
+                "addr = {}\nnonce = {}\ncode_hash = {}\nstate_hash = {}\nhash = {}",
+                acc_addr,
+                acc_trie.nonce,
+                acc_trie.code_hash,
+                acc_trie.state_trie.root_hash(),
+                acc_trie.acc_hash()
+            ));
+            graph.add_sub_graph(&acc_trie_graph);
+
+            if let Some(parent_id) = main_trie_graph.vertex_dot_id(acc_addr) {
+                if let Some(child_id) = acc_trie_graph.vertex_dot_id(NibbleBuf::default()) {
+                    graph.add_edge(
+                        parent_id,
+                        child_id,
+                        None,
+                        vec![
+                            "style=dashed".to_string(),
+                            format!("lhead=cluster_{}", acc_trie_graph.get_name()),
+                        ],
+                    );
+                }
+            }
+        }
+
+        graph
+    }
+
+    #[cfg(feature = "draw")]
+    pub fn draw(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
+        use slimchain_merkle_trie::draw::*;
+        let graph = self.to_graph("write_set_trie");
+        draw_dot(graph.to_dot(false), path)
+    }
 }
