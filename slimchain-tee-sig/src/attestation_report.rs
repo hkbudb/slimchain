@@ -8,7 +8,7 @@ use slimchain_common::{
     error::{bail, ensure, Context as _, Error, Result},
 };
 use webpki::{EndEntityCert, TLSClientTrustAnchors, TrustAnchor};
-use x509_parser::parse_x509_der;
+use x509_parser::parse_x509_certificate;
 
 include!(concat!(env!("OUT_DIR"), "/root_ca.rs"));
 
@@ -19,7 +19,7 @@ fn remove_root_ca_from_cert_chain(input: &str) -> Vec<Vec<u8>> {
     pem::parse_many(input.as_bytes())
         .into_iter()
         .filter(|cert| {
-            parse_x509_der(&cert.contents)
+            parse_x509_certificate(&cert.contents)
                 .map(|(_, cert)| cert.tbs_certificate.subject.to_string() != ROOT_CA_NAME)
                 .unwrap_or(true)
         })
