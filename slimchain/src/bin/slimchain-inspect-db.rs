@@ -1,4 +1,4 @@
-use slimchain_chain::db::{BLOCK_DB_COL, DB, META_DB_COL, STATE_DB_COL, TX_DB_COL};
+use slimchain_chain::db::{BLOCK_DB_COL, DB, LOG_DB_COL, META_DB_COL, STATE_DB_COL, TX_DB_COL};
 use slimchain_common::{
     basic::BlockHeight,
     error::{bail, Context as _, Result},
@@ -40,6 +40,7 @@ fn main() -> Result<()> {
         .get_existing_meta_object("height")
         .context("Failed to get block height from the database.")?;
     let meta_db_size = db.get_table_size(META_DB_COL);
+    let log_db_size = db.get_table_size(LOG_DB_COL);
     let block_db_size = db.get_table_size(BLOCK_DB_COL);
     let tx_db_size = db.get_table_size(TX_DB_COL);
     let state_db_size = db.get_table_size(STATE_DB_COL);
@@ -48,6 +49,7 @@ fn main() -> Result<()> {
     println!("Database size breakdown:");
     println!(" Height = {}", height);
     println!(" META = {}", meta_db_size);
+    println!(" RAFT_LOG = {}", log_db_size);
     println!(
         " BLOCK = {} ({} per block)",
         block_db_size,
@@ -73,6 +75,7 @@ fn main() -> Result<()> {
         let out_data = serde_json::json!({
             "height": height.0,
             "meta_db_size": meta_db_size,
+            "log_db_size": log_db_size,
             "block_db_size": block_db_size,
             "tx_db_size": tx_db_size,
             "state_db_size": state_db_size,
