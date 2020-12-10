@@ -100,9 +100,11 @@ where
             warn!("RpcServer inbound error: {:?}", error);
             None
         }
-        _ => {
-            unreachable!();
+        RpcRequestResponseEvent::ResponseSent { request_id, .. } => {
+            trace!("RpcServer response sent: request_id={:?}", request_id);
+            None
         }
+        _ => unreachable!(),
     }
 }
 
@@ -131,9 +133,7 @@ where
             ));
             (request_id, e)
         }
-        _ => {
-            unreachable!();
-        }
+        _ => unreachable!(),
     }
 }
 
