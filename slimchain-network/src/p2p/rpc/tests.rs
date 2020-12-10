@@ -20,7 +20,8 @@ impl NetworkBehaviourEventProcess<RpcRequestResponseEvent<String, String>> for T
     fn inject_event(&mut self, event: RpcRequestResponseEvent<String, String>) {
         if let Some((req, channel)) = handle_request_response_server_event(event) {
             self.request_response
-                .send_response(channel, format!("Hello {}!", req));
+                .send_response(channel, format!("Hello {}!", req))
+                .unwrap();
         }
     }
 }
