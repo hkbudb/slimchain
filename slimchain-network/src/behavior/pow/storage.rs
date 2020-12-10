@@ -119,11 +119,14 @@ impl<Tx: TxTrait + Serialize>
 {
     fn inject_event(&mut self, event: RpcRequestResponseEvent<SignedTxRequest, ()>) {
         if let Some((tx_req, channel)) = handle_request_response_server_event(event) {
-            debug!(tx_req_id = %tx_req.id(), "Recv TxReq");
+            let tx_req_id = tx_req.id();
+            debug!(%tx_req_id, "Recv TxReq");
             self.tx_req_tx
                 .start_send(tx_req)
                 .expect("Failed to send tx_req to TxEngine.");
-            self.rpc_server.send_response(channel, ());
+            if let Err(_) = self.rpc_server.send_response(channel, ()) {
+                error!(%tx_req_id, "Failed to send tx response back to client");
+            }
         }
     }
 }
