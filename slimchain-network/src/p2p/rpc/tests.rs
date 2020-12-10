@@ -1,6 +1,7 @@
 use super::*;
 use crate::p2p::control::{Shutdown, Swarmer};
 use libp2p::identity::Keypair;
+use serial_test::serial;
 use slimchain_utils::init_tracing_for_test;
 
 #[derive(NetworkBehaviour)]
@@ -34,6 +35,7 @@ impl Shutdown for TestServer {
 }
 
 #[tokio::test]
+#[serial]
 async fn test() {
     let _guard = init_tracing_for_test();
 

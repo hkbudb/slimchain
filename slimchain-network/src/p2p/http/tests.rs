@@ -1,10 +1,12 @@
 use super::*;
 use crate::http::client_rpc::*;
 use rand::SeedableRng;
+use serial_test::serial;
 use slimchain_common::{ed25519::Keypair, tx_req::TxRequest};
 use slimchain_utils::init_tracing_for_test;
 
 #[tokio::test]
+#[serial]
 async fn test() {
     let _guard = init_tracing_for_test();
 
