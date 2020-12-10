@@ -124,7 +124,7 @@ impl<Tx: TxTrait + Serialize>
             self.tx_req_tx
                 .start_send(tx_req)
                 .expect("Failed to send tx_req to TxEngine.");
-            if let Err(_) = self.rpc_server.send_response(channel, ()) {
+            if self.rpc_server.send_response(channel, ()).is_err() {
                 error!(%tx_req_id, "Failed to send tx response back to client");
             }
         }

@@ -128,7 +128,7 @@ impl Graph {
             out.push_str(&format!("    {};\n", style));
         }
 
-        if self.label.is_some() || self.styles.len() > 0 {
+        if self.label.is_some() || !self.styles.is_empty() {
             out.push('\n');
         }
 
@@ -451,7 +451,7 @@ impl MultiGraph {
             out.push_str(&format!("    {};\n", style));
         }
 
-        if self.label.is_some() || !subgraph || self.styles.len() > 0 {
+        if self.label.is_some() || !subgraph || !self.styles.is_empty() {
             out.push('\n');
         }
 
