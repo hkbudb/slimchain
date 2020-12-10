@@ -71,7 +71,7 @@ pub struct Discovery {
 }
 
 impl Discovery {
-    pub fn new(pk: PublicKey, role: Role, enable_mdns: bool) -> Result<Self> {
+    pub async fn new(pk: PublicKey, role: Role, enable_mdns: bool) -> Result<Self> {
         let peer_id = PeerId::from(pk.clone());
 
         let mut kad = {
@@ -93,7 +93,7 @@ impl Discovery {
         );
 
         let mdns = if enable_mdns {
-            Some(Mdns::new()?)
+            Some(Mdns::new().await?)
         } else {
             None
         };

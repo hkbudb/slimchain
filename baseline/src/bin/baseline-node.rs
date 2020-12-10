@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
 
             match role {
                 Role::Client => {
-                    let behavior = ClientBehavior::new(db, &net_cfg)?;
+                    let behavior = ClientBehavior::new(db, &net_cfg).await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     ctrl.call_with_sender(|swarm, ret| {
@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
                 Role::Miner => {
                     let miner_cfg: MinerConfig = cfg.get("miner")?;
                     info!("Miner Cfg: {:#?}", miner_cfg);
-                    let behavior = MinerBehavior::new(db, &miner_cfg, &net_cfg)?;
+                    let behavior = MinerBehavior::new(db, &miner_cfg, &net_cfg).await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     ctrl.run_until_interrupt().await?;

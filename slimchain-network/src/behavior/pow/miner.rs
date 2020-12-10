@@ -33,15 +33,15 @@ pub struct MinerBehavior<Tx: TxTrait + Serialize + 'static> {
     worker: BlockProposalWorker<Tx>,
 }
 
-impl<Tx: TxTrait + Serialize> MinerBehavior<Tx> {
-    pub fn new(
+impl<Tx: TxTrait + Serialize + 'static> MinerBehavior<Tx> {
+    pub async fn new(
         db: DBPtr,
         chain_cfg: &ChainConfig,
         miner_cfg: &MinerConfig,
         net_cfg: &NetworkConfig,
     ) -> Result<Self> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
-        let mut discv = Discovery::new(keypair.public(), Role::Miner, net_cfg.mdns)?;
+        let mut discv = Discovery::new(keypair.public(), Role::Miner, net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal], &[]);
         let snapshot = Snapshot::<Block, TxTrie>::load_from_db(&db, chain_cfg.state_len)?;

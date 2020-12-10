@@ -42,8 +42,8 @@ pub struct StorageBehavior<Tx: TxTrait + Serialize + 'static> {
     tx_exec_stream: TxExecuteStream<Tx, mpsc::UnboundedReceiver<SignedTxRequest>>,
 }
 
-impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
-    pub fn new(
+impl<Tx: TxTrait + Serialize + 'static> StorageBehavior<Tx> {
+    pub async fn new(
         db: DBPtr,
         engine: TxEngine<Tx>,
         shard_id: ShardId,
@@ -51,7 +51,8 @@ impl<Tx: TxTrait + Serialize> StorageBehavior<Tx> {
         net_cfg: &NetworkConfig,
     ) -> Result<Self> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
-        let mut discv = Discovery::new(keypair.public(), Role::Storage(shard_id), net_cfg.mdns)?;
+        let mut discv =
+            Discovery::new(keypair.public(), Role::Storage(shard_id), net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(
             keypair,

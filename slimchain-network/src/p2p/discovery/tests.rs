@@ -13,8 +13,8 @@ struct DiscoveryTest {
 }
 
 impl DiscoveryTest {
-    fn new(pk: PublicKey, role: Role, enable_mdns: bool) -> Result<Self> {
-        let discv = Discovery::new(pk, role, enable_mdns)?;
+    async fn new(pk: PublicKey, role: Role, enable_mdns: bool) -> Result<Self> {
+        let discv = Discovery::new(pk, role, enable_mdns).await?;
         Ok(Self { discv })
     }
 
@@ -57,7 +57,7 @@ async fn create_node(mdns: bool, role: Role) -> (PeerId, Multiaddr, Control<Disc
     let keypair = Keypair::generate_ed25519();
     let mut swarmer = Swarmer::new(
         keypair.clone(),
-        DiscoveryTest::new(keypair.public(), role, mdns).unwrap(),
+        DiscoveryTest::new(keypair.public(), role, mdns).await.unwrap(),
     )
     .unwrap();
     let address = swarmer.listen_on_str("/ip4/127.0.0.1/tcp/0").await.unwrap();

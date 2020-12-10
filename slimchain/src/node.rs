@@ -77,7 +77,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
 
             match role {
                 Role::Client => {
-                    let behavior = ClientBehavior::<Tx>::new(db, &chain_cfg, &net_cfg)?;
+                    let behavior = ClientBehavior::<Tx>::new(db, &chain_cfg, &net_cfg).await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     ctrl.call_with_sender(|swarm, ret| {
@@ -94,7 +94,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                 Role::Miner => {
                     let miner_cfg: MinerConfig = cfg.get("miner")?;
                     info!("Miner Cfg: {:#?}", miner_cfg);
-                    let behavior = MinerBehavior::<Tx>::new(db, &chain_cfg, &miner_cfg, &net_cfg)?;
+                    let behavior =
+                        MinerBehavior::<Tx>::new(db, &chain_cfg, &miner_cfg, &net_cfg).await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     ctrl.run_until_interrupt().await?;
@@ -102,7 +103,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                 Role::Storage(shard_id) => {
                     let engine = create_tx_engine(&cfg, &opts.enclave)?;
                     let behavior =
-                        StorageBehavior::<Tx>::new(db, engine, shard_id, &chain_cfg, &net_cfg)?;
+                        StorageBehavior::<Tx>::new(db, engine, shard_id, &chain_cfg, &net_cfg)
+                            .await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     ctrl.call_with_sender(|swarm, ret| {

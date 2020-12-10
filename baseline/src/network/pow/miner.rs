@@ -28,9 +28,9 @@ pub struct MinerBehavior {
 }
 
 impl MinerBehavior {
-    pub fn new(db: DBPtr, miner_cfg: &MinerConfig, net_cfg: &NetworkConfig) -> Result<Self> {
+    pub async fn new(db: DBPtr, miner_cfg: &MinerConfig, net_cfg: &NetworkConfig) -> Result<Self> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
-        let mut discv = Discovery::new(keypair.public(), Role::Miner, net_cfg.mdns)?;
+        let mut discv = Discovery::new(keypair.public(), Role::Miner, net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal], &[]);
         let height = db.get_meta_object("height")?.unwrap_or_default();
