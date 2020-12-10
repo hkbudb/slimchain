@@ -42,10 +42,6 @@ fn prune_key_inner(
                 return Ok(trie.clone());
             }
             SubTree::Extension(n) => {
-                if temp_node_prefix_len == kept_prefix_len {
-                    break;
-                }
-
                 if let Some(remaining) = cur_key.strip_prefix(&n.nibbles) {
                     temp_nodes.push(TempNode::Extension {
                         nibbles: n.nibbles.clone(),
@@ -82,10 +78,6 @@ fn prune_key_inner(
                 }
             }
             SubTree::Leaf(_) => {
-                if temp_node_prefix_len == kept_prefix_len {
-                    break;
-                }
-
                 // No node is pruned.
                 return Ok(trie.clone());
             }
