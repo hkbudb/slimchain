@@ -491,7 +491,7 @@ fn test_partial_trie_prune2() {
     let t2 = prune_key2(&t1, &key!("0000"), core::iter::once(key!("1000")), true).unwrap();
 
     assert_eq!(t1.root_hash(), t2.root_hash());
-    assert_eq!(t2.value_hash(&key!("0000")), None);
+    // assert_eq!(t2.value_hash(&key!("0000")), None);
     assert_eq!(t2.value_hash(&key!("1000")), Some(Value(2).to_digest()));
 }
 
