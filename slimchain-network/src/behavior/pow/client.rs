@@ -41,7 +41,7 @@ pub struct ClientBehavior<Tx: TxTrait + Serialize + 'static> {
 impl<Tx: TxTrait + Serialize + 'static> ClientBehavior<Tx> {
     pub async fn new(db: DBPtr, chain_cfg: &ChainConfig, net_cfg: &NetworkConfig) -> Result<Self> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
-        let peer_id = PeerId::from(keypair.public().clone());
+        let peer_id = PeerId::from(keypair.public());
 
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
