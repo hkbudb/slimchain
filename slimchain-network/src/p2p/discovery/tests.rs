@@ -57,7 +57,9 @@ async fn create_node(mdns: bool, role: Role) -> (PeerId, Multiaddr, Control<Disc
     let keypair = Keypair::generate_ed25519();
     let mut swarmer = Swarmer::new(
         keypair.clone(),
-        DiscoveryTest::new(keypair.public(), role, mdns).await.unwrap(),
+        DiscoveryTest::new(keypair.public(), role, mdns)
+            .await
+            .unwrap(),
     )
     .unwrap();
     let address = swarmer.listen_on_str("/ip4/127.0.0.1/tcp/0").await.unwrap();
