@@ -11,7 +11,7 @@ use crate::p2p::{
     },
 };
 use async_trait::async_trait;
-use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
+use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour, PeerId};
 use serde::Serialize;
 use slimchain_chain::{
     block_proposal::BlockProposal, config::ChainConfig, consensus::pow::Block, db::DBPtr,
@@ -41,10 +41,18 @@ pub struct ClientBehavior<Tx: TxTrait + Serialize + 'static> {
 impl<Tx: TxTrait + Serialize + 'static> ClientBehavior<Tx> {
     pub async fn new(db: DBPtr, chain_cfg: &ChainConfig, net_cfg: &NetworkConfig) -> Result<Self> {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
+        let peer_id = PeerId::from(keypair.public().clone());
+
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
         let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal], &[]);
-        let rpc_client = create_request_response_client("/tx_req/1");
+        let mut rpc_client = create_request_response_client("/tx_req/1");
+
+        for peer in &net_cfg.peers {
+            if peer_id != peer.peer_id {
+                rpc_client.add_address(&peer.peer_id, peer.address.clone());
+            }
+        }
 
         let snapshot = Snapshot::<Block, TxTrie>::load_from_db(&db, chain_cfg.state_len)?;
         let latest_block_header = snapshot.to_latest_block_header();
