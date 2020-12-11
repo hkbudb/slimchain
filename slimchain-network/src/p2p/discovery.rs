@@ -93,7 +93,13 @@ impl Discovery {
         );
 
         let mdns = if enable_mdns {
-            Some(Mdns::new().await?)
+            match Mdns::new().await {
+                Ok(mdns) => Some(mdns),
+                Err(e) => {
+                    error!("Failed to enable mdns. Error: {}", e);
+                    None
+                }
+            }
         } else {
             None
         };
