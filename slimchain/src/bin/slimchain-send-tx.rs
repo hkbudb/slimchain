@@ -2,13 +2,13 @@
 extern crate tracing;
 
 use once_cell::sync::{Lazy, OnceCell};
-use rand::{distributions::Uniform, prelude::*};
+use rand::{distributions::Uniform, prelude::*, rngs::StdRng};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
-    basic::{Address, ShardId, U256},
+    basic::{Address, Nonce, ShardId, U256},
     ed25519::Keypair,
-    error::{anyhow, bail, Result},
+    error::{anyhow, bail, Context as _, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
 use slimchain_network::http::client_rpc::{
@@ -20,6 +20,7 @@ use slimchain_utils::{
     init_tracing_subscriber,
 };
 use std::{
+    collections::VecDeque,
     fs::File,
     io::{self, prelude::*},
     path::PathBuf,
@@ -70,7 +71,7 @@ impl ContractArg {
         }
     }
 
-    fn gen_tx_input(self, rng: &mut ThreadRng) -> Result<Vec<u8>> {
+    fn gen_tx_input(self, rng: &mut impl Rng) -> Result<Vec<u8>> {
         match self {
             ContractArg::CpuHeavy => {
                 static CPU_HEAVY_TX_INPUT: OnceCell<Vec<u8>> = OnceCell::new();
@@ -227,14 +228,17 @@ fn parse_contract_arg(input: &str) -> Result<ContractArg> {
     })
 }
 
-fn create_deploy_tx(contract: ContractArg, shard_id: ShardId) -> (Address, SignedTxRequest) {
+fn create_deploy_tx(
+    rng: &mut (impl Rng + CryptoRng),
+    contract: ContractArg,
+    shard_id: ShardId,
+) -> (Address, SignedTxRequest) {
     info!(
         "Create deploy tx for contract {:?} at {:?}",
         contract, shard_id
     );
-    let mut rng = thread_rng();
     loop {
-        let keypair = Keypair::generate(&mut rng);
+        let keypair = Keypair::generate(rng);
         let caller_address = caller_address_from_pk(&keypair.public);
         let contract_address = contract_address(caller_address, U256::from(0).into());
         if shard_id.contains(contract_address) {
@@ -264,6 +268,14 @@ struct Opts {
     /// Number of TX per seconds.
     #[structopt(short, long)]
     rate: usize,
+
+    /// Seed used for RNG.
+    #[structopt(long)]
+    seed: Option<u64>,
+
+    /// Maximum number of accounts.
+    #[structopt(short, long)]
+    accounts: Option<usize>,
 
     /// List of contracts. Accepted values: cpuheavy, donothing, ioheavy, kvstore, and smallbank.
     #[structopt(parse(try_from_str = parse_contract_arg), required = true)]
@@ -302,6 +314,11 @@ async fn main() -> Result<()> {
 
     send_record_event_with_data(&opts.endpoint, "send-tx-opts", &opts).await?;
 
+    let mut rng = match opts.seed {
+        Some(seed) => StdRng::seed_from_u64(seed),
+        None => StdRng::from_entropy(),
+    };
+
     let mut contracts: Vec<(Address, ShardId, ContractArg)> =
         Vec::with_capacity(opts.contract.len());
     let deploy_txs: Vec<(SignedTxRequest, ShardId)> = opts
@@ -311,7 +328,7 @@ async fn main() -> Result<()> {
         .map(|(id, &contract)| {
             let id = (id as u64) % opts.shard;
             let shard_id = ShardId::new(id as u64, opts.shard);
-            let (address, deploy_tx) = create_deploy_tx(contract, shard_id);
+            let (address, deploy_tx) = create_deploy_tx(&mut rng, contract, shard_id);
             debug!("tx {} address {}", id, address);
             contracts.push((address, shard_id, contract));
             (deploy_tx, shard_id)
@@ -332,10 +349,9 @@ async fn main() -> Result<()> {
     }
     info!("Deploy finished");
 
-    let keys: Vec<Keypair> = {
-        let mut keygen_rng = thread_rng();
-        std::iter::repeat_with(|| Keypair::generate(&mut keygen_rng))
-            .take(opts.total)
+    let mut accounts: VecDeque<(Keypair, Nonce)> = {
+        std::iter::repeat_with(|| (Keypair::generate(&mut rng), Nonce::zero()))
+            .take(opts.accounts.unwrap_or(opts.total))
             .collect()
     };
 
@@ -344,20 +360,22 @@ async fn main() -> Result<()> {
     const ONE_SECOND: Duration = Duration::from_secs(1);
     let mut next_epoch = begin + ONE_SECOND;
 
-    let mut rng = thread_rng();
     let mut reqs = Vec::with_capacity(opts.rate + 1);
     let mut next_epoch_fut = delay_until(next_epoch);
-    for (i, key) in keys.iter().enumerate() {
+    for i in 0..opts.total {
         let (address, shard_id, contract) = contracts
             .choose(&mut rng)
             .copied()
             .expect("Failed to get contract.");
+        let (key, nonce) = accounts.pop_front().context("Failed to get account.")?;
         let tx_req = TxRequest::Call {
-            nonce: U256::from(0).into(),
+            nonce,
             address,
             data: contract.gen_tx_input(&mut rng)?,
         };
-        let signed_tx_req = tx_req.sign(key);
+        let signed_tx_req = tx_req.sign(&key);
+        accounts.push_back((key, (U256::from(nonce) + 1).into()));
+
         reqs.push((signed_tx_req, shard_id));
 
         if reqs.len() == opts.rate {
