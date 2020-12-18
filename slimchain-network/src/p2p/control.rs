@@ -27,7 +27,7 @@ where
     Behaviour: NetworkBehaviour + Shutdown,
     <Behaviour as NetworkBehaviour>::ProtocolsHandler: IntoProtocolsHandler + Send + 'static,
     <<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler: ProtocolsHandler,
-    <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone + Send + 'static,
+    <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Send + 'static,
     <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::OutEvent: Send + 'static,
 {
     peer_id: PeerId,
@@ -40,7 +40,7 @@ where
     Behaviour: NetworkBehaviour + Shutdown,
     <Behaviour as NetworkBehaviour>::ProtocolsHandler: IntoProtocolsHandler + Send + 'static,
     <<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler: ProtocolsHandler,
-    <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone + Send + 'static,
+    <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Send + 'static,
     <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::OutEvent: Send + 'static,
 {
     pub fn new(key_pair: Keypair, behaviour: Behaviour) -> Result<Self> {
