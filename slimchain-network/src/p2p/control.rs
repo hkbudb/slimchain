@@ -46,7 +46,7 @@ where
     pub fn new(key_pair: Keypair, behaviour: Behaviour) -> Result<Self> {
         let peer_id = key_pair.public().into_peer_id();
         let transport = build_tcp_ws_noise_mplex_yamux(key_pair.clone())?;
-        let swarm = Swarm::new(transport, behaviour, peer_id.clone());
+        let swarm = Swarm::new(transport, behaviour, peer_id);
 
         Ok(Self {
             peer_id,
@@ -131,7 +131,7 @@ where
 
     pub async fn spawn_app(mut self, address: &str) -> Result<Control<Behaviour>> {
         let listen_addr = self.listen_on_str(address).await?;
-        let peer_cfg = crate::p2p::config::PeerConfig::new(self.peer_id().clone(), listen_addr);
+        let peer_cfg = crate::p2p::config::PeerConfig::new(self.peer_id, listen_addr);
         peer_cfg.print_config_msg();
         Ok(self.spawn())
     }

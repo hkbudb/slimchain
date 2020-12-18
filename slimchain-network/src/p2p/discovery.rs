@@ -77,11 +77,7 @@ impl Discovery {
         let mut kad = {
             let mut config = KademliaConfig::default();
             config.set_protocol_name(&b"/slimchain/discv/kad/1"[..]);
-            Kademlia::with_config(
-                peer_id.clone(),
-                KadMemoryStore::new(peer_id.clone()),
-                config,
-            )
+            Kademlia::with_config(peer_id, KadMemoryStore::new(peer_id), config)
         };
         kad.start_providing(role_to_kad_key(role))
             .map_err(|e| anyhow!("Failed to announce role. Error:{:?}", e))?;
@@ -200,7 +196,7 @@ impl Discovery {
     fn peer_table_add_node(&mut self, peer_id: PeerId, role: Role) {
         use slimchain_common::collections::hash_map::Entry;
 
-        match self.rev_peer_table.entry(peer_id.clone()) {
+        match self.rev_peer_table.entry(peer_id) {
             Entry::Occupied(o) => {
                 trace!("Refresh node {} with role {}", peer_id, role);
                 let (role2, delay) = o.get();
@@ -209,7 +205,7 @@ impl Discovery {
             }
             Entry::Vacant(v) => {
                 trace!("Add node {} with role {}", peer_id, role);
-                let delay = self.exp_peers.insert(peer_id.clone(), PEER_ENTRY_TTL);
+                let delay = self.exp_peers.insert(peer_id, PEER_ENTRY_TTL);
                 v.insert((role, delay));
                 self.peer_table.entry(role).or_default().insert(peer_id);
             }
@@ -294,7 +290,7 @@ impl NetworkBehaviourEventProcess<IdentifyEvent> for Discovery {
                     return;
                 }
             };
-            self.peer_table_add_node(peer_id.clone(), role);
+            self.peer_table_add_node(peer_id, role);
 
             for addr in info.listen_addrs {
                 self.add_address(&peer_id, addr);
