@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_iter_result() {
-        let input1: Vec<Result<i32, i32>> = vec![Ok(1), Ok(2), Err(0), Ok(3)];
+        let input1: Vec<Result<i32, i32>> = vec![Ok(1), Ok(2), Err(0), Ok(3), Err(1)];
         let input2: Vec<Result<i32, i32>> = vec![Ok(1), Ok(2), Ok(3)];
 
         assert_eq!(
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_iter_result_ref() {
-        let input1: Vec<Result<i32, i32>> = vec![Ok(1), Ok(2), Err(0), Ok(3)];
+        let input1: Vec<Result<i32, i32>> = vec![Ok(1), Ok(2), Err(0), Ok(3), Err(1)];
         let input2: Vec<Result<i32, i32>> = vec![Ok(1), Ok(2), Ok(3)];
 
         assert_eq!(
