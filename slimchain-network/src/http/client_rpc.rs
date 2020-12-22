@@ -1,8 +1,9 @@
+use super::common::*;
 use futures::prelude::*;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{BlockHeight, ShardId},
-    error::{ensure, Error, Result},
+    error::{Error, Result},
     tx_req::SignedTxRequest,
 };
 use slimchain_utils::record_event;
@@ -58,19 +59,14 @@ pub async fn send_tx_requests_with_shard(
         .map(|(req, shard_id)| TxHttpRequest { req, shard_id })
         .collect();
 
-    let mut resp = surf::post(&format!(
-        "http://{}/{}/{}",
-        endpoint, CLIENT_RPC_ROUTE_PATH, TX_REQ_ROUTE_PATH
-    ))
-    .body(surf::Body::from_json(&reqs).map_err(Error::msg)?)
+    send_post_request_using_postcard(
+        &format!(
+            "http://{}/{}/{}",
+            endpoint, CLIENT_RPC_ROUTE_PATH, TX_REQ_ROUTE_PATH
+        ),
+        &reqs,
+    )
     .await
-    .map_err(Error::msg)?;
-    ensure!(
-        resp.status().is_success(),
-        "Failed to send Tx http req (status code: {})",
-        resp.status()
-    );
-    resp.body_json().await.map_err(Error::msg)
 }
 
 pub async fn send_record_event(endpoint: &str, info: &str) -> Result<()> {
@@ -100,49 +96,30 @@ pub async fn send_record_event_with_data(
 }
 
 async fn send_record_event_inner(endpoint: &str, req: RecordEventHttpRequest) -> Result<()> {
-    let mut resp = surf::post(&format!(
-        "http://{}/{}/{}",
-        endpoint, CLIENT_RPC_ROUTE_PATH, RECORD_EVENT_ROUTE_PATH
-    ))
-    .body(surf::Body::from_json(&req).map_err(Error::msg)?)
+    send_post_request_using_json(
+        &format!(
+            "http://{}/{}/{}",
+            endpoint, CLIENT_RPC_ROUTE_PATH, RECORD_EVENT_ROUTE_PATH
+        ),
+        &req,
+    )
     .await
-    .map_err(Error::msg)?;
-    ensure!(
-        resp.status().is_success(),
-        "Failed to send record event http req (status code: {})",
-        resp.status()
-    );
-    resp.body_json().await.map_err(Error::msg)
 }
 
 pub async fn get_tx_count(endpoint: &str) -> Result<usize> {
-    let mut resp = surf::get(&format!(
+    send_get_request_using_postcard(&format!(
         "http://{}/{}/{}",
         endpoint, CLIENT_RPC_ROUTE_PATH, TX_COUNT_ROUTE_PATH
     ))
     .await
-    .map_err(Error::msg)?;
-    ensure!(
-        resp.status().is_success(),
-        "Failed to get tx count (status code: {})",
-        resp.status()
-    );
-    resp.body_json().await.map_err(Error::msg)
 }
 
 pub async fn get_block_height(endpoint: &str) -> Result<BlockHeight> {
-    let mut resp = surf::get(&format!(
+    send_get_request_using_postcard(&format!(
         "http://{}/{}/{}",
         endpoint, CLIENT_RPC_ROUTE_PATH, BLOCK_HEIGHT_ROUTE_PATH
     ))
     .await
-    .map_err(Error::msg)?;
-    ensure!(
-        resp.status().is_success(),
-        "Failed to get block height count (status code: {})",
-        resp.status()
-    );
-    resp.body_json().await.map_err(Error::msg)
 }
 
 #[derive(Debug)]
@@ -161,10 +138,10 @@ where
     let tx_req_fn = Arc::new(tx_req_fn);
     let tx_req_route = warp::post()
         .and(warp::path(TX_REQ_ROUTE_PATH))
-        .and(warp::body::json())
+        .and(warp_body_postcard())
         .and_then(move |reqs: Vec<TxHttpRequest>| {
             tx_req_fn(reqs)
-                .map_ok(|_| warp::reply::json(&()))
+                .map_ok(|_| warp_reply_postcard(&()))
                 .map_err(|e| warp::reject::custom(ClientRpcServerError(e)))
         });
     let record_event_route = warp::post()
@@ -179,14 +156,14 @@ where
         .and(warp::path(TX_COUNT_ROUTE_PATH))
         .map(move || {
             let tx_count = tx_count_fn();
-            warp::reply::json(&tx_count)
+            warp_reply_postcard(&tx_count)
         });
     let block_height_fn = Arc::new(block_height_fn);
     let block_height_route = warp::get()
         .and(warp::path(BLOCK_HEIGHT_ROUTE_PATH))
         .map(move || {
             let block_height = block_height_fn();
-            warp::reply::json(&block_height)
+            warp_reply_postcard(&block_height)
         });
     warp::path(CLIENT_RPC_ROUTE_PATH)
         .and(

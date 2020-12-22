@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 async-trait = "0.1"
 bs58 = "0.4"
+bytes = "0.5"
 futures = "0.3"
 libp2p = "0.33"
 once_cell = "1.5"
