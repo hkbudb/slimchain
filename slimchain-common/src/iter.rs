@@ -58,17 +58,17 @@ where
 pub struct IterResultRef<'a, 'b, T, E, I>
 where
     T: 'a,
-    E: 'a + Clone,
+    E: 'a,
     I: Iterator<Item = &'a Result<T, E>>,
 {
     input: I,
-    err: &'b mut Option<E>,
+    err: &'b mut Option<&'a E>,
 }
 
 impl<'a, 'b, T, E, I> Iterator for IterResultRef<'a, 'b, T, E, I>
 where
     T: 'a,
-    E: 'a + Clone,
+    E: 'a,
     I: Iterator<Item = &'a Result<T, E>>,
 {
     type Item = &'a T;
@@ -81,7 +81,7 @@ where
         match self.input.next() {
             Some(Ok(item)) => Some(item),
             Some(Err(e)) => {
-                self.err.replace(e.clone());
+                self.err.replace(e);
                 None
             }
             None => None,
@@ -97,10 +97,10 @@ where
     }
 }
 
-pub fn iter_result_ref<'a, T, U, E, I, F>(input: I, func: F) -> Result<U, E>
+pub fn iter_result_ref<'a, T, U, E, I, F>(input: I, func: F) -> Result<U, &'a E>
 where
     T: 'a,
-    E: 'a + Clone,
+    E: 'a,
     I: Iterator<Item = &'a Result<T, E>>,
     F: FnOnce(IterResultRef<'a, '_, T, E, I>) -> U,
 {
@@ -144,7 +144,7 @@ mod tests {
 
         assert_eq!(
             iter_result_ref(input1.iter(), |iter| iter.sum::<i32>()),
-            Err(0)
+            Err(&0)
         );
         assert_eq!(
             iter_result_ref(input2.iter(), |iter| iter.sum::<i32>()),
