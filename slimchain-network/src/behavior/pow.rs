@@ -7,9 +7,6 @@ pub use miner::*;
 pub mod storage;
 pub use storage::*;
 
-pub mod ordered_stream;
-pub use ordered_stream::*;
-
 use futures::{channel::mpsc, prelude::*, stream::Fuse};
 use serde::Serialize;
 use slimchain_chain::{
@@ -26,6 +23,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::{TxProposal, TxTrie, TxTrieTrait};
+use slimchain_utils::ordered_stream::OrderedStream;
 use std::{
     pin::Pin,
     task::{Context, Poll},

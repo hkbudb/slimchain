@@ -1,3 +1,6 @@
+#[macro_use]
+pub extern crate tracing;
+
 use slimchain_common::error::{Error, Result};
 use std::path::Path;
 use tracing_subscriber::EnvFilter;
@@ -5,11 +8,11 @@ use tracing_subscriber::EnvFilter;
 pub mod config;
 pub mod contract;
 pub mod metrics;
+pub mod ordered_stream;
 pub mod path;
 
 pub use chrono;
 pub use toml;
-pub use tracing;
 
 pub fn init_tracing_subscriber(default_level: &str) -> Result<()> {
     let filter = EnvFilter::try_from_default_env()

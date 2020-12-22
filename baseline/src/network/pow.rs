@@ -20,7 +20,7 @@ use slimchain_common::{
     error::{bail, Result},
     tx_req::SignedTxRequest,
 };
-use slimchain_network::behavior::pow::OrderedStream;
+use slimchain_utils::ordered_stream::OrderedStream;
 use std::{
     pin::Pin,
     sync::{
