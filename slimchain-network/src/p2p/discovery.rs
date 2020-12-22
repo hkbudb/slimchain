@@ -146,7 +146,7 @@ impl Discovery {
 
     pub fn random_known_peer(&self, role: &Role) -> Option<PeerId> {
         if let Some(list) = self.peer_table.get(role) {
-            let mut rng = &mut rand::thread_rng();
+            let mut rng = rand::thread_rng();
             list.iter().choose(&mut rng).cloned()
         } else {
             None
@@ -155,7 +155,7 @@ impl Discovery {
 
     pub fn random_known_peers(&self, role: &Role, amount: usize) -> Vec<PeerId> {
         if let Some(list) = self.peer_table.get(role) {
-            let mut rng = &mut rand::thread_rng();
+            let mut rng = rand::thread_rng();
             list.iter()
                 .choose_multiple(&mut rng, amount)
                 .into_iter()
