@@ -150,6 +150,7 @@ impl<Tx: TxTrait + Serialize>
 #[async_trait]
 impl<Tx: TxTrait + Serialize> Shutdown for StorageBehavior<Tx> {
     async fn shutdown(&mut self) -> Result<()> {
+        self.tx_req_tx.close_channel();
         self.import_worker.shutdown().await
     }
 }
