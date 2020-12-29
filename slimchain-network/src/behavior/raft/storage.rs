@@ -62,7 +62,7 @@ impl TxExecWorker {
                 }
 
                 if let Err(e) = inner(&route_table, tx_proposal).await {
-                    error!("Failed to send tx_proposal to raft leader. Error: {:?}", e);
+                    error!("Failed to send tx_proposal to raft leader. Error: {}", e);
                 }
             }
         });
