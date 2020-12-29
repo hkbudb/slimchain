@@ -148,7 +148,7 @@ impl<Tx> RaftNetwork<NewBlockRequest<Tx>> for ClientNodeNetwork<Tx>
 where
     Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    #[tracing::instrument(level = "debug", skip(self, rpc), err)]
+    #[tracing::instrument(level = "debug", skip(self, rpc))]
     async fn append_entries(
         &self,
         target: NodeId,
@@ -167,7 +167,7 @@ where
         .await
     }
 
-    #[tracing::instrument(level = "debug", skip(self, rpc), err)]
+    #[tracing::instrument(level = "debug", skip(self, rpc))]
     async fn install_snapshot(
         &self,
         target: NodeId,
@@ -186,7 +186,7 @@ where
         .await
     }
 
-    #[tracing::instrument(level = "debug", skip(self, rpc), err)]
+    #[tracing::instrument(level = "debug", skip(self, rpc))]
     async fn vote(&self, target: NodeId, rpc: VoteRequest) -> Result<VoteResponse> {
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
