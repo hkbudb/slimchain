@@ -83,8 +83,8 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                             continue;
                         }
                     },
-                    Err(ClientWriteError::ForwardToLeader(_, _)) => {
-                        warn!("Raft write should be forward to leader.");
+                    Err(ClientWriteError::ForwardToLeader(_, leader)) => {
+                        warn!("Raft write should be forward to leader ({:?}).", leader);
                         continue;
                     }
                     Err(ClientWriteError::RaftError(e)) => {
