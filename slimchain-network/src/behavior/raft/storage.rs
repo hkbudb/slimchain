@@ -48,7 +48,6 @@ impl TxExecWorker {
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             'outer: while let Some(tx_proposal) = tx_exec_stream.next().await {
-                let id = tx_proposal.tx.id();
                 let tx_proposals = vec![tx_proposal];
 
                 async fn inner<Tx: TxTrait + Serialize>(
@@ -64,11 +63,15 @@ impl TxExecWorker {
                     send_reqs_to_leader(leader_addr, tx_proposals).await
                 }
 
-                for i in 0..3 {
+                const MAX_RETRIES: i32 = 3;
+
+                for i in 1..=MAX_RETRIES {
                     match inner(&route_table, &tx_proposals).await {
                         Ok(_) => continue 'outer,
                         Err(e) => {
-                            error!("Failed to send tx_proposal to raft leader. Id: {}. Retry: {}. Error: {}", id, i, e);
+                            if i == MAX_RETRIES {
+                                error!("Failed to send tx_proposal to raft leader. Error: {}", e);
+                            }
                         }
                     }
                 }
