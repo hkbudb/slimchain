@@ -6,6 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
+async-raft = "0.6.0-alpha.1"
 async-trait = "0.1"
 bs58 = "0.4"
 bytes = "0.5"

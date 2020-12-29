@@ -133,7 +133,7 @@ pub fn client_rpc_server<TxReqOutput>(
     block_height_fn: impl Fn() -> BlockHeight + Send + Sync + 'static,
 ) -> warp::filters::BoxedFilter<(impl warp::Reply,)>
 where
-    TxReqOutput: TryFuture<Ok = (), Error = Error> + Send + Sync + 'static,
+    TxReqOutput: TryFuture<Ok = (), Error = Error> + Send + 'static,
 {
     let tx_req_fn = Arc::new(tx_req_fn);
     let tx_req_route = warp::post()

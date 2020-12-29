@@ -1,4 +1,5 @@
 use bytes::{Buf, Bytes};
+use futures::io::Cursor;
 use serde::{Deserialize, Serialize};
 use slimchain_common::error::{ensure, Error, Result};
 use warp::{
@@ -8,17 +9,25 @@ use warp::{
     Filter, Rejection,
 };
 
+macro_rules! check_resp {
+    ($resp:ident) => {
+        ensure!(
+            $resp.status().is_success(),
+            "Failed to send http req. Status code: {}. Msg: {}.",
+            $resp.status(),
+            $resp
+                .body_string()
+                .await
+                .unwrap_or_else(|e| format!("(Failed to decode http response: {})", e)),
+        );
+    };
+}
+
 pub async fn send_get_request_using_json<Resp: for<'de> Deserialize<'de>>(
     uri: &str,
 ) -> Result<Resp> {
     let mut resp = surf::get(uri).await.map_err(Error::msg)?;
-
-    ensure!(
-        resp.status().is_success(),
-        "Failed to send http req (status code: {})",
-        resp.status()
-    );
-
+    check_resp!(resp);
     resp.body_json().await.map_err(Error::msg)
 }
 
@@ -30,13 +39,7 @@ pub async fn send_post_request_using_json<Req: Serialize, Resp: for<'de> Deseria
         .body(surf::Body::from_json(&req).map_err(Error::msg)?)
         .await
         .map_err(Error::msg)?;
-
-    ensure!(
-        resp.status().is_success(),
-        "Failed to send http req (status code: {})",
-        resp.status()
-    );
-
+    check_resp!(resp);
     resp.body_json().await.map_err(Error::msg)
 }
 
@@ -44,13 +47,7 @@ pub async fn send_get_request_using_postcard<Resp: for<'de> Deserialize<'de>>(
     uri: &str,
 ) -> Result<Resp> {
     let mut resp = surf::get(uri).await.map_err(Error::msg)?;
-
-    ensure!(
-        resp.status().is_success(),
-        "Failed to send http req (status code: {})",
-        resp.status()
-    );
-
+    check_resp!(resp);
     let resp_bytes = resp.body_bytes().await.map_err(Error::msg)?;
     postcard::from_bytes(&resp_bytes[..]).map_err(Error::msg)
 }
@@ -63,13 +60,21 @@ pub async fn send_post_request_using_postcard<Req: Serialize, Resp: for<'de> Des
         .body(surf::Body::from_bytes(postcard::to_allocvec(req)?))
         .await
         .map_err(Error::msg)?;
+    check_resp!(resp);
+    let resp_bytes = resp.body_bytes().await.map_err(Error::msg)?;
+    postcard::from_bytes(&resp_bytes[..]).map_err(Error::msg)
+}
 
-    ensure!(
-        resp.status().is_success(),
-        "Failed to send http req (status code: {})",
-        resp.status()
-    );
-
+pub async fn send_post_request_using_postcard_bytes<Resp: for<'de> Deserialize<'de>>(
+    uri: &str,
+    req: Bytes,
+) -> Result<Resp> {
+    let req_len = req.len();
+    let mut resp = surf::post(uri)
+        .body(surf::Body::from_reader(Cursor::new(req), Some(req_len)))
+        .await
+        .map_err(Error::msg)?;
+    check_resp!(resp);
     let resp_bytes = resp.body_bytes().await.map_err(Error::msg)?;
     postcard::from_bytes(&resp_bytes[..]).map_err(Error::msg)
 }

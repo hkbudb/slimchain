@@ -6,10 +6,10 @@ use slimchain_chain::{
     role::Role,
 };
 use slimchain_common::{
-    error::{Context as _, Result},
+    error::{bail, Context as _, Result},
     tx::TxTrait,
 };
-use slimchain_network::p2p::{config::NetworkConfig, control::Swarmer};
+use slimchain_network::p2p::control::Swarmer;
 use slimchain_tx_engine::TxEngine;
 use slimchain_utils::{config::Config, init_tracing, path::binary_directory};
 use std::{path::PathBuf, time::Duration};
@@ -62,14 +62,15 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
     info!("Role: {}", role);
     let chain_cfg: ChainConfig = cfg.get("chain")?;
     info!("Chain Cfg: {:#?}", chain_cfg);
-    let net_cfg: NetworkConfig = cfg.get("network")?;
 
     let db = DB::open_or_create_in_dir(&opts.data.unwrap_or(bin_dir), role)?;
 
     match chain_cfg.consensus {
         Consensus::PoW => {
             use slimchain_chain::config::PoWConfig;
-            use slimchain_network::behavior::pow::*;
+            use slimchain_network::{behavior::pow::*, p2p::config::NetworkConfig};
+
+            let net_cfg: NetworkConfig = cfg.get("network")?;
 
             let pow_cfg: PoWConfig = cfg.get("pow").unwrap_or_default();
             info!("PoW initial difficulty: {}", pow_cfg.init_diff);
@@ -121,7 +122,37 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
             }
         }
         Consensus::Raft => {
-            todo!();
+            use slimchain_network::{
+                behavior::raft::{client::ClientNode, storage::StorageNode},
+                http::config::{NetworkConfig, RaftConfig},
+            };
+
+            let net_cfg: NetworkConfig = cfg.get("network")?;
+            let raft_cfg: RaftConfig = cfg.get("raft")?;
+
+            match role {
+                Role::Client => {
+                    let miner_cfg: MinerConfig = cfg.get("miner")?;
+                    let mut client: ClientNode<Tx> =
+                        ClientNode::new(db, &chain_cfg, &miner_cfg, &net_cfg, &raft_cfg).await?;
+                    info!("Press Ctrl-C to quit.");
+                    tokio::signal::ctrl_c().await?;
+                    info!("Quitting.");
+                    client.shutdown().await?;
+                }
+                Role::Storage(shard_id) => {
+                    let engine = create_tx_engine(&cfg, &opts.enclave)?;
+                    let mut storage =
+                        StorageNode::new(db, engine, shard_id, &chain_cfg, &net_cfg).await?;
+                    info!("Press Ctrl-C to quit.");
+                    tokio::signal::ctrl_c().await?;
+                    info!("Quitting.");
+                    storage.shutdown().await?;
+                }
+                Role::Miner => {
+                    bail!("Role cannot be miner.");
+                }
+            }
         }
     }
 
