@@ -83,6 +83,8 @@ where
         }
     }
 
+    #[allow(clippy::ptr_arg)]
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, tx_proposals), err)]
     pub async fn forward_tx_proposal_to_leader(
         &self,
@@ -94,6 +96,7 @@ where
         send_reqs_to_leader(addr, tx_proposals).await
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, block_proposal), fields(height = block_proposal.get_block_height().0), err)]
     pub async fn broadcast_block_proposal_to_storage_node(
         &self,

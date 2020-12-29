@@ -109,6 +109,7 @@ where
         *miner_snapshot = Some((blk_hash, snapshot));
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     pub async fn save_to_db(&self) -> Result<()> {
         let sm = self.raft_sm.read().await;
@@ -187,6 +188,7 @@ where
         Ok(state)
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, hs), err)]
     async fn save_hard_state(&self, hs: &HardState) -> Result<()> {
         let mut db_tx = DBTransaction::new();
@@ -208,6 +210,7 @@ where
         (start..stop).map(|idx| self.read_log(idx)).collect()
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn delete_logs_from(&self, start: u64, stop: Option<u64>) -> Result<()> {
         if let Some(stop) = stop {
@@ -233,6 +236,7 @@ where
         self.db.write_async(db_tx).await
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn append_entry_to_log(&self, entry: &Entry<NewBlockRequest<Tx>>) -> Result<()> {
         let mut db_tx = DBTransaction::new();
@@ -242,6 +246,7 @@ where
         self.db.write_async(db_tx).await
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn replicate_to_log(&self, entries: &[Entry<NewBlockRequest<Tx>>]) -> Result<()> {
         let mut db_tx = DBTransaction::new();
@@ -317,6 +322,7 @@ where
         Ok(NewBlockResponse::Ok)
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn replicate_to_state_machine(
         &self,
@@ -400,6 +406,7 @@ where
         Ok((String::from(""), Box::new(Cursor::new(Vec::new()))))
     }
 
+    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, snapshot), err)]
     async fn finalize_snapshot_installation(
         &self,

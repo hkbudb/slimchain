@@ -22,6 +22,7 @@ pub async fn get_leader(endpoint: &str) -> Result<PeerId> {
     .await
 }
 
+#[allow(clippy::ptr_arg)]
 pub async fn send_reqs_to_leader<Req: Serialize>(endpoint: &str, reqs: &Vec<Req>) -> Result<()> {
     send_post_request_using_postcard(
         &format!(
