@@ -47,10 +47,13 @@ impl TxExecWorker {
         let mut tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
-            while let Some(tx_proposal) = tx_exec_stream.next().await {
+            'outer: while let Some(tx_proposal) = tx_exec_stream.next().await {
+                let id = tx_proposal.tx.id();
+                let tx_proposals = vec![tx_proposal];
+
                 async fn inner<Tx: TxTrait + Serialize>(
                     route_table: &NetworkRouteTable,
-                    tx_proposal: TxProposal<Tx>,
+                    tx_proposals: &Vec<TxProposal<Tx>>,
                 ) -> Result<()> {
                     let rand_client = route_table
                         .random_peer(&Role::Client)
@@ -58,11 +61,16 @@ impl TxExecWorker {
                         .and_then(|peer_id| route_table.peer_address(peer_id))?;
                     let leader_peer_id = get_leader(rand_client).await?;
                     let leader_addr = route_table.peer_address(leader_peer_id)?;
-                    send_reqs_to_leader(leader_addr, &vec![tx_proposal]).await
+                    send_reqs_to_leader(leader_addr, tx_proposals).await
                 }
 
-                if let Err(e) = inner(&route_table, tx_proposal).await {
-                    error!("Failed to send tx_proposal to raft leader. Error: {}", e);
+                for i in 0..3 {
+                    match inner(&route_table, &tx_proposals).await {
+                        Ok(_) => continue 'outer,
+                        Err(e) => {
+                            error!("Failed to send tx_proposal to raft leader. Id: {}. Retry: {}. Error: {}", id, i, e);
+                        }
+                    }
                 }
             }
         });
