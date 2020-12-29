@@ -81,12 +81,12 @@ impl NetworkRouteTable {
         self.peer_id
     }
 
-    pub fn all_peer_ids(&self) -> Vec<PeerId> {
-        self.peer_table.keys().copied().collect()
-    }
-
-    pub fn all_peer_ids_raft(&self) -> std::collections::HashSet<async_raft::NodeId> {
-        self.peer_table.keys().map(|id| id.0).collect()
+    pub fn all_client_peer_ids(&self) -> std::collections::HashSet<async_raft::NodeId> {
+        if let Some(peers) = self.role_table.get(&Role::Client) {
+            peers.iter().map(|id| id.0).collect()
+        } else {
+            Default::default()
+        }
     }
 
     pub fn peer_table(&self) -> &HashMap<PeerId, String> {

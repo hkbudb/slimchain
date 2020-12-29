@@ -59,7 +59,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
     ) -> Result<Self> {
         let net_route_table = net_cfg.to_route_table();
         let peer_id = net_route_table.peer_id();
-        let all_peers = net_route_table.all_peer_ids_raft();
+        let all_peers = net_route_table.all_client_peer_ids();
 
         let raft_storage = Arc::new(ClientNodeStorage::new(db, chain_cfg, net_cfg)?);
         let raft_network = Arc::new(ClientNodeNetwork::new(net_route_table)?);
