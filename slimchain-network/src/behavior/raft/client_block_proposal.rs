@@ -20,7 +20,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 use tokio::task::JoinHandle;
 
 pub struct BlockProposalWorker<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> {
@@ -37,13 +37,17 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
         raft: Arc<ClientNodeRaft<Tx>>,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<TxProposal<Tx>>();
-        let mut tx_rx = tx_rx.fuse();
+        let mut tx_rx = tx_rx.fuse().peekable();
 
         let chain_cfg = chain_cfg.clone();
         let miner_cfg = miner_cfg.clone();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
+                if Pin::new(&mut tx_rx).peek().await.is_none() {
+                    return;
+                }
+
                 let mut snapshot = raft_storage.latest_snapshot().await;
                 let blk_proposal = match propose_block(
                     &chain_cfg,
