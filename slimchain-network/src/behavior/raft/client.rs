@@ -177,7 +177,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                 .and_then(move |txs: Vec<TxProposal<Tx>>| {
                     let mut tx_tx_copy = tx_tx.clone();
                     let mut input = stream::iter(txs).map(|tx| {
-                        debug!(
+                        trace!(
                             tx_id = %tx.tx.id(),
                             "Recv tx proposal."
                         );

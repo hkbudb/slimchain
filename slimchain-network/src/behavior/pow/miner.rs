@@ -90,7 +90,7 @@ impl<Tx: TxTrait + Serialize>
 {
     fn inject_event(&mut self, event: PubSubEvent<TxProposal<Tx>, BlockProposal<Block, Tx>>) {
         if let PubSubEvent::TxProposal(input) = event {
-            debug!(
+            trace!(
                 tx_id = %input.tx.id(),
                 "Recv tx proposal."
             );
