@@ -358,10 +358,9 @@ where
             let mut current_snapshot = self.raft_snapshot.write().await;
             term = log
                 .get(&last_applied_log)
-                .map(|idx| self.read_log(*idx))
-                .transpose()?
+                .and_then(|idx| self.read_log(*idx).ok())
                 .map(|entry| entry.term)
-                .ok_or_else(|| anyhow!("a query was received which was expecting data to be in place which does not exist in the log"))?;
+                .ok_or_else(|| anyhow!("last_applied_log {} not available during log compaction", last_applied_log))?;
 
             let new_log = log.split_off(&last_applied_log);
             for &idx in log.iter() {
