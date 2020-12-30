@@ -62,7 +62,7 @@ impl NetworkBehaviourEventProcess<TxHttpRequest> for ClientBehavior {
     fn inject_event(&mut self, tx_http_req: TxHttpRequest) {
         let TxHttpRequest { req, .. } = tx_http_req;
         let tx_req_id = req.id();
-        debug!(%tx_req_id, "Recv TxReq from http.");
+        trace!(%tx_req_id, "Recv TxReq from http.");
         record_event!("tx_begin", "tx_id": tx_req_id);
         self.pubsub
             .publish_tx_proposal(&req)
@@ -77,7 +77,7 @@ impl NetworkBehaviourEventProcess<DiscoveryEvent> for ClientBehavior {
 impl NetworkBehaviourEventProcess<PubSubEvent<SignedTxRequest, Block>> for ClientBehavior {
     fn inject_event(&mut self, event: PubSubEvent<SignedTxRequest, Block>) {
         if let PubSubEvent::BlockProposal(input) = event {
-            debug!(
+            trace!(
                 height = input.block_height().0,
                 txs = input.tx_list().len(),
                 "Recv block proposal."

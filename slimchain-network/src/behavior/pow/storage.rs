@@ -120,7 +120,7 @@ impl<Tx: TxTrait + Serialize>
     fn inject_event(&mut self, event: RpcRequestResponseEvent<SignedTxRequest, ()>) {
         if let Some((tx_req, channel)) = handle_request_response_server_event(event) {
             let tx_req_id = tx_req.id();
-            debug!(%tx_req_id, "Recv TxReq");
+            trace!(%tx_req_id, "Recv TxReq");
             self.tx_req_tx
                 .start_send(tx_req)
                 .expect("Failed to send tx_req to TxEngine.");
@@ -137,7 +137,7 @@ impl<Tx: TxTrait + Serialize>
 {
     fn inject_event(&mut self, event: PubSubEvent<TxProposal<Tx>, BlockProposal<Block, Tx>>) {
         if let PubSubEvent::BlockProposal(input) = event {
-            debug!(
+            trace!(
                 height = input.get_block_height().0,
                 txs = input.get_txs().len(),
                 "Recv block proposal."

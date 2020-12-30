@@ -92,7 +92,7 @@ impl<Tx: TxTrait + Serialize + 'static> ClientBehavior<Tx> {
 impl<Tx: TxTrait + Serialize> NetworkBehaviourEventProcess<TxHttpRequest> for ClientBehavior<Tx> {
     fn inject_event(&mut self, tx_http_req: TxHttpRequest) {
         let TxHttpRequest { req, shard_id } = tx_http_req;
-        debug!(tx_req_id = %req.id(), "Recv TxReq from http.");
+        trace!(tx_req_id = %req.id(), "Recv TxReq from http.");
         let discv_query_id = self
             .discv
             .find_random_peer(Role::Storage(shard_id), Duration::from_secs(5));
@@ -151,7 +151,7 @@ impl<Tx: TxTrait + Serialize>
 {
     fn inject_event(&mut self, event: PubSubEvent<TxProposal<Tx>, BlockProposal<Block, Tx>>) {
         if let PubSubEvent::BlockProposal(input) = event {
-            debug!(
+            trace!(
                 height = input.get_block_height().0,
                 txs = input.get_txs().len(),
                 "Recv block proposal."
