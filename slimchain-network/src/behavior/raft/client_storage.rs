@@ -360,7 +360,12 @@ where
                 .get(&last_applied_log)
                 .and_then(|idx| self.read_log(*idx).ok())
                 .map(|entry| entry.term)
-                .ok_or_else(|| anyhow!("last_applied_log {} not available during log compaction", last_applied_log))?;
+                .ok_or_else(|| {
+                    anyhow!(
+                        "last_applied_log {} not available during log compaction",
+                        last_applied_log
+                    )
+                })?;
 
             let new_log = log.split_off(&last_applied_log);
             for &idx in log.iter() {

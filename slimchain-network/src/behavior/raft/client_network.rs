@@ -35,11 +35,11 @@ impl<Tx> ClientNodeNetwork<Tx>
 where
     Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    pub fn new(route_table: NetworkRouteTable) -> Result<Self> {
-        Ok(Self {
+    pub fn new(route_table: NetworkRouteTable) -> Self {
+        Self {
             route_table,
             _marker: PhantomData,
-        })
+        }
     }
 
     #[tracing::instrument(level = "debug", skip(self, tx_req))]
