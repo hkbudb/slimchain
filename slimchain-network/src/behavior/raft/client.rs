@@ -4,16 +4,17 @@ use crate::{
         client_network::ClientNodeNetwork,
         client_storage::ClientNodeStorage,
         message::{NewBlockRequest, NewBlockResponse},
+        utils::get_current_leader,
     },
     http::{
         client_rpc::*,
         common::*,
-        config::{NetworkConfig, PeerId, RaftConfig},
+        config::{NetworkConfig, RaftConfig},
         node_rpc::*,
     },
 };
 use async_raft::{
-    error::{ClientReadError, InitializeError, RaftError},
+    error::{InitializeError, RaftError},
     Raft,
 };
 use futures::{channel::oneshot, future::join_all, prelude::*, stream};
@@ -23,7 +24,7 @@ use slimchain_chain::{
     db::DBPtr,
 };
 use slimchain_common::{
-    error::{anyhow, bail, Error, Result},
+    error::{bail, Error, Result},
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
@@ -155,18 +156,10 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                 .and_then(move || {
                     let raft_copy = raft_copy.clone();
                     async move {
-                        match raft_copy.client_read().await {
-                            Ok(()) => Ok(peer_id),
-                            Err(ClientReadError::ForwardToLeader(Some(id))) => Ok(PeerId::from(id)),
-                            Err(ClientReadError::ForwardToLeader(None)) => {
-                                Err(ClientNodeError::Other(anyhow!("Leader unknown")))
-                            }
-                            Err(ClientReadError::RaftError(e)) => {
-                                Err(ClientNodeError::RaftError(e))
-                            }
-                        }
-                        .map(|resp| warp_reply_postcard(&resp))
-                        .map_err(warp::reject::custom)
+                        get_current_leader(peer_id, raft_copy.as_ref())
+                            .await
+                            .map(|resp| warp_reply_postcard(&resp))
+                            .map_err(|e| warp::reject::custom(ClientNodeError::Other(e)))
                     }
                 });
 
