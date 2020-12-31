@@ -280,7 +280,7 @@ struct Opts {
     #[structopt(short, long)]
     accounts: Option<usize>,
 
-    /// Print raft related information
+    /// Exec additional raft related operations.
     #[structopt(long)]
     raft: bool,
 
@@ -317,6 +317,25 @@ async fn main() -> Result<()> {
     if let Some(ycsb) = opts.ycsb.as_ref() {
         YCSB.set(Mutex::new(io::BufReader::new(File::open(ycsb)?)))
             .map_err(|_e| anyhow!("Failed to set YCSB."))?;
+    }
+
+    if opts.raft {
+        let mut i = 0;
+        loop {
+            match get_leader(&opts.endpoint).await {
+                Ok(leader) => {
+                    info!("Raft Leader: {}", leader);
+                    break;
+                }
+                Err(_) => {
+                    delay_for(ONE_SECOND).await;
+                    i += 1;
+                    if i % 60 == 0 {
+                        info!("Waiting for leader election...");
+                    }
+                }
+            }
+        }
     }
 
     send_record_event_with_data(&opts.endpoint, "send-tx-opts", &opts).await?;
@@ -357,10 +376,7 @@ async fn main() -> Result<()> {
     info!("Deploy finished");
 
     if opts.raft {
-        info!(
-            "Current Raft Leader: {:?}",
-            get_leader(&opts.endpoint).await
-        );
+        info!("Current Raft Leader: {}", get_leader(&opts.endpoint).await?);
     }
 
     let mut accounts: VecDeque<(Keypair, Nonce)> = {
@@ -441,10 +457,7 @@ async fn main() -> Result<()> {
     info!("You can stop the nodes now by: kill -INT <pid>");
 
     if opts.raft {
-        info!(
-            "Current Raft Leader: {:?}",
-            get_leader(&opts.endpoint).await
-        );
+        info!("Current Raft Leader: {}", get_leader(&opts.endpoint).await?);
     }
 
     Ok(())
