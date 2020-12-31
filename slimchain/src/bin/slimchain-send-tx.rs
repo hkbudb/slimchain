@@ -11,9 +11,12 @@ use slimchain_common::{
     error::{anyhow, bail, Context as _, Result},
     tx_req::{caller_address_from_pk, SignedTxRequest, TxRequest},
 };
-use slimchain_network::http::client_rpc::{
-    get_block_height, get_tx_count, send_record_event, send_record_event_with_data,
-    send_tx_requests_with_shard,
+use slimchain_network::http::{
+    client_rpc::{
+        get_block_height, get_tx_count, send_record_event, send_record_event_with_data,
+        send_tx_requests_with_shard,
+    },
+    node_rpc::get_leader,
 };
 use slimchain_utils::{
     contract::{contract_address, Contract, Token},
@@ -277,6 +280,10 @@ struct Opts {
     #[structopt(short, long)]
     accounts: Option<usize>,
 
+    /// Print raft related information
+    #[structopt(long)]
+    raft: bool,
+
     /// List of contracts. Accepted values: cpuheavy, donothing, ioheavy, kvstore, and smallbank.
     #[structopt(parse(try_from_str = parse_contract_arg), required = true)]
     contract: Vec<ContractArg>,
@@ -348,6 +355,13 @@ async fn main() -> Result<()> {
         }
     }
     info!("Deploy finished");
+
+    if opts.raft {
+        info!(
+            "Current Raft Leader: {:?}",
+            get_leader(&opts.endpoint).await
+        );
+    }
 
     let mut accounts: VecDeque<(Keypair, Nonce)> = {
         std::iter::repeat_with(|| (Keypair::generate(&mut rng), Nonce::zero()))
@@ -425,6 +439,13 @@ async fn main() -> Result<()> {
     }
 
     info!("You can stop the nodes now by: kill -INT <pid>");
+
+    if opts.raft {
+        info!(
+            "Current Raft Leader: {:?}",
+            get_leader(&opts.endpoint).await
+        );
+    }
 
     Ok(())
 }
