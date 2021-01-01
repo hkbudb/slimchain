@@ -355,7 +355,7 @@ def cal_block_statistics!
   $result["90percentile_tx_in_block"] = percentile(tx_count, 0.9, sorted: true)
   $result["95percentile_tx_in_block"] = percentile(tx_count, 0.95, sorted: true)
 
-  blk_mining_time = $blocks.map { |_, blk| blk.mining_time }.to_a.sort
+  blk_mining_time = $blocks.map { |_, blk| blk.mining_time || 0 }.to_a.sort
   $result["avg_blk_mining_time_in_us"] = mean(blk_mining_time)
   $result["50percentile_blk_mining_time_in_us"] = percentile(blk_mining_time, 0.5, sorted: true)
   $result["90percentile_blk_mining_time_in_us"] = percentile(blk_mining_time, 0.9, sorted: true)
