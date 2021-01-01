@@ -34,10 +34,10 @@ use std::{net::SocketAddr, time::Duration};
 use tokio::task::JoinHandle;
 use warp::Filter;
 
-const MAX_RETRIES: usize = 3;
-const LEADER_ID_CACHE_TTL: Duration = Duration::from_secs(60);
+pub const MAX_RETRIES: usize = 3;
+pub const LEADER_ID_CACHE_TTL: Duration = Duration::from_secs(60);
 
-async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> {
+pub async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> {
     let rand_client = route_table
         .random_peer(&Role::Client)
         .ok_or_else(|| anyhow!("Failed to find the client node."))
