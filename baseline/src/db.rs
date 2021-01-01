@@ -9,27 +9,10 @@ use slimchain_common::{
 use slimchain_tx_state::{TrieNode, TxStateUpdate, TxStateView};
 use std::{path::Path, sync::Arc};
 
-pub use slimchain_chain::db::{BLOCK_DB_COL, META_DB_COL, STATE_DB_COL, TOTAL_COLS};
-
-#[inline]
-fn h256_to_db_key(input: H256) -> DBKey {
-    debug_assert!(!input.is_zero());
-    DBKey::from_buf(input.to_fixed_bytes())
-}
-
-#[inline]
-fn block_height_to_db_key(height: BlockHeight) -> DBKey {
-    let mut key = DBKey::new();
-    key.extend_from_slice(&height.to_le_bytes()[..]);
-    key
-}
-
-#[inline]
-fn str_to_db_key(input: &str) -> DBKey {
-    let mut key = DBKey::new();
-    key.extend_from_slice(input.as_bytes());
-    key
-}
+pub use slimchain_chain::db::{
+    block_height_to_db_key, h256_to_db_key, str_to_db_key, u64_to_db_key, BLOCK_DB_COL, LOG_DB_COL,
+    META_DB_COL, STATE_DB_COL, TOTAL_COLS,
+};
 
 pub struct DB {
     db: Box<dyn KeyValueDB>,
@@ -81,6 +64,10 @@ impl DB {
 
     pub fn get_existing_meta_object<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Result<T> {
         self.get_existing_object(META_DB_COL, &str_to_db_key(key))
+    }
+
+    pub fn get_log_object<T: for<'de> Deserialize<'de>>(&self, idx: u64) -> Result<Option<T>> {
+        self.get_object(LOG_DB_COL, &u64_to_db_key(idx))
     }
 
     pub fn write_sync(&self, tx: Transaction) -> Result<()> {
@@ -157,6 +144,10 @@ impl Transaction {
         self.insert_object(META_DB_COL, &str_to_db_key(key), value)
     }
 
+    pub fn insert_log_object<T: Serialize>(&mut self, idx: u64, value: &T) -> Result<()> {
+        self.insert_object(LOG_DB_COL, &u64_to_db_key(idx), value)
+    }
+
     pub fn insert_block<Block: BlockTrait + Serialize>(&mut self, block: &Block) -> Result<()> {
         self.insert_object(
             BLOCK_DB_COL,
@@ -177,5 +168,13 @@ impl Transaction {
         }
 
         Ok(())
+    }
+
+    pub fn delete_object(&mut self, col: u32, key: &DBKey) {
+        self.inner.delete(col, key);
+    }
+
+    pub fn delete_log_object(&mut self, idx: u64) {
+        self.delete_object(LOG_DB_COL, &u64_to_db_key(idx))
     }
 }

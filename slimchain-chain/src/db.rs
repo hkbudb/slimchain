@@ -26,27 +26,27 @@ pub const STATE_DB_COL: u32 = 3;
 pub const LOG_DB_COL: u32 = 4;
 
 #[inline]
-fn h256_to_db_key(input: H256) -> DBKey {
+pub fn h256_to_db_key(input: H256) -> DBKey {
     debug_assert!(!input.is_zero());
     DBKey::from_buf(input.to_fixed_bytes())
 }
 
 #[inline]
-fn block_height_to_db_key(height: BlockHeight) -> DBKey {
+pub fn block_height_to_db_key(height: BlockHeight) -> DBKey {
     let mut key = DBKey::new();
     key.extend_from_slice(&height.to_le_bytes()[..]);
     key
 }
 
 #[inline]
-fn str_to_db_key(input: &str) -> DBKey {
+pub fn str_to_db_key(input: &str) -> DBKey {
     let mut key = DBKey::new();
     key.extend_from_slice(input.as_bytes());
     key
 }
 
 #[inline]
-fn u64_to_db_key(input: u64) -> DBKey {
+pub fn u64_to_db_key(input: u64) -> DBKey {
     let mut key = DBKey::new();
     key.extend_from_slice(&input.to_le_bytes()[..]);
     key
