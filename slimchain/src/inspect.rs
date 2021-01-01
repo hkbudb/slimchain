@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
+#[structopt(version = git_version::git_version!(prefix = concat!(env!("CARGO_PKG_VERSION"), " ("), suffix = ")", fallback = "unknown"))]
 struct Opts {
     /// Path to storage.db
     #[structopt(short, long, parse(from_os_str))]

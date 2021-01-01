@@ -255,6 +255,7 @@ fn create_deploy_tx(
 }
 
 #[derive(Debug, StructOpt, Serialize, Deserialize)]
+#[structopt(version = git_version::git_version!(prefix = concat!(env!("CARGO_PKG_VERSION"), " ("), suffix = ")", fallback = "unknown"))]
 struct Opts {
     /// Endpoint to http tx server.
     #[structopt(long, default_value = "127.0.0.1:8000")]
