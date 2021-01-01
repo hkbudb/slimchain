@@ -23,7 +23,7 @@ pub struct MinerConfig {
     #[serde(default)]
     pub min_txs: usize,
     /// Max time span used in collecting txs.
-    #[serde(deserialize_with = "slimchain_utils::config::deserialize_duration_from_secs")]
+    #[serde(deserialize_with = "slimchain_utils::config::deserialize_duration_from_millis")]
     pub max_block_interval: Duration,
 }
 

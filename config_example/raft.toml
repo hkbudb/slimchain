@@ -27,8 +27,8 @@ consensus = "raft"
 max_txs = 8
 # Min number of txs in one block.
 min_txs = 0
-# Max time span used in collecting txs.
-max_block_interval = 2
+# Max time span used in collecting txs in milliseconds.
+max_block_interval = 100
 
 # Configure used in TEE. Used by storage nodes with TEE only.
 # Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
