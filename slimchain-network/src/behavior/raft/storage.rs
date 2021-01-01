@@ -1,7 +1,10 @@
-use crate::http::{
-    common::*,
-    config::{NetworkConfig, NetworkRouteTable},
-    node_rpc::*,
+use crate::{
+    behavior::raft::utils::LeaderPeerIdCache,
+    http::{
+        common::*,
+        config::{NetworkConfig, NetworkRouteTable, PeerId},
+        node_rpc::*,
+    },
 };
 use futures::{
     channel::{mpsc, oneshot},
@@ -27,9 +30,37 @@ use slimchain_common::{
 use slimchain_tx_engine::TxEngine;
 use slimchain_tx_state::{StorageTxTrie, TxProposal};
 use slimchain_utils::ordered_stream::OrderedStream;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 use tokio::task::JoinHandle;
 use warp::Filter;
+
+const MAX_RETRIES: usize = 3;
+const LEADER_ID_CACHE_TTL: Duration = Duration::from_secs(60);
+
+async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> {
+    let rand_client = route_table
+        .random_peer(&Role::Client)
+        .ok_or_else(|| anyhow!("Failed to find the client node."))
+        .and_then(|peer_id| route_table.peer_address(peer_id))?;
+    get_leader(rand_client).await
+}
+
+async fn send_tx_proposals<Tx: TxTrait + Serialize>(
+    leader_id_cache: &mut LeaderPeerIdCache,
+    route_table: &NetworkRouteTable,
+    tx_proposals: &Vec<TxProposal<Tx>>,
+) -> Result<()> {
+    let leader_id = match leader_id_cache.get() {
+        Some(id) => id,
+        None => {
+            let id = fetch_leader_id(route_table).await?;
+            leader_id_cache.set(id, LEADER_ID_CACHE_TTL);
+            id
+        }
+    };
+    let leader_addr = route_table.peer_address(leader_id)?;
+    send_reqs_to_leader(leader_addr, tx_proposals).await
+}
 
 struct TxExecWorker {
     tx_req_tx: mpsc::UnboundedSender<SignedTxRequest>,
@@ -47,28 +78,17 @@ impl TxExecWorker {
         let mut tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
+            let mut leader_id_cache = LeaderPeerIdCache::new();
+
             'outer: while let Some(tx_proposal) = tx_exec_stream.next().await {
                 let tx_proposals = vec![tx_proposal];
 
-                async fn inner<Tx: TxTrait + Serialize>(
-                    route_table: &NetworkRouteTable,
-                    tx_proposals: &Vec<TxProposal<Tx>>,
-                ) -> Result<()> {
-                    let rand_client = route_table
-                        .random_peer(&Role::Client)
-                        .ok_or_else(|| anyhow!("Failed to find the client node."))
-                        .and_then(|peer_id| route_table.peer_address(peer_id))?;
-                    let leader_peer_id = get_leader(rand_client).await?;
-                    let leader_addr = route_table.peer_address(leader_peer_id)?;
-                    send_reqs_to_leader(leader_addr, tx_proposals).await
-                }
-
-                const MAX_RETRIES: i32 = 3;
-
                 for i in 1..=MAX_RETRIES {
-                    match inner(&route_table, &tx_proposals).await {
+                    match send_tx_proposals(&mut leader_id_cache, &route_table, &tx_proposals).await
+                    {
                         Ok(_) => continue 'outer,
                         Err(e) => {
+                            leader_id_cache.reset();
                             if i == MAX_RETRIES {
                                 error!("Failed to send tx_proposal to raft leader. Error: {}", e);
                             }
