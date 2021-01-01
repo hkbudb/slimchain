@@ -1,13 +1,9 @@
 #[macro_use]
 extern crate tracing;
 
-use baseline::{
-    config::{ChainConfig, Consensus, MinerConfig, Role},
-    db::DB,
-    init_tracing,
-};
+use baseline::{config::ChainConfig, db::DB, init_tracing};
+use slimchain_chain::{config::MinerConfig, consensus::Consensus, role::Role};
 use slimchain_common::error::{bail, Context as _, Result};
-use slimchain_network::p2p::{config::NetworkConfig, control::Swarmer};
 use slimchain_utils::{config::Config, path::binary_directory};
 use std::{path::PathBuf, time::Duration};
 use structopt::StructOpt;
@@ -55,15 +51,16 @@ async fn main() -> Result<()> {
     info!("Role: {}", role);
     let chain_cfg: ChainConfig = cfg.get("chain")?;
     info!("Chain Cfg: {:#?}", chain_cfg);
-    let net_cfg: NetworkConfig = cfg.get("network")?;
 
     let db = DB::open_or_create_in_dir(&opts.data.unwrap_or(bin_dir), role)?;
 
     match chain_cfg.consensus {
         Consensus::PoW => {
-            use baseline::config::PoWConfig;
             use baseline::network::pow::*;
+            use slimchain_chain::config::PoWConfig;
+            use slimchain_network::p2p::{config::NetworkConfig, control::Swarmer};
 
+            let net_cfg: NetworkConfig = cfg.get("network")?;
             let pow_cfg: PoWConfig = cfg.get("pow").unwrap_or_default();
             info!("PoW initial difficulty: {}", pow_cfg.init_diff);
             pow_cfg.install_as_global()?;

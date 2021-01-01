@@ -1,14 +1,14 @@
 use super::BlockImportWorker;
 use crate::{
     block::{pow::Block, BlockTrait},
-    config::{NetworkConfig, Role},
     db::DBPtr,
 };
 use async_trait::async_trait;
 use libp2p::{swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
-use slimchain_chain::latest::LatestTxCount;
+use slimchain_chain::{latest::LatestTxCount, role::Role};
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
 use slimchain_network::p2p::{
+    config::NetworkConfig,
     control::Shutdown,
     discovery::{Discovery, DiscoveryEvent},
     http::{ClientHttpServer, TxHttpRequest},

@@ -1,12 +1,12 @@
 use super::exec_tx;
 use crate::{
     block::{BlockHeader, BlockLoaderTrait, BlockTrait, BlockTxList},
-    config::MinerConfig,
     db::DBPtr,
 };
 use chrono::Utc;
 use futures::prelude::*;
 use serde::Deserialize;
+use slimchain_chain::config::MinerConfig;
 use slimchain_common::{
     basic::BlockHeight,
     error::{Context as _, Result},

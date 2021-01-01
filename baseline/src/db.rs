@@ -1,9 +1,7 @@
-use crate::{
-    block::{BlockLoaderTrait, BlockTrait},
-    config::Role,
-};
+use crate::block::{BlockLoaderTrait, BlockTrait};
 use kvdb::{DBKey, DBTransaction, KeyValueDB};
 use serde::{Deserialize, Serialize};
+use slimchain_chain::role::Role;
 use slimchain_common::{
     basic::{AccountData, Address, BlockHeight, StateValue, H256},
     error::{bail, Context as _, Error, Result},

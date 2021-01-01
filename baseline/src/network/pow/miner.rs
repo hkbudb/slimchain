@@ -1,17 +1,14 @@
 use super::BlockProposalWorker;
-use crate::{
-    block::pow::Block,
-    config::{MinerConfig, NetworkConfig, Role},
-    db::DBPtr,
-};
+use crate::{block::pow::Block, db::DBPtr};
 use async_trait::async_trait;
 use libp2p::{
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour,
 };
-use slimchain_chain::latest::LatestTxCount;
+use slimchain_chain::{config::MinerConfig, latest::LatestTxCount, role::Role};
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
 use slimchain_network::p2p::{
+    config::NetworkConfig,
     control::Shutdown,
     discovery::{Discovery, DiscoveryEvent},
     pubsub::{PubSub, PubSubEvent, PubSubTopic},

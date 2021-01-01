@@ -10,11 +10,10 @@ use crate::{
         pow::{create_new_block, verify_consensus, Block},
         BlockTrait,
     },
-    config::MinerConfig,
     db::DBPtr,
 };
 use futures::{channel::mpsc, prelude::*, stream::Fuse};
-use slimchain_chain::latest::LatestTxCountPtr;
+use slimchain_chain::{config::MinerConfig, latest::LatestTxCountPtr};
 use slimchain_common::{
     basic::BlockHeight,
     error::{bail, Result},

@@ -1,9 +1,7 @@
-use crate::{
-    block::{block_header_to_digest, BlockHeader, BlockTrait, BlockTxList},
-    config::PoWConfig,
-};
+use crate::block::{block_header_to_digest, BlockHeader, BlockTrait, BlockTxList};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use slimchain_chain::config::PoWConfig;
 use slimchain_common::{
     basic::{Nonce, H256, U256},
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
