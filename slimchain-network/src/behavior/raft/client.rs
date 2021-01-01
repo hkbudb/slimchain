@@ -29,7 +29,7 @@ use slimchain_common::{
 };
 use slimchain_tx_state::TxProposal;
 use std::{net::SocketAddr, sync::Arc};
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::{sync::Mutex, task::JoinHandle};
 use warp::Filter;
 
 pub type ClientNodeRaft<Tx> =
@@ -70,7 +70,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             raft_network.clone(),
             raft_storage.clone(),
         ));
-        let raft_client_lock = Arc::new(RwLock::new(()));
+        let raft_client_lock = Arc::new(Mutex::new(()));
 
         let proposal_worker = BlockProposalWorker::new(
             chain_cfg,
