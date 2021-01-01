@@ -93,7 +93,25 @@ async fn main() -> Result<()> {
             }
         }
         Consensus::Raft => {
-            todo!();
+            use baseline::network::raft::client::ClientNode;
+            use slimchain_network::http::config::{NetworkConfig, RaftConfig};
+
+            let net_cfg: NetworkConfig = cfg.get("network")?;
+            let raft_cfg: RaftConfig = cfg.get("raft")?;
+
+            match role {
+                Role::Client => {
+                    let miner_cfg: MinerConfig = cfg.get("miner")?;
+                    let mut client = ClientNode::new(db, &miner_cfg, &net_cfg, &raft_cfg).await?;
+                    info!("Press Ctrl-C to quit.");
+                    tokio::signal::ctrl_c().await?;
+                    info!("Quitting.");
+                    client.shutdown().await?;
+                }
+                Role::Storage(_) | Role::Miner => {
+                    bail!("Role cannot be storage or miner.");
+                }
+            }
         }
     }
 

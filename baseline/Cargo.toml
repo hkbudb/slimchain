@@ -6,6 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
+async-raft = "0.6.0-alpha.1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 color-backtrace = "0.5"
@@ -30,3 +31,4 @@ tokio = { version = "0.2", features = ["full", "parking_lot"] }
 tracing = "0.1"
 tracing-futures = "0.2"
 tracing-subscriber = "0.2"
+warp = "0.2"
