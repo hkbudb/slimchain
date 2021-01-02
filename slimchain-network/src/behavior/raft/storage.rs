@@ -35,7 +35,7 @@ use tokio::task::JoinHandle;
 use warp::Filter;
 
 pub const MAX_RETRIES: usize = 3;
-pub const LEADER_ID_CACHE_TTL: Duration = Duration::from_secs(60);
+pub const LEADER_ID_CACHE_TTL: Duration = Duration::from_secs(3600); // 1 hour
 
 pub async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> {
     let rand_client = route_table
