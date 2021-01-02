@@ -8,7 +8,7 @@ build = "build.rs"
 
 [dependencies]
 base64 = "0.13"
-dashmap = "3.11"
+dashmap = { version = "4.0", features = ["rayon"] }
 hex = "0.4"
 once_cell = "1.5"
 parking_lot = "0.11"
