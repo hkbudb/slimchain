@@ -171,7 +171,8 @@ def process_common(file)
     begin
       data = JSON.parse line
     rescue StandardError => e
-      raise "Failed to parse #{file}:#{line_no} `#{line}`. Reason: #{e}"
+      warn "Failed to parse #{file}:#{line_no} `#{line}`. Reason: #{e}"
+      next
     end
     yield data, line_no
   end
