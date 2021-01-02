@@ -24,7 +24,7 @@ use slimchain_chain::{
     db::DBPtr,
 };
 use slimchain_common::{
-    error::{bail, Error, Result},
+    error::{anyhow, bail, Error, Result},
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
@@ -171,11 +171,13 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                     }
                 });
 
+            let raft_copy = raft.clone();
             let tx_tx = proposal_worker.get_tx_tx();
             let leader_req_rpc = warp::post()
                 .and(warp::path(CLIENT_LEADER_REQ_ROUTE_PATH))
                 .and(warp_body_postcard())
                 .and_then(move |txs: Vec<TxProposal<Tx>>| {
+                    let raft_copy = raft_copy.clone();
                     let mut tx_tx_copy = tx_tx.clone();
                     let mut input = stream::iter(txs).map(|tx| {
                         trace!(
@@ -185,6 +187,18 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                         Ok(tx)
                     });
                     async move {
+                        if raft_copy
+                            .metrics()
+                            .recv()
+                            .await
+                            .and_then(|m| m.current_leader)
+                            != Some(peer_id.into())
+                        {
+                            return Err(warp::reject::custom(ClientNodeError::Other(anyhow!(
+                                "not leader"
+                            ))));
+                        }
+
                         tx_tx_copy
                             .send_all(&mut input)
                             .await

@@ -14,7 +14,7 @@ use futures::{channel::oneshot, prelude::*, stream};
 use slimchain_chain::config::MinerConfig;
 use slimchain_common::{
     basic::BlockHeight,
-    error::{bail, Error, Result},
+    error::{anyhow, bail, Error, Result},
     tx_req::SignedTxRequest,
 };
 use slimchain_network::{
@@ -169,11 +169,13 @@ impl ClientNode {
                     }
                 });
 
+            let raft_copy = raft.clone();
             let tx_tx = proposal_worker.get_tx_tx();
             let leader_req_rpc = warp::post()
                 .and(warp::path(CLIENT_LEADER_REQ_ROUTE_PATH))
                 .and(warp_body_postcard())
                 .and_then(move |txs: Vec<SignedTxRequest>| {
+                    let raft_copy = raft_copy.clone();
                     let mut tx_tx_copy = tx_tx.clone();
                     let mut input = stream::iter(txs).map(|tx| {
                         trace!(
@@ -183,6 +185,18 @@ impl ClientNode {
                         Ok(tx)
                     });
                     async move {
+                        if raft_copy
+                            .metrics()
+                            .recv()
+                            .await
+                            .and_then(|m| m.current_leader)
+                            != Some(peer_id.into())
+                        {
+                            return Err(warp::reject::custom(ClientNodeError::Other(anyhow!(
+                                "not leader"
+                            ))));
+                        }
+
                         tx_tx_copy
                             .send_all(&mut input)
                             .await
