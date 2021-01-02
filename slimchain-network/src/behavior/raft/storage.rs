@@ -45,6 +45,7 @@ pub async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> 
     get_leader(rand_client).await
 }
 
+#[allow(clippy::ptr_arg)]
 async fn send_tx_proposals<Tx: TxTrait + Serialize>(
     leader_id_cache: &mut LeaderPeerIdCache,
     route_table: &NetworkRouteTable,

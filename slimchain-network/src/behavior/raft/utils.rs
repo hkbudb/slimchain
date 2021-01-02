@@ -6,7 +6,7 @@ use slimchain_common::error::{bail, Error, Result};
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct LeaderPeerIdCache {
     inner: Option<(PeerId, Instant)>,
 }
