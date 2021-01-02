@@ -171,13 +171,13 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                     }
                 });
 
-            let raft_copy = raft.clone();
+            let raft_metrics = raft.metrics();
             let tx_tx = proposal_worker.get_tx_tx();
             let leader_req_rpc = warp::post()
                 .and(warp::path(CLIENT_LEADER_REQ_ROUTE_PATH))
                 .and(warp_body_postcard())
                 .and_then(move |txs: Vec<TxProposal<Tx>>| {
-                    let raft_copy = raft_copy.clone();
+                    let mut raft_metrics = raft_metrics.clone();
                     let mut tx_tx_copy = tx_tx.clone();
                     let mut input = stream::iter(txs).map(|tx| {
                         trace!(
@@ -187,12 +187,10 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                         Ok(tx)
                     });
                     async move {
-                        if raft_copy
-                            .metrics()
+                        if !raft_metrics
                             .recv()
                             .await
-                            .and_then(|m| m.current_leader)
-                            != Some(peer_id.into())
+                            .map_or(false, |m| m.state.is_leader())
                         {
                             return Err(warp::reject::custom(ClientNodeError::Other(anyhow!(
                                 "not leader"
