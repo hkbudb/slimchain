@@ -1,7 +1,7 @@
 use crate::{
     behavior::raft::{
         client_block_proposal::BlockProposalWorker,
-        client_network::ClientNodeNetwork,
+        client_network::{ClientNodeNetwork, ClientNodeNetworkWorker},
         client_storage::ClientNodeStorage,
         message::{NewBlockRequest, NewBlockResponse},
         utils::get_current_leader,
@@ -48,6 +48,7 @@ pub struct ClientNode<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'sta
     raft: Option<Arc<ClientNodeRaft<Tx>>>,
     srv: Option<(oneshot::Sender<()>, JoinHandle<()>)>,
     proposal_worker: BlockProposalWorker<Tx>,
+    network_worker: ClientNodeNetworkWorker<Tx>,
 }
 
 impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<Tx> {
@@ -72,26 +73,28 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
         ));
         let raft_client_lock = Arc::new(Mutex::new(()));
 
+        let network_worker = ClientNodeNetworkWorker::new(raft_network.clone());
+
         let proposal_worker = BlockProposalWorker::new(
             chain_cfg,
             miner_cfg,
             raft_storage.clone(),
-            raft_network.clone(),
             raft.clone(),
             raft_client_lock.clone(),
+            network_worker.get_block_proposal_tx(),
         );
 
         let client_rpc_srv = {
+            let network_worker_req_tx = network_worker.get_req_tx();
             let raft_storage_copy1 = raft_storage.clone();
             let raft_storage_copy2 = raft_storage.clone();
-            let raft_network_copy = raft_network.clone();
             client_rpc_server(
                 move |reqs: Vec<TxHttpRequest>| {
-                    let raft_network_copy = raft_network_copy.clone();
+                    let network_worker_req_tx = network_worker_req_tx.clone();
                     async {
                         join_all(reqs.into_iter().map(move |req| {
-                            let raft_network_copy = raft_network_copy.clone();
-                            async move { raft_network_copy.forward_tx_to_storage_node(req).await }
+                            let mut network_worker_req_tx = network_worker_req_tx.clone();
+                            async move { network_worker_req_tx.send(req).await.ok() }
                         }))
                         .await;
                         Ok(())
@@ -232,6 +235,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             raft: Some(raft),
             srv: Some((srv_shutdown_tx, srv_handle)),
             proposal_worker,
+            network_worker,
         })
     }
 
@@ -245,6 +249,8 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
         self.raft_storage.save_to_db().await?;
 
         self.proposal_worker.shutdown().await?;
+
+        self.network_worker.shutdown().await?;
 
         if let Some((shutdown_tx, handler)) = self.srv.take() {
             shutdown_tx.send(()).ok();

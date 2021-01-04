@@ -15,13 +15,17 @@ use async_raft::{
     NodeId, RaftNetwork,
 };
 use async_trait::async_trait;
-use futures::future;
+use futures::{channel::mpsc, future, prelude::*};
 use serde::{Deserialize, Serialize};
 use slimchain_chain::{block_proposal::BlockProposal, consensus::raft::Block, role::Role};
-use slimchain_common::{error::Result, tx::TxTrait};
+use slimchain_common::{
+    error::{bail, Result},
+    tx::TxTrait,
+};
 use slimchain_tx_state::TxProposal;
 use slimchain_utils::record_event;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, sync::Arc};
+use tokio::task::JoinHandle;
 
 pub struct ClientNodeNetwork<Tx>
 where
@@ -199,5 +203,75 @@ where
             &rpc,
         )
         .await
+    }
+}
+
+pub struct ClientNodeNetworkWorker<Tx>
+where
+    Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
+{
+    handle: Option<JoinHandle<()>>,
+    req_tx: mpsc::UnboundedSender<TxHttpRequest>,
+    block_proposal_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
+    shutdown_tx: mpsc::Sender<()>,
+}
+
+impl<Tx> ClientNodeNetworkWorker<Tx>
+where
+    Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
+{
+    pub fn new(network: Arc<ClientNodeNetwork<Tx>>) -> Self {
+        let (req_tx, req_rx) = mpsc::unbounded();
+        let mut req_rx = req_rx.fuse();
+        let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
+        let mut block_proposal_rx = block_proposal_rx.fuse();
+        let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
+
+        let handle = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    req = req_rx.next() => {
+                        if let Some(req) = req {
+                            network.forward_tx_to_storage_node(req).await;
+                        }
+                    }
+                    block_proposal = block_proposal_rx.next() => {
+                        if let Some(block_proposal) = block_proposal {
+                            network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
+                        }
+                    }
+                    _ = shutdown_rx.next() => {
+                        break;
+                    }
+                }
+            }
+        });
+
+        Self {
+            handle: Some(handle),
+            req_tx,
+            block_proposal_tx,
+            shutdown_tx,
+        }
+    }
+
+    pub fn get_req_tx(&self) -> mpsc::UnboundedSender<TxHttpRequest> {
+        self.req_tx.clone()
+    }
+
+    pub fn get_block_proposal_tx(&self) -> mpsc::UnboundedSender<BlockProposal<Block, Tx>> {
+        self.block_proposal_tx.clone()
+    }
+
+    pub async fn shutdown(&mut self) -> Result<()> {
+        self.req_tx.close_channel();
+        self.block_proposal_tx.close_channel();
+        self.shutdown_tx.send(()).await.ok();
+        if let Some(handler) = self.handle.take() {
+            handler.await?;
+        } else {
+            bail!("Already shutdown.");
+        }
+        Ok(())
     }
 }
