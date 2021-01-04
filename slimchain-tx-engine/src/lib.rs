@@ -2,6 +2,7 @@
 extern crate tracing;
 
 use crossbeam::{
+    channel,
     deque::{Injector, Stealer, Worker},
     queue::ArrayQueue,
     sync::{Parker, Unparker},
@@ -196,16 +197,30 @@ impl<Tx: TxTrait + 'static> Drop for TxEngine<Tx> {
     fn drop(&mut self) {
         self.shutdown_flag.store(true, Ordering::Release);
 
-        thread::sleep(Duration::from_millis(10));
-        while let Some(unpacker) = self.unparker_queue.pop() {
-            unpacker.unpark();
-        }
+        let unparker_queue = self.unparker_queue.clone();
+        let (tx, rx) = channel::bounded(1);
+        let unparker_thread = thread::spawn(move || loop {
+            while let Some(unpacker) = unparker_queue.pop() {
+                unpacker.unpark();
+            }
+
+            if rx.try_recv().is_ok() {
+                break;
+            }
+
+            thread::sleep(Duration::from_millis(50));
+        });
 
         info!("Waiting TxEngine workers to be shutdown.");
         for w in self.worker_threads.drain(..) {
             w.join()
                 .expect("TxEngine: Failed to join the worker thread.");
         }
+
+        tx.send(()).ok();
+        unparker_thread
+            .join()
+            .expect("TxEngine: Failed to join the unpacker thread.");
         info!("TxEngine is shutdown.");
     }
 }
