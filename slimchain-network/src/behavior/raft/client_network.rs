@@ -234,19 +234,13 @@ where
         let handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    req = req_rx.next() => {
-                        if let Some(req) = req {
-                            network.forward_tx_to_storage_node(req).await;
-                        }
+                    Some(req) = req_rx.next() => {
+                        network.forward_tx_to_storage_node(req).await;
                     }
-                    block_proposal = block_proposal_rx.next() => {
-                        if let Some(block_proposal) = block_proposal {
-                            network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
-                        }
+                    Some(block_proposal) = block_proposal_rx.next() => {
+                        network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
                     }
-                    _ = &mut shutdown_rx => {
-                        break;
-                    }
+                    _ = &mut shutdown_rx => break,
                 }
             }
         });

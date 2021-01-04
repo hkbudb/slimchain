@@ -154,14 +154,10 @@ impl ClientNodeNetworkWorker {
         let handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    req = req_rx.next() => {
-                        if let Some(req) = req {
-                            network.forward_tx_http_reqs_to_leader(req).await;
-                        }
+                    Some(req) = req_rx.next() => {
+                        network.forward_tx_http_reqs_to_leader(req).await;
                     }
-                    _ = &mut shutdown_rx => {
-                        break;
-                    }
+                    _ = &mut shutdown_rx => break,
                 }
             }
         });

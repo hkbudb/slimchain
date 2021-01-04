@@ -58,10 +58,6 @@ impl<Tx: TxTrait, Input: Stream<Item = SignedTxRequest>> Stream for TxExecuteStr
             return Poll::Ready(None);
         }
 
-        if this.engine.is_shutdown() {
-            return Poll::Ready(None);
-        }
-
         let result = ready!(this.engine.poll_result(cx));
         Poll::Ready(Some(result.tx_proposal))
     }

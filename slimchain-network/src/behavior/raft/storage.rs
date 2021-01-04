@@ -69,6 +69,7 @@ struct TxExecWorker {
     tx_req_tx: mpsc::UnboundedSender<SignedTxRequest>,
     engine_shutdown_token: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl TxExecWorker {
@@ -81,24 +82,30 @@ impl TxExecWorker {
         let engine_shutdown_token = engine.shutdown_token();
         let (tx_req_tx, tx_req_rx) = mpsc::unbounded::<SignedTxRequest>();
         let mut tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             let mut leader_id_cache = None;
 
-            'outer: while let Some(tx_proposal) = tx_exec_stream.next().await {
-                let tx_proposals = vec![tx_proposal];
+            'outer: loop {
+                tokio::select! {
+                    Some(tx_proposal) = tx_exec_stream.next() => {
+                        let tx_proposals = vec![tx_proposal];
 
-                for i in 1..=MAX_RETRIES {
-                    match send_tx_proposals(&mut leader_id_cache, &route_table, &tx_proposals).await
-                    {
-                        Ok(_) => continue 'outer,
-                        Err(e) => {
-                            leader_id_cache = None;
-                            if i == MAX_RETRIES {
-                                error!("Failed to send tx_proposal to raft leader. Error: {}", e);
+                        for i in 1..=MAX_RETRIES {
+                            match send_tx_proposals(&mut leader_id_cache, &route_table, &tx_proposals).await
+                            {
+                                Ok(_) => continue 'outer,
+                                Err(e) => {
+                                    leader_id_cache = None;
+                                    if i == MAX_RETRIES {
+                                        error!("Failed to send tx_proposal to raft leader. Error: {}", e);
+                                    }
+                                }
                             }
                         }
                     }
+                    _ = &mut shutdown_rx => break,
                 }
             }
         });
@@ -107,6 +114,7 @@ impl TxExecWorker {
             tx_req_tx,
             engine_shutdown_token,
             handle: Some(handle),
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -117,6 +125,11 @@ impl TxExecWorker {
     async fn shutdown(&mut self) -> Result<()> {
         self.tx_req_tx.close_channel();
         self.engine_shutdown_token.store(true, Ordering::Release);
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
@@ -129,6 +142,7 @@ impl TxExecWorker {
 struct BlockImportWorker<Tx: TxTrait + 'static> {
     handle: Option<JoinHandle<()>>,
     blk_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
@@ -145,36 +159,42 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
             latest_block_header.get_height().next_height(),
             |height| height.next_height(),
         );
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
-            while let Some(blk_proposal) = blk_rx.next().await {
-                let snapshot_backup = snapshot.clone();
-                let state_update =
-                    match verify_block(&chain_cfg, &mut snapshot, &blk_proposal, verify_consensus)
-                        .await
-                    {
-                        Ok(state_update) => state_update,
-                        Err(e) => {
-                            snapshot = snapshot_backup;
-                            error!("Failed to import block. Error: {}", e);
-                            continue;
-                        }
-                    };
-                std::mem::drop(snapshot_backup);
+            loop {
+                tokio::select! {
+                    Some(blk_proposal) = blk_rx.next() => {
+                        let state_update = {
+                            let snapshot_backup = snapshot.clone();
+                            match verify_block(&chain_cfg, &mut snapshot, &blk_proposal, verify_consensus)
+                                .await
+                            {
+                                Ok(state_update) => state_update,
+                                Err(e) => {
+                                    snapshot = snapshot_backup;
+                                    error!("Failed to import block. Error: {}", e);
+                                    continue;
+                                }
+                            }
+                        };
 
-                if let Err(e) = commit_block_storage_node(
-                    &blk_proposal,
-                    &state_update,
-                    &db,
-                    &latest_block_header,
-                    &latest_tx_count,
-                )
-                .await
-                {
-                    if let Ok(db_tx) = snapshot.write_db_tx() {
-                        db.write_async(db_tx).await.ok();
+                        if let Err(e) = commit_block_storage_node(
+                            &blk_proposal,
+                            &state_update,
+                            &db,
+                            &latest_block_header,
+                            &latest_tx_count,
+                        )
+                        .await
+                        {
+                            if let Ok(db_tx) = snapshot.write_db_tx() {
+                                db.write_async(db_tx).await.ok();
+                            }
+                            panic!("Failed to commit the block. Error: {}", e);
+                        }
                     }
-                    panic!("Failed to commit the block. Error: {}", e);
+                    _ = &mut shutdown_rx => break,
                 }
             }
 
@@ -190,6 +210,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
         Self {
             handle: Some(handle),
             blk_tx,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -199,6 +220,11 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
 
     async fn shutdown(&mut self) -> Result<()> {
         self.blk_tx.close_channel();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
