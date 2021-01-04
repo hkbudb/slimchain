@@ -15,7 +15,11 @@ use async_raft::{
     NodeId, RaftNetwork,
 };
 use async_trait::async_trait;
-use futures::{channel::mpsc, future, prelude::*};
+use futures::{
+    channel::{mpsc, oneshot},
+    future,
+    prelude::*,
+};
 use serde::{Deserialize, Serialize};
 use slimchain_chain::{block_proposal::BlockProposal, consensus::raft::Block, role::Role};
 use slimchain_common::{
@@ -213,7 +217,7 @@ where
     handle: Option<JoinHandle<()>>,
     req_tx: mpsc::UnboundedSender<TxHttpRequest>,
     block_proposal_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
-    shutdown_tx: mpsc::Sender<()>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl<Tx> ClientNodeNetworkWorker<Tx>
@@ -225,7 +229,7 @@ where
         let mut req_rx = req_rx.fuse();
         let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
         let mut block_proposal_rx = block_proposal_rx.fuse();
-        let (shutdown_tx, mut shutdown_rx) = mpsc::channel(1);
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let handle = tokio::spawn(async move {
             loop {
@@ -240,7 +244,7 @@ where
                             network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
                         }
                     }
-                    _ = shutdown_rx.next() => {
+                    _ = &mut shutdown_rx => {
                         break;
                     }
                 }
@@ -251,7 +255,7 @@ where
             handle: Some(handle),
             req_tx,
             block_proposal_tx,
-            shutdown_tx,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -266,7 +270,11 @@ where
     pub async fn shutdown(&mut self) -> Result<()> {
         self.req_tx.close_channel();
         self.block_proposal_tx.close_channel();
-        self.shutdown_tx.send(()).await.ok();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
