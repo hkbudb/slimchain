@@ -226,7 +226,7 @@ where
 {
     pub fn new(network: Arc<ClientNodeNetwork<Tx>>) -> Self {
         let (req_tx, req_rx) = mpsc::unbounded();
-        let mut req_rx = req_rx.ready_chunks(8);
+        let mut req_rx = req_rx.fuse();
         let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
         let mut block_proposal_rx = block_proposal_rx.fuse();
         let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
@@ -234,13 +234,8 @@ where
         let handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    Some(reqs) = req_rx.next() => {
-                        let network = network.clone();
-                        future::join_all(reqs.into_iter().map(move |req| {
-                            let network = network.clone();
-                            async move { network.forward_tx_to_storage_node(req).await }
-                        }))
-                        .await;
+                    Some(req) = req_rx.next() => {
+                        network.forward_tx_to_storage_node(req).await;
                     }
                     Some(block_proposal) = block_proposal_rx.next() => {
                         network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
