@@ -12,7 +12,11 @@ use crate::{
     },
     db::DBPtr,
 };
-use futures::{channel::mpsc, prelude::*, stream::Fuse};
+use futures::{
+    channel::{mpsc, oneshot},
+    prelude::*,
+    stream::Fuse,
+};
 use slimchain_chain::{config::MinerConfig, latest::LatestTxCountPtr};
 use slimchain_common::{
     basic::BlockHeight,
@@ -22,10 +26,6 @@ use slimchain_common::{
 use slimchain_utils::ordered_stream::OrderedStream;
 use std::{
     pin::Pin,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
     task::{Context, Poll},
 };
 use tokio::task::JoinHandle;
@@ -33,6 +33,7 @@ use tokio::task::JoinHandle;
 pub struct BlockImportWorker {
     handle: Option<JoinHandle<()>>,
     blk_tx: mpsc::UnboundedSender<Block>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl BlockImportWorker {
@@ -43,29 +44,37 @@ impl BlockImportWorker {
             height.next_height(),
             |height| height.next_height(),
         );
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             let mut height = height;
-            while let Some(blk) = blk_rx.next().await {
-                let state_update = match verify_block(&db, height, &blk, verify_consensus).await {
-                    Ok(state_update) => state_update,
-                    Err(e) => {
-                        error!("Failed to import block. Error: {}", e);
-                        continue;
+
+            loop {
+                tokio::select! {
+                    Some(blk) = blk_rx.next() => {
+                        let state_update = match verify_block(&db, height, &blk, verify_consensus).await {
+                            Ok(state_update) => state_update,
+                            Err(e) => {
+                                error!("Failed to import block. Error: {}", e);
+                                continue;
+                            }
+                        };
+
+                        commit_block(&db, &blk, &state_update, &latest_tx_count)
+                            .await
+                            .expect("Failed to commit the block.");
+
+                        height = height.next_height();
                     }
-                };
-
-                commit_block(&db, &blk, &state_update, &latest_tx_count)
-                    .await
-                    .expect("Failed to commit the block.");
-
-                height = height.next_height();
+                    _ = &mut shutdown_rx => break,
+                }
             }
         });
 
         Self {
             handle: Some(handle),
             blk_tx,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -77,6 +86,11 @@ impl BlockImportWorker {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.blk_tx.close_channel();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
@@ -90,7 +104,7 @@ pub struct BlockProposalWorker {
     handle: Option<JoinHandle<()>>,
     tx_tx: mpsc::UnboundedSender<SignedTxRequest>,
     blk_rx: Fuse<mpsc::UnboundedReceiver<Block>>,
-    shutdown_flag: Arc<AtomicBool>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl BlockProposalWorker {
@@ -100,35 +114,38 @@ impl BlockProposalWorker {
         height: BlockHeight,
         latest_tx_count: LatestTxCountPtr,
     ) -> Self {
-        let shutdown_flag = Arc::new(AtomicBool::new(false));
-        let shutdown_flag_copy = shutdown_flag.clone();
-
         let (tx_tx, tx_rx) = mpsc::unbounded::<SignedTxRequest>();
         let mut tx_rx = tx_rx.fuse();
 
         let (mut blk_tx, blk_rx) = mpsc::unbounded::<Block>();
         let blk_rx = blk_rx.fuse();
 
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+
         let handle: JoinHandle<()> = tokio::spawn(async move {
             let mut height = height;
-            while let Some((block, state_update)) =
-                propose_block(&miner_cfg, &db, height, &mut tx_rx, create_new_block)
-                    .await
-                    .expect("Failed to build the new block.")
-            {
-                commit_block(&db, &block, &state_update, &latest_tx_count)
-                    .await
-                    .expect("Failed to commit the block.");
 
-                if let Err(e) = blk_tx.start_send(block) {
-                    panic!("Failed to send the block. Error: {}", e);
+            loop {
+                tokio::select! {
+                    res = propose_block(&miner_cfg, &db, height, &mut tx_rx, create_new_block) =>
+                    {
+                        let (block, state_update) = match res.expect("Failed to build the new block.") {
+                            Some(res) => res,
+                            None => break,
+                        };
+
+                        commit_block(&db, &block, &state_update, &latest_tx_count)
+                            .await
+                            .expect("Failed to commit the block.");
+
+                        if let Err(e) = blk_tx.start_send(block) {
+                            panic!("Failed to send the block. Error: {}", e);
+                        }
+
+                        height = height.next_height();
+                    }
+                    _ = &mut shutdown_rx => break,
                 }
-
-                if shutdown_flag_copy.load(Ordering::Acquire) {
-                    break;
-                }
-
-                height = height.next_height();
             }
         });
 
@@ -136,7 +153,7 @@ impl BlockProposalWorker {
             handle: Some(handle),
             tx_tx,
             blk_rx,
-            shutdown_flag,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -154,7 +171,11 @@ impl BlockProposalWorker {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.tx_tx.close_channel();
-        self.shutdown_flag.store(true, Ordering::Release);
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {

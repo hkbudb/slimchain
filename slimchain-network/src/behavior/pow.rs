@@ -7,7 +7,11 @@ pub use miner::*;
 pub mod storage;
 pub use storage::*;
 
-use futures::{channel::mpsc, prelude::*, stream::Fuse};
+use futures::{
+    channel::{mpsc, oneshot},
+    prelude::*,
+    stream::Fuse,
+};
 use serde::Serialize;
 use slimchain_chain::{
     behavior::{commit_block, commit_block_storage_node, propose_block, verify_block},
@@ -33,6 +37,7 @@ use tokio::task::JoinHandle;
 pub struct BlockImportWorker<Tx: TxTrait + 'static> {
     handle: Option<JoinHandle<()>>,
     blk_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
@@ -51,41 +56,53 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
             latest_block_header.get_height().next_height(),
             |height| height.next_height(),
         );
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
-            while let Some(blk_proposal) = blk_rx.next().await {
-                let snapshot_backup = snapshot.clone();
-                let state_update =
-                    match verify_block(&chain_cfg, &mut snapshot, &blk_proposal, verify_consensus)
-                        .await
-                    {
-                        Ok(state_update) => state_update,
-                        Err(e) => {
-                            snapshot = snapshot_backup;
-                            error!("Failed to import block. Error: {}", e);
-                            continue;
+            loop {
+                tokio::select! {
+                    Some(blk_proposal) = blk_rx.next() => {
+                        let state_update = {
+                            let snapshot_backup = snapshot.clone();
+                            match verify_block(
+                                &chain_cfg,
+                                &mut snapshot,
+                                &blk_proposal,
+                                verify_consensus,
+                            )
+                            .await
+                            {
+                                Ok(state_update) => state_update,
+                                Err(e) => {
+                                    snapshot = snapshot_backup;
+                                    error!("Failed to import block. Error: {}", e);
+                                    continue;
+                                }
+                            }
+                        };
+
+                        let commit_res = if storage_node {
+                            commit_block_storage_node(
+                                &blk_proposal,
+                                &state_update,
+                                &db,
+                                &latest_block_header,
+                                &latest_tx_count,
+                            )
+                            .await
+                        } else {
+                            commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count)
+                                .await
+                        };
+
+                        if let Err(e) = commit_res {
+                            if let Ok(db_tx) = snapshot_to_db_tx(&snapshot) {
+                                db.write_async(db_tx).await.ok();
+                            }
+                            panic!("Failed to commit the block. Error: {}", e);
                         }
-                    };
-                std::mem::drop(snapshot_backup);
-
-                let commit_res = if storage_node {
-                    commit_block_storage_node(
-                        &blk_proposal,
-                        &state_update,
-                        &db,
-                        &latest_block_header,
-                        &latest_tx_count,
-                    )
-                    .await
-                } else {
-                    commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count).await
-                };
-
-                if let Err(e) = commit_res {
-                    if let Ok(db_tx) = snapshot_to_db_tx(&snapshot) {
-                        db.write_async(db_tx).await.ok();
                     }
-                    panic!("Failed to commit the block. Error: {}", e);
+                    _ = &mut shutdown_rx => break,
                 }
             }
 
@@ -97,6 +114,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
         Self {
             handle: Some(handle),
             blk_tx,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -108,6 +126,11 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.blk_tx.close_channel();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
@@ -121,6 +144,7 @@ pub struct BlockProposalWorker<Tx: TxTrait + 'static> {
     handle: Option<JoinHandle<()>>,
     tx_tx: mpsc::UnboundedSender<TxProposal<Tx>>,
     blk_rx: Fuse<mpsc::UnboundedReceiver<BlockProposal<Block, Tx>>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
@@ -138,46 +162,53 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
         let (mut blk_tx, blk_rx) = mpsc::unbounded::<BlockProposal<Block, Tx>>();
         let blk_rx = blk_rx.fuse();
 
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
                 let snapshot_backup = snapshot.clone();
-                let blk_proposal = match propose_block(
-                    &chain_cfg,
-                    &miner_cfg,
-                    &mut snapshot,
-                    &mut tx_rx,
-                    create_new_block,
-                )
-                .await
-                {
-                    Ok(blk_proposal) => blk_proposal,
-                    Err(e) => {
-                        snapshot_backup.write_async(&db).await.ok();
-                        panic!("Failed to build the new block. Error: {}", e);
-                    }
-                };
 
-                match blk_proposal {
-                    Some(blk_proposal) => {
-                        if let Err(e) =
-                            commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count)
-                                .await
-                        {
-                            snapshot_backup.write_async(&db).await.ok();
-                            panic!("Failed to commit the new block. Error: {}", e);
+                tokio::select! {
+                    res = propose_block(
+                        &chain_cfg,
+                        &miner_cfg,
+                        &mut snapshot,
+                        &mut tx_rx,
+                        create_new_block,
+                    ) => {
+                        let blk_proposal = match res {
+                            Ok(blk_proposal) => blk_proposal,
+                            Err(e) => {
+                                snapshot_backup.write_async(&db).await.ok();
+                                panic!("Failed to build the new block. Error: {}", e);
+                            }
+                        };
+
+                        match blk_proposal {
+                            Some(blk_proposal) => {
+                                if let Err(e) =
+                                    commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count)
+                                        .await
+                                {
+                                    snapshot_backup.write_async(&db).await.ok();
+                                    panic!("Failed to commit the new block. Error: {}", e);
+                                }
+                                if let Err(e) = blk_tx.start_send(blk_proposal) {
+                                    snapshot_backup.write_async(&db).await.ok();
+                                    panic!("Failed to send the block proposal. Error: {}", e);
+                                }
+                            }
+                            None => {
+                                snapshot_backup
+                                    .write_async(&db)
+                                    .await
+                                    .expect("Failed to save the snapshot.");
+                                break;
+                            }
                         }
-                        if let Err(e) = blk_tx.start_send(blk_proposal) {
-                            snapshot_backup.write_async(&db).await.ok();
-                            panic!("Failed to send the block proposal. Error: {}", e);
-                        }
+
                     }
-                    None => {
-                        snapshot_backup
-                            .write_async(&db)
-                            .await
-                            .expect("Failed to save the snapshot.");
-                        return;
-                    }
+                    _ = &mut shutdown_rx => break,
                 }
             }
         });
@@ -186,6 +217,7 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
             handle: Some(handle),
             tx_tx,
             blk_rx,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -203,6 +235,11 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.tx_tx.close_channel();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {

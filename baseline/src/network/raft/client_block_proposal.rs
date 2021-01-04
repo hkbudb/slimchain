@@ -9,18 +9,22 @@ use async_raft::{
     error::ClientWriteError,
     raft::{ClientWriteRequest, ClientWriteResponse},
 };
-use futures::{channel::mpsc, prelude::*};
+use futures::{
+    channel::{mpsc, oneshot},
+    prelude::*,
+};
 use slimchain_chain::config::MinerConfig;
 use slimchain_common::{
     error::{bail, Result},
     tx_req::SignedTxRequest,
 };
-use std::{pin::Pin, sync::Arc};
+use std::sync::Arc;
 use tokio::{sync::Mutex, task::JoinHandle};
 
 pub struct BlockProposalWorker {
     handle: Option<JoinHandle<()>>,
     tx_tx: mpsc::UnboundedSender<SignedTxRequest>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl BlockProposalWorker {
@@ -33,13 +37,19 @@ impl BlockProposalWorker {
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<SignedTxRequest>();
         let mut tx_rx = tx_rx.fuse().peekable();
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let miner_cfg = miner_cfg.clone();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
-                if Pin::new(&mut tx_rx).peek().await.is_none() {
-                    return;
+                tokio::select! {
+                    res = Pin::new(&mut tx_rx).peek() => {
+                        if res.is_none() {
+                            break;
+                        }
+                    }
+                    _ = &mut shutdown_rx => break,
                 }
 
                 let blk_proposal = match propose_block(
@@ -60,7 +70,7 @@ impl BlockProposalWorker {
 
                 let (blk, update) = match blk_proposal {
                     Some(blk_proposal) => blk_proposal,
-                    None => return,
+                    None => break,
                 };
 
                 raft_storage.set_miner_update(&blk, update).await;
@@ -94,6 +104,7 @@ impl BlockProposalWorker {
         Self {
             handle: Some(handle),
             tx_tx,
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -103,6 +114,11 @@ impl BlockProposalWorker {
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.tx_tx.close_channel();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {
