@@ -177,6 +177,18 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
             Poll::Pending => Poll::Pending,
         }
     }
+
+    pub fn shutdown_token(&self) -> Arc<AtomicBool> {
+        self.shutdown_flag.clone()
+    }
+
+    pub fn shutdown(&self) {
+        self.shutdown_flag.store(true, Ordering::Release);
+    }
+
+    pub fn is_shutdown(&self) -> bool {
+        self.shutdown_flag.load(Ordering::Acquire)
+    }
 }
 
 impl<Tx: TxTrait + 'static> Drop for TxEngine<Tx> {
