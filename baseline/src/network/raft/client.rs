@@ -1,6 +1,6 @@
 use super::{
     client_block_proposal::BlockProposalWorker,
-    client_network::{ClientNodeNetwork, ClientNodeNetworkWorker},
+    client_network::ClientNodeNetwork,
     client_storage::ClientNodeStorage,
     message::{NewBlockRequest, NewBlockResponse},
     rpc::NODE_BLOCK_ROUTE_PATH,
@@ -46,7 +46,6 @@ pub struct ClientNode {
     raft: Option<Arc<ClientNodeRaft>>,
     srv: Option<(oneshot::Sender<()>, JoinHandle<()>)>,
     proposal_worker: BlockProposalWorker,
-    network_worker: ClientNodeNetworkWorker,
 }
 
 impl ClientNode {
@@ -70,8 +69,6 @@ impl ClientNode {
         ));
         let raft_client_lock = Arc::new(Mutex::new(()));
 
-        let network_worker = ClientNodeNetworkWorker::new(raft_network.clone());
-
         let proposal_worker = BlockProposalWorker::new(
             miner_cfg,
             raft_storage.clone(),
@@ -81,14 +78,14 @@ impl ClientNode {
         );
 
         let client_rpc_srv = {
-            let network_worker_req_tx = network_worker.get_req_tx();
             let raft_storage_copy1 = raft_storage.clone();
             let raft_storage_copy2 = raft_storage.clone();
+            let raft_network_copy = raft_network.clone();
             client_rpc_server(
                 move |reqs: Vec<TxHttpRequest>| {
-                    let mut network_worker_req_tx = network_worker_req_tx.clone();
+                    let raft_network_copy = raft_network_copy.clone();
                     async move {
-                        network_worker_req_tx.send(reqs).await.ok();
+                        raft_network_copy.forward_tx_http_reqs_to_leader(reqs).await;
                         Ok(())
                     }
                 },
@@ -250,7 +247,6 @@ impl ClientNode {
             raft: Some(raft),
             srv: Some((srv_shutdown_tx, srv_handle)),
             proposal_worker,
-            network_worker,
         })
     }
 
@@ -264,8 +260,6 @@ impl ClientNode {
         self.raft_storage.save_to_db().await?;
 
         self.proposal_worker.shutdown().await?;
-
-        self.network_worker.shutdown().await?;
 
         if let Some((shutdown_tx, handler)) = self.srv.take() {
             shutdown_tx.send(()).ok();
