@@ -27,7 +27,13 @@ use slimchain_common::{
 use slimchain_tx_engine::TxEngine;
 use slimchain_tx_state::{StorageTxTrie, TxProposal};
 use slimchain_utils::ordered_stream::OrderedStream;
-use std::net::SocketAddr;
+use std::{
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 use tokio::task::JoinHandle;
 use warp::Filter;
 
@@ -61,6 +67,7 @@ async fn send_tx_proposals<Tx: TxTrait + Serialize>(
 
 struct TxExecWorker {
     tx_req_tx: mpsc::UnboundedSender<SignedTxRequest>,
+    engine_shutdown_token: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -71,6 +78,7 @@ impl TxExecWorker {
         db: &DBPtr,
         latest_block_header: &LatestBlockHeaderPtr,
     ) -> Self {
+        let engine_shutdown_token = engine.shutdown_token();
         let (tx_req_tx, tx_req_rx) = mpsc::unbounded::<SignedTxRequest>();
         let mut tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
 
@@ -97,6 +105,7 @@ impl TxExecWorker {
 
         Self {
             tx_req_tx,
+            engine_shutdown_token,
             handle: Some(handle),
         }
     }
@@ -107,6 +116,7 @@ impl TxExecWorker {
 
     async fn shutdown(&mut self) -> Result<()> {
         self.tx_req_tx.close_channel();
+        self.engine_shutdown_token.store(true, Ordering::Release);
         if let Some(handler) = self.handle.take() {
             handler.await?;
         } else {

@@ -25,6 +25,10 @@ use slimchain_tx_engine::TxEngine;
 use slimchain_tx_state::{StorageTxTrie, TxProposal};
 use std::{
     pin::Pin,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     task::{Context, Poll},
 };
 
@@ -40,6 +44,8 @@ pub struct StorageBehavior<Tx: TxTrait + Serialize + 'static> {
     tx_req_tx: mpsc::UnboundedSender<SignedTxRequest>,
     #[behaviour(ignore)]
     tx_exec_stream: TxExecuteStream<Tx, mpsc::UnboundedReceiver<SignedTxRequest>>,
+    #[behaviour(ignore)]
+    tx_engine_shutdown_token: Arc<AtomicBool>,
 }
 
 impl<Tx: TxTrait + Serialize + 'static> StorageBehavior<Tx> {
@@ -65,6 +71,7 @@ impl<Tx: TxTrait + Serialize + 'static> StorageBehavior<Tx> {
         let latest_block_header = snapshot.to_latest_block_header();
         let latest_tx_count = LatestTxCount::new(0);
 
+        let tx_engine_shutdown_token = engine.shutdown_token();
         let (tx_req_tx, tx_req_rx) = mpsc::unbounded::<SignedTxRequest>();
         let tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
 
@@ -85,6 +92,7 @@ impl<Tx: TxTrait + Serialize + 'static> StorageBehavior<Tx> {
             import_worker,
             tx_req_tx,
             tx_exec_stream,
+            tx_engine_shutdown_token,
         })
     }
 
@@ -151,6 +159,7 @@ impl<Tx: TxTrait + Serialize>
 impl<Tx: TxTrait + Serialize> Shutdown for StorageBehavior<Tx> {
     async fn shutdown(&mut self) -> Result<()> {
         self.tx_req_tx.close_channel();
+        self.tx_engine_shutdown_token.store(true, Ordering::Release);
         self.import_worker.shutdown().await
     }
 }
