@@ -17,7 +17,7 @@ use async_raft::{
     error::{InitializeError, RaftError},
     Raft,
 };
-use futures::{channel::oneshot, future::join_all, prelude::*, stream};
+use futures::{channel::oneshot, prelude::*, stream};
 use serde::{Deserialize, Serialize};
 use slimchain_chain::{
     config::{ChainConfig, MinerConfig},
@@ -90,13 +90,12 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             let raft_storage_copy2 = raft_storage.clone();
             client_rpc_server(
                 move |reqs: Vec<TxHttpRequest>| {
-                    let network_worker_req_tx = network_worker_req_tx.clone();
-                    async {
-                        join_all(reqs.into_iter().map(move |req| {
-                            let mut network_worker_req_tx = network_worker_req_tx.clone();
-                            async move { network_worker_req_tx.send(req).await.ok() }
-                        }))
-                        .await;
+                    let mut network_worker_req_tx = network_worker_req_tx.clone();
+                    async move {
+                        network_worker_req_tx
+                            .send_all(&mut stream::iter(reqs).map(Ok))
+                            .await
+                            .ok();
                         Ok(())
                     }
                 },

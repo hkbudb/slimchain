@@ -226,7 +226,7 @@ where
 {
     pub fn new(network: Arc<ClientNodeNetwork<Tx>>) -> Self {
         let (req_tx, req_rx) = mpsc::unbounded();
-        let mut req_rx = req_rx.ready_chunks(256);
+        let mut req_rx = req_rx.ready_chunks(64);
         let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
         let mut block_proposal_rx = block_proposal_rx.fuse();
         let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
