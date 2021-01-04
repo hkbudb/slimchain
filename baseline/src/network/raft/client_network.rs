@@ -7,7 +7,14 @@ use async_raft::{
     NodeId, RaftNetwork,
 };
 use async_trait::async_trait;
-use slimchain_common::{error::Result, tx_req::SignedTxRequest};
+use futures::{
+    channel::{mpsc, oneshot},
+    prelude::*,
+};
+use slimchain_common::{
+    error::{bail, Result},
+    tx_req::SignedTxRequest,
+};
 use slimchain_network::{
     behavior::raft::storage::fetch_leader_id,
     http::{
@@ -18,7 +25,8 @@ use slimchain_network::{
     },
 };
 use slimchain_utils::record_event;
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tokio::{sync::Mutex, task::JoinHandle};
 
 const MAX_RETRIES: usize = 3;
 
@@ -128,5 +136,59 @@ impl RaftNetwork<NewBlockRequest> for ClientNodeNetwork {
             &rpc,
         )
         .await
+    }
+}
+
+pub struct ClientNodeNetworkWorker {
+    handle: Option<JoinHandle<()>>,
+    req_tx: mpsc::UnboundedSender<Vec<TxHttpRequest>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+}
+
+impl ClientNodeNetworkWorker {
+    pub fn new(network: Arc<ClientNodeNetwork>) -> Self {
+        let (req_tx, req_rx) = mpsc::unbounded();
+        let mut req_rx = req_rx.fuse();
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+
+        let handle = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    req = req_rx.next() => {
+                        if let Some(req) = req {
+                            network.forward_tx_http_reqs_to_leader(req).await;
+                        }
+                    }
+                    _ = &mut shutdown_rx => {
+                        break;
+                    }
+                }
+            }
+        });
+
+        Self {
+            handle: Some(handle),
+            req_tx,
+            shutdown_tx: Some(shutdown_tx),
+        }
+    }
+
+    pub fn get_req_tx(&self) -> mpsc::UnboundedSender<Vec<TxHttpRequest>> {
+        self.req_tx.clone()
+    }
+
+    pub async fn shutdown(&mut self) -> Result<()> {
+        self.req_tx.close_channel();
+        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
+        if let Some(handler) = self.handle.take() {
+            handler.await?;
+        } else {
+            bail!("Already shutdown.");
+        }
+        Ok(())
     }
 }
