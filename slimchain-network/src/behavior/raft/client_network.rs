@@ -214,10 +214,12 @@ pub struct ClientNodeNetworkWorker<Tx>
 where
     Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    handle: Option<JoinHandle<()>>,
+    req_handle: Option<JoinHandle<()>>,
     req_tx: mpsc::UnboundedSender<TxHttpRequest>,
+    req_shutdown_tx: Option<oneshot::Sender<()>>,
+    block_proposal_handle: Option<JoinHandle<()>>,
     block_proposal_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
-    shutdown_tx: Option<oneshot::Sender<()>>,
+    block_proposal_shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl<Tx> ClientNodeNetworkWorker<Tx>
@@ -226,30 +228,44 @@ where
 {
     pub fn new(network: Arc<ClientNodeNetwork<Tx>>) -> Self {
         let (req_tx, req_rx) = mpsc::unbounded();
-        let mut req_rx = req_rx.fuse();
+        let req_fut = {
+            let network = network.clone();
+            req_rx.for_each_concurrent(8, move |req| {
+                let network = network.clone();
+                async move { network.forward_tx_to_storage_node(req).await }
+            })
+        };
+        let (req_shutdown_tx, req_shutdown_rx) = oneshot::channel();
+
+        let req_handle = tokio::spawn(async move {
+            tokio::select! {
+                _ = req_fut => {}
+                _ = req_shutdown_rx => {}
+            }
+        });
+
         let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
         let mut block_proposal_rx = block_proposal_rx.fuse();
-        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+        let (block_proposal_shutdown_tx, mut block_proposal_shutdown_rx) = oneshot::channel();
 
-        let handle = tokio::spawn(async move {
+        let block_proposal_handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    Some(req) = req_rx.next() => {
-                        network.forward_tx_to_storage_node(req).await;
-                    }
                     Some(block_proposal) = block_proposal_rx.next() => {
                         network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
                     }
-                    _ = &mut shutdown_rx => break,
+                    _ = &mut block_proposal_shutdown_rx => break,
                 }
             }
         });
 
         Self {
-            handle: Some(handle),
+            req_handle: Some(req_handle),
             req_tx,
+            req_shutdown_tx: Some(req_shutdown_tx),
+            block_proposal_handle: Some(block_proposal_handle),
             block_proposal_tx,
-            shutdown_tx: Some(shutdown_tx),
+            block_proposal_shutdown_tx: Some(block_proposal_shutdown_tx),
         }
     }
 
@@ -263,13 +279,24 @@ where
 
     pub async fn shutdown(&mut self) -> Result<()> {
         self.req_tx.close_channel();
-        self.block_proposal_tx.close_channel();
-        if let Some(shutdown_tx) = self.shutdown_tx.take() {
+        if let Some(shutdown_tx) = self.req_shutdown_tx.take() {
             shutdown_tx.send(()).ok();
         } else {
             bail!("Already shutdown.");
         }
-        if let Some(handler) = self.handle.take() {
+        if let Some(handler) = self.req_handle.take() {
+            handler.await?;
+        } else {
+            bail!("Already shutdown.");
+        }
+
+        self.block_proposal_tx.close_channel();
+        if let Some(shutdown_tx) = self.block_proposal_shutdown_tx.take() {
+            shutdown_tx.send(()).ok();
+        } else {
+            bail!("Already shutdown.");
+        }
+        if let Some(handler) = self.block_proposal_handle.take() {
             handler.await?;
         } else {
             bail!("Already shutdown.");
