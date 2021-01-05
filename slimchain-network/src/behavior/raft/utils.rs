@@ -10,9 +10,18 @@ where
     S: RaftStorage<D, R>,
 {
     raft.metrics()
-        .recv()
-        .await
-        .and_then(|m| m.current_leader)
+        .borrow()
+        .current_leader
         .map(PeerId::from)
         .ok_or_else(|| anyhow!("Leader unknown"))
+}
+
+pub fn node_is_leader<D, R, N, S>(raft: &Raft<D, R, N, S>) -> bool
+where
+    D: AppData,
+    R: AppDataResponse,
+    N: RaftNetwork<D>,
+    S: RaftStorage<D, R>,
+{
+    raft.metrics().borrow().state.is_leader()
 }

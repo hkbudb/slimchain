@@ -18,7 +18,7 @@ use slimchain_common::{
     tx_req::SignedTxRequest,
 };
 use slimchain_network::{
-    behavior::raft::utils::get_current_leader,
+    behavior::raft::utils::{get_current_leader, node_is_leader},
     http::{
         client_rpc::*,
         common::*,
@@ -161,13 +161,13 @@ impl ClientNode {
                     }
                 });
 
-            let raft_metrics = raft.metrics();
+            let raft_copy = raft.clone();
             let tx_tx = proposal_worker.get_tx_tx();
             let leader_req_rpc = warp::post()
                 .and(warp::path(CLIENT_LEADER_REQ_ROUTE_PATH))
                 .and(warp_body_postcard())
                 .and_then(move |txs: Vec<SignedTxRequest>| {
-                    let mut raft_metrics = raft_metrics.clone();
+                    let raft_copy = raft_copy.clone();
                     let mut tx_tx_copy = tx_tx.clone();
                     let mut input = stream::iter(txs).map(|tx| {
                         trace!(
@@ -177,11 +177,7 @@ impl ClientNode {
                         Ok(tx)
                     });
                     async move {
-                        if !raft_metrics
-                            .recv()
-                            .await
-                            .map_or(false, |m| m.state.is_leader())
-                        {
+                        if !node_is_leader(raft_copy.as_ref()) {
                             return Err(warp::reject::custom(ClientNodeError::Other(anyhow!(
                                 "not leader"
                             ))));
