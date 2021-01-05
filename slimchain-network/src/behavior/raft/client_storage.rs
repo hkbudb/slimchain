@@ -207,7 +207,9 @@ where
             return Ok(vec![]);
         }
         let _log = self.raft_log.read().await;
-        (start..stop).map(|idx| self.read_log(idx)).collect()
+        Ok((start..stop)
+            .filter_map(|idx| self.read_log(idx).ok())
+            .collect())
     }
 
     #[allow(clippy::unit_arg)]
