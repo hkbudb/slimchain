@@ -24,7 +24,7 @@ use slimchain_common::{
 };
 use slimchain_tx_state::TxProposal;
 use std::sync::Arc;
-use tokio::{sync::Mutex, task::JoinHandle};
+use tokio::task::JoinHandle;
 
 pub struct BlockProposalWorker<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> {
     handle: Option<JoinHandle<()>>,
@@ -38,7 +38,6 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
         miner_cfg: &MinerConfig,
         raft_storage: Arc<ClientNodeStorage<Tx>>,
         raft: Arc<ClientNodeRaft<Tx>>,
-        raft_client_lock: Arc<Mutex<()>>,
         mut block_proposal_broadcast_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<TxProposal<Tx>>();
@@ -85,29 +84,26 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                     .set_miner_snapshot(&blk_proposal, snapshot)
                     .await;
 
+                match raft
+                    .client_write(ClientWriteRequest::new(NewBlockRequest(
+                        blk_proposal.clone(),
+                    )))
+                    .await
                 {
-                    let _guard = raft_client_lock.lock().await;
-                    match raft
-                        .client_write(ClientWriteRequest::new(NewBlockRequest(
-                            blk_proposal.clone(),
-                        )))
-                        .await
-                    {
-                        Ok(ClientWriteResponse { data, .. }) => match data {
-                            NewBlockResponse::Ok => {}
-                            NewBlockResponse::Err(e) => {
-                                error!("Raft write error from response. Error: {}", e);
-                                continue;
-                            }
-                        },
-                        Err(ClientWriteError::ForwardToLeader(_, leader)) => {
-                            warn!("Raft write should be forward to leader ({:?}).", leader);
+                    Ok(ClientWriteResponse { data, .. }) => match data {
+                        NewBlockResponse::Ok => {}
+                        NewBlockResponse::Err(e) => {
+                            error!("Raft write error from response. Error: {}", e);
                             continue;
                         }
-                        Err(ClientWriteError::RaftError(e)) => {
-                            error!("Raft write error from raft. Error: {}", e);
-                            continue;
-                        }
+                    },
+                    Err(ClientWriteError::ForwardToLeader(_, leader)) => {
+                        warn!("Raft write should be forward to leader ({:?}).", leader);
+                        continue;
+                    }
+                    Err(ClientWriteError::RaftError(e)) => {
+                        error!("Raft write error from raft. Error: {}", e);
+                        continue;
                     }
                 }
 

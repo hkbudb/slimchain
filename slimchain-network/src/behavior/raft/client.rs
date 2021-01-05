@@ -29,7 +29,7 @@ use slimchain_common::{
 };
 use slimchain_tx_state::TxProposal;
 use std::{net::SocketAddr, sync::Arc};
-use tokio::{sync::Mutex, task::JoinHandle};
+use tokio::task::JoinHandle;
 use warp::Filter;
 
 pub type ClientNodeRaft<Tx> =
@@ -71,7 +71,6 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             raft_network.clone(),
             raft_storage.clone(),
         ));
-        let raft_client_lock = Arc::new(Mutex::new(()));
 
         let network_worker = ClientNodeNetworkWorker::new(raft_network.clone());
 
@@ -80,7 +79,6 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             miner_cfg,
             raft_storage.clone(),
             raft.clone(),
-            raft_client_lock.clone(),
             network_worker.get_block_proposal_tx(),
         );
 
@@ -155,21 +153,15 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
 
         let leader_rpc_srv = {
             let raft_copy = raft.clone();
-            let raft_client_lock_copy = raft_client_lock.clone();
             let leader_id_rpc = warp::get()
                 .and(warp::path(CLIENT_LEADER_ID_ROUTE_PATH))
                 .and_then(move || {
                     let raft_copy = raft_copy.clone();
-                    let raft_client_lock_copy = raft_client_lock_copy.clone();
                     async move {
-                        get_current_leader(
-                            peer_id,
-                            raft_copy.as_ref(),
-                            raft_client_lock_copy.as_ref(),
-                        )
-                        .await
-                        .map(|resp| warp_reply_postcard(&resp))
-                        .map_err(|e| warp::reject::custom(ClientNodeError::Other(e)))
+                        get_current_leader(raft_copy.as_ref())
+                            .await
+                            .map(|resp| warp_reply_postcard(&resp))
+                            .map_err(|e| warp::reject::custom(ClientNodeError::Other(e)))
                     }
                 });
 
