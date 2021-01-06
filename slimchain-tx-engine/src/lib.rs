@@ -339,7 +339,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                     continue;
                 }
             };
-            record_time!("exec_time", Instant::now() - begin, "task_id": task_id.0, "tx_id": tx.id());
+            record_time!("exec_time", Instant::now() - begin, "task_id": task_id.0, "tx_id": tx.id(), "exec_block_height": block_height.0);
             self.result_tx
                 .send(TxTaskOutput {
                     task_id,

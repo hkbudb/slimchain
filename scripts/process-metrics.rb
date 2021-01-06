@@ -69,10 +69,15 @@ end
 
 class Tx
   attr_reader :id
-  attr_accessor :block_height, :send_ts, :propose_recv_ts, :commit_ts, :exec_time, :exec_storage_node
+  attr_accessor :block_height, :send_ts, :propose_recv_ts, :commit_ts, :exec_time, :exec_storage_node, :exec_block_height
 
   def initialize(id)
     @id = id
+  end
+
+  def set_discard(reason:)
+    @discard = true
+    @discard_reason = reason
   end
 
   def set_outdated
@@ -147,6 +152,7 @@ class Tx
       propose_recv_ts: propose_recv_ts&.iso8601(6),
       commit_ts: commit_ts&.iso8601(6),
       exec_storage_node_id: exec_storage_node,
+      exec_block_height: exec_block_height,
       latency_in_us: latency,
       exec_time_in_us: exec_time,
       propose_time_in_us: propose_time,
@@ -155,6 +161,8 @@ class Tx
       committed: committed?,
       outdated: outdated?,
       conflicted: conflicted?,
+      discard: !!@discard,
+      discard_reason: @discard_reason,
     }
   end
 end
@@ -218,20 +226,19 @@ def process_node_metrics!(file, client: false)
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
         tx.propose_recv_ts = DateTime.iso8601 data["ts"] unless tx.propose_recv_ts
-      when "tx_outdated"
+      when "discard_tx"
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
+        reason = data["v"]["reason"]
 
-        next unless tx.status_known?
-
-        tx.set_outdated
-      when "tx_conflict"
-        tx_id = data["v"]["tx_id"]
-        tx = $txs[tx_id]
-
-        next unless tx.status_known?
-
-        tx.set_conflicted
+        case reason
+        when "tx_outdated"
+          tx.set_outdated unless tx.status_known?
+        when "tx_conflict"
+          tx.set_conflicted unless tx.status_known?
+        else
+          tx.set_discard reason: reason
+        end
       when "propose_end"
         $blocks[data["v"]["height"]].propose_end_ts = DateTime.iso8601 data["ts"]
       else
@@ -267,6 +274,7 @@ def process_storage_node_metrics!(file, storage_node_id:)
         tx = $txs[data["v"]["tx_id"]]
         tx.exec_time = data["t_in_us"]
         tx.exec_storage_node = storage_node_id
+        tx.exec_blk_height = data["v"]["exec_block_height"]
       when "verify_block"
       else
         warn "Unknown time record #{data["l"]} in #{file}:#{line_no}"

@@ -74,11 +74,12 @@ where
         let tx_block_height = tx.tx_block_height();
         if tx_block_height < snapshot.access_map.oldest_block_height() {
             debug!("Tx proposal is outdated.");
-            record_event!("tx_outdated", "tx_id": tx_id);
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_outdated");
             continue;
         }
         if tx_block_height > last_block_height {
             warn!("Tx proposal is too new.");
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_too_new");
             continue;
         }
 
@@ -89,7 +90,7 @@ where
             tx.tx_writes(),
         ) {
             debug!("Received a tx with conflict");
-            record_event!("tx_conflict", "tx_id": tx_id);
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_conflict");
             continue;
         }
 
@@ -99,16 +100,19 @@ where
 
         if tx.tx_state_root() != tx_block.state_root() {
             warn!("Received a tx with invalid state root.");
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_state_root");
             continue;
         }
 
         if let Err(e) = tx.verify_sig() {
             warn!("Received a tx with invalid sig. Error: {:?}", e);
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_sig");
             continue;
         }
 
         if let Err(e) = write_trie.verify(tx_block.state_root()) {
             warn!("Received a tx with invalid write trie. Error: {:?}", e);
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_write_trie");
             continue;
         }
 
