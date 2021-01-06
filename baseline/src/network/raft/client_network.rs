@@ -36,22 +36,23 @@ impl ClientNodeNetwork {
     }
 
     pub async fn forward_tx_http_reqs_to_leader(&self, tx_reqs: Vec<TxHttpRequest>) {
-        'outer: for tx_req in tx_reqs {
+        let mut reqs = Vec::with_capacity(tx_reqs.len());
+        for tx_req in tx_reqs {
             let TxHttpRequest { req, .. } = tx_req;
 
             let tx_req_id = req.id();
             trace!(%tx_req_id, "Recv TxReq from http.");
             record_event!("tx_begin", "tx_id": tx_req_id);
-            let reqs = vec![req];
+            reqs.push(req);
+        }
 
-            for i in 1..=MAX_RETRIES {
-                match self.forward_tx_reqs_to_leader(&reqs).await {
-                    Ok(_) => continue 'outer,
-                    Err(e) => {
-                        *self.leader_id_cache.lock().await = None;
-                        if i == MAX_RETRIES {
-                            error!("Failed to send tx_req to raft leader. Error: {}", e);
-                        }
+        for i in 1..=MAX_RETRIES {
+            match self.forward_tx_reqs_to_leader(&reqs).await {
+                Ok(_) => return,
+                Err(e) => {
+                    *self.leader_id_cache.lock().await = None;
+                    if i == MAX_RETRIES {
+                        error!("Failed to send tx_req to raft leader. Error: {}", e);
                     }
                 }
             }
