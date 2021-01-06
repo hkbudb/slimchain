@@ -106,13 +106,13 @@ where
 
         if let Err(e) = tx.verify_sig() {
             warn!("Received a tx with invalid sig. Error: {:?}", e);
-            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_sig");
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_sig", "detail": std::format!("{}", e));
             continue;
         }
 
         if let Err(e) = write_trie.verify(tx_block.state_root()) {
             warn!("Received a tx with invalid write trie. Error: {:?}", e);
-            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_write_trie");
+            record_event!("discard_tx", "tx_id": tx_id, "reason": "invalid_write_trie", "detail": std::format!("{}", e));
             continue;
         }
 

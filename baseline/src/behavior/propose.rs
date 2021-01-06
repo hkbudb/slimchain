@@ -77,7 +77,7 @@ where
             }
             Err(e) => {
                 error!("Error during execution. Error: {}", e);
-                record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error");
+                record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error", "detail": std::format!("{}", e));
                 continue;
             }
         }

@@ -328,7 +328,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 Ok(output) => output,
                 Err(e) => {
                     error!("Failed to execute task. Error: {}", e);
-                    record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error");
+                    record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error", "detail": std::format!("{}", e));
                     self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
@@ -337,7 +337,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 Ok(trie) => trie,
                 Err(e) => {
                     error!("Failed to create TxWriteSetTrie. Error: {}", e);
-                    record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error_write_set_failure");
+                    record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error_write_set_failure", "detail": std::format!("{}", e));
                     self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
