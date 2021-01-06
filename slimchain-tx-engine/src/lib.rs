@@ -16,7 +16,7 @@ use slimchain_common::{
     tx_req::SignedTxRequest,
 };
 use slimchain_tx_state::{TxProposal, TxStateView, TxWriteSetTrie};
-use slimchain_utils::record_time;
+use slimchain_utils::{record_event, record_time};
 use std::{
     iter,
     sync::{
@@ -315,6 +315,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
 
             let begin = Instant::now();
             let task_id = task.get_id();
+            let tx_id = task.signed_tx_req.id();
             let state_view = task.state_view.clone();
             let (block_height, state_root) = (task.block_state_fn)();
             let tx = match self.worker.execute(
@@ -327,6 +328,7 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 Ok(output) => output,
                 Err(e) => {
                     error!("Failed to execute task. Error: {}", e);
+                    record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error");
                     self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
@@ -335,11 +337,12 @@ impl<Tx: TxTrait> TxEngineWorkerInstance<Tx> {
                 Ok(trie) => trie,
                 Err(e) => {
                     error!("Failed to create TxWriteSetTrie. Error: {}", e);
+                    record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error_write_set_failure");
                     self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
                     continue;
                 }
             };
-            record_time!("exec_time", Instant::now() - begin, "task_id": task_id.0, "tx_id": tx.id(), "exec_block_height": block_height.0);
+            record_time!("exec_time", Instant::now() - begin, "task_id": task_id.0, "tx_id": tx_id, "exec_block_height": block_height.0);
             self.result_tx
                 .send(TxTaskOutput {
                     task_id,
