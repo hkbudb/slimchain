@@ -274,7 +274,7 @@ def process_storage_node_metrics!(file, storage_node_id:)
         tx = $txs[data["v"]["tx_id"]]
         tx.exec_time = data["t_in_us"]
         tx.exec_storage_node = storage_node_id
-        tx.exec_blk_height = data["v"]["exec_block_height"]
+        tx.exec_block_height = data["v"]["exec_block_height"]
       when "verify_block"
       else
         warn "Unknown time record #{data["l"]} in #{file}:#{line_no}"
