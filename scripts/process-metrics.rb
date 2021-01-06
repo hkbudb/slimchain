@@ -105,7 +105,7 @@ class Tx
     return false if @send_ts >= $tx_send_end_ts
     return false if @commit_ts && @commit_ts >= $tx_send_end_ts
 
-    committed? || outdated? || conflicted?
+    status_known?
   end
 
   def propose_time
@@ -278,19 +278,13 @@ def process_storage_node_metrics!(file, storage_node_id:)
 end
 
 def post_process!
-  old_blk_len = $blocks.size
-  old_tx_len = $txs.size
 
-  # puts "TX without state: #{$txs.count{ |_, tx| !tx.committed? && !tx.conflicted? && !tx.outdated? }}"
+  $blocks, $ignored_blocks = $blocks.partition { |_, blk| blk.keep? }
+  $txs, $ignored_txs = $txs.partition { |_, tx| tx.keep? }
 
-  $blocks.select! { |_, blk| blk.keep? }
-  $txs.select! { |_, tx| tx.keep? }
-
-  new_blk_len = $blocks.size
-  new_tx_len = $txs.size
-
-  puts "Ignore #{old_blk_len - new_blk_len} blocks. Remaining: #{new_blk_len}"
-  puts "Ignore #{old_tx_len - new_tx_len} txs. Remaining: #{new_tx_len}"
+  puts "Ignore #{$ignored_blocks.size} blocks. Remaining: #{$blocks.size}"
+  puts "Ignore #{$ignored_txs.size} txs. Remaining: #{$txs.size}"
+  puts "Ignored TX without state: #{$ignored_txs.count{ |_, tx| !tx.status_known? }}"
   puts
 
   cal_success_rate!
@@ -481,6 +475,8 @@ if $PROGRAM_NAME == __FILE__
     raw_result = {}
     raw_result["tx"] = $txs.map { |_, tx| tx.to_hash }
     raw_result["block"] = $blocks.map { |_, blk| blk.to_hash }
+    raw_result["ignored_tx"] = $ignored_txs.map { |_, tx| tx.to_hash }
+    raw_result["ignored_block"] = $ignored_blocks.map { |_, blk| blk.to_hash }
     File.write(options[:raw_output], JSON.pretty_generate(raw_result))
   end
 end
