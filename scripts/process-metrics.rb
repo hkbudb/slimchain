@@ -279,11 +279,11 @@ end
 
 def post_process!
 
-  $blocks, $ignored_blocks = $blocks.partition { |_, blk| blk.keep? }
-  $txs, $ignored_txs = $txs.partition { |_, tx| tx.keep? }
+  $kept_blocks, $ignored_blocks = $blocks.partition { |_, blk| blk.keep? }
+  $kept_txs, $ignored_txs = $txs.partition { |_, tx| tx.keep? }
 
-  puts "Ignore #{$ignored_blocks.size} blocks. Remaining: #{$blocks.size}"
-  puts "Ignore #{$ignored_txs.size} txs. Remaining: #{$txs.size}"
+  puts "Ignore #{$ignored_blocks.size} blocks. Remaining: #{$kept_blocks.size}"
+  puts "Ignore #{$ignored_txs.size} txs. Remaining: #{$kept_txs.size}"
   puts "Ignored TX without state: #{$ignored_txs.count{ |_, tx| !tx.status_known? }}"
   puts
 
@@ -294,10 +294,10 @@ def post_process!
 end
 
 def cal_success_rate!
-  total = $txs.size
-  committed = $txs.count { |_, tx| tx.committed? }
-  conflicted = $txs.count { |_, tx| tx.conflicted? }
-  outdated = $txs.count { |_, tx| tx.outdated? }
+  total = $kept_txs.size
+  committed = $kept_txs.count { |_, tx| tx.committed? }
+  conflicted = $kept_txs.count { |_, tx| tx.conflicted? }
+  outdated = $kept_txs.count { |_, tx| tx.outdated? }
   $result["total_tx"] = total
   $result["committed_tx"] = committed
   $result["conflicted_tx"] = conflicted
@@ -308,7 +308,7 @@ def cal_success_rate!
 end
 
 def cal_tx_statistics!
-  committed_tx = $txs.select { |_, tx| tx.committed? }
+  committed_tx = $kept_txs.select { |_, tx| tx.committed? }
 
   latency = committed_tx.map { |_, tx| tx.latency }.to_a.sort
   $result["avg_latency_in_us"] = mean(latency)
@@ -342,29 +342,29 @@ def cal_tx_statistics!
 end
 
 def cal_block_statistics!
-  tx_count = $blocks.map { |_, blk| blk.tx_list.size }.to_a.sort
+  tx_count = $kept_blocks.map { |_, blk| blk.tx_list.size }.to_a.sort
 
-  $result["total_block"] = $blocks.size
+  $result["total_block"] = $kept_blocks.size
   $result["avg_tx_in_block"] = mean(tx_count)
   $result["50percentile_tx_in_block"] = percentile(tx_count, 0.5, sorted: true)
   $result["90percentile_tx_in_block"] = percentile(tx_count, 0.9, sorted: true)
   $result["95percentile_tx_in_block"] = percentile(tx_count, 0.95, sorted: true)
 
-  blk_mining_time = $blocks.map { |_, blk| blk.mining_time || 0 }.to_a.sort
+  blk_mining_time = $kept_blocks.map { |_, blk| blk.mining_time || 0 }.to_a.sort
   $result["avg_blk_mining_time_in_us"] = mean(blk_mining_time)
   $result["50percentile_blk_mining_time_in_us"] = percentile(blk_mining_time, 0.5, sorted: true)
   $result["90percentile_blk_mining_time_in_us"] = percentile(blk_mining_time, 0.9, sorted: true)
   $result["95percentile_blk_mining_time_in_us"] = percentile(blk_mining_time, 0.95, sorted: true)
 
-  blk_verify_time = $blocks.map { |_, blk| blk.verify_time }.to_a.sort
+  blk_verify_time = $kept_blocks.map { |_, blk| blk.verify_time }.to_a.sort
   $result["avg_blk_verify_time_in_us"] = mean(blk_verify_time)
   $result["50percentile_blk_verify_time_in_us"] = percentile(blk_verify_time, 0.5, sorted: true)
   $result["90percentile_blk_verify_time_in_us"] = percentile(blk_verify_time, 0.9, sorted: true)
   $result["95percentile_blk_verify_time_in_us"] = percentile(blk_verify_time, 0.95, sorted: true)
 
-  total_commited_tx = $blocks.map { |_, blk| blk.tx_list.size }.reduce(0, :+)
-  first_block = $blocks.min_by { |_, blk| blk.height }.last
-  last_block = $blocks.max_by { |_, blk| blk.height }.last
+  total_commited_tx = $kept_blocks.map { |_, blk| blk.tx_list.size }.reduce(0, :+)
+  first_block = $kept_blocks.min_by { |_, blk| blk.height }.last
+  last_block = $kept_blocks.max_by { |_, blk| blk.height }.last
   total_commited_tx -= first_block.tx_list.size
   duration = ((last_block.commit_ts - first_block.commit_ts) * 24 * 60 * 60).to_f
   $result["throughput"] = total_commited_tx.to_f / duration
@@ -373,6 +373,10 @@ end
 def cal_storage_node_statistics!
   $txs.select { |_, tx| tx.exec_time }.group_by { |_, tx| tx.exec_storage_node }.each do |id, txs|
     $result["tx_exec_by_storage_node_#{id}"] = txs.size
+  end
+
+  $kept_txs.select { |_, tx| tx.exec_time }.group_by { |_, tx| tx.exec_storage_node }.each do |id, txs|
+    $result["kept_tx_exec_by_storage_node_#{id}"] = txs.size
   end
 end
 
@@ -408,14 +412,13 @@ def report!(storage: true)
   puts <<~EOS
 
     # Storage Node Statistics
-    node\t#exec txs
+    node\t#exec txs\t#exec txs (kept)
   EOS
 
   (1...).each do |id|
-    tx = $result["tx_exec_by_storage_node_#{id}"]
-    break unless tx
-
-    puts "#{id}\t#{tx}"
+    tx = $result["tx_exec_by_storage_node_#{id}"] || 0
+    kept_tx = $result["kept_tx_exec_by_storage_node_#{id}"] || 0
+    puts "#{id}\t#{tx}\t#{kept_tx}"
   end
 end
 
@@ -473,8 +476,8 @@ if $PROGRAM_NAME == __FILE__
   File.write(options[:output], JSON.pretty_generate($result)) if options[:output]
   if options[:raw_output]
     raw_result = {}
-    raw_result["tx"] = $txs.map { |_, tx| tx.to_hash }
-    raw_result["block"] = $blocks.map { |_, blk| blk.to_hash }
+    raw_result["kept_tx"] = $kept_txs.map { |_, tx| tx.to_hash }
+    raw_result["kept_block"] = $kept_blocks.map { |_, blk| blk.to_hash }
     raw_result["ignored_tx"] = $ignored_txs.map { |_, tx| tx.to_hash }
     raw_result["ignored_block"] = $ignored_blocks.map { |_, blk| blk.to_hash }
     File.write(options[:raw_output], JSON.pretty_generate(raw_result))
