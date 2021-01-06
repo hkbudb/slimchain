@@ -416,8 +416,10 @@ def report!(storage: true)
   EOS
 
   (1...).each do |id|
-    tx = $result["tx_exec_by_storage_node_#{id}"] || 0
-    kept_tx = $result["kept_tx_exec_by_storage_node_#{id}"] || 0
+    tx = $result["tx_exec_by_storage_node_#{id}"]
+    kept_tx = $result["kept_tx_exec_by_storage_node_#{id}"]
+    break unless tx
+
     puts "#{id}\t#{tx}\t#{kept_tx}"
   end
 end
