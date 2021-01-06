@@ -239,8 +239,8 @@ where
 
         let req_handle = tokio::spawn(async move {
             tokio::select! {
-                _ = req_fut => {}
                 _ = req_shutdown_rx => {}
+                _ = req_fut => {}
             }
         });
 
