@@ -61,6 +61,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     Some(blk_proposal) = blk_rx.next() => {
                         let state_update = {
                             let snapshot_backup = snapshot.clone();
@@ -102,7 +103,6 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
                             panic!("Failed to commit the block. Error: {}", e);
                         }
                     }
-                    _ = &mut shutdown_rx => break,
                 }
             }
 
@@ -169,6 +169,7 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
                 let snapshot_backup = snapshot.clone();
 
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     res = propose_block(
                         &chain_cfg,
                         &miner_cfg,
@@ -208,7 +209,6 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
                         }
 
                     }
-                    _ = &mut shutdown_rx => break,
                 }
             }
         });

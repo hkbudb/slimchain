@@ -89,6 +89,7 @@ impl TxExecWorker {
 
             'outer: loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     Some(tx_proposal) = tx_exec_stream.next() => {
                         let tx_proposals = vec![tx_proposal];
 
@@ -105,7 +106,6 @@ impl TxExecWorker {
                             }
                         }
                     }
-                    _ = &mut shutdown_rx => break,
                 }
             }
         });
@@ -164,6 +164,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     Some(blk_proposal) = blk_rx.next() => {
                         let state_update = {
                             let snapshot_backup = snapshot.clone();
@@ -194,7 +195,6 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
                             panic!("Failed to commit the block. Error: {}", e);
                         }
                     }
-                    _ = &mut shutdown_rx => break,
                 }
             }
 
@@ -317,8 +317,11 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> StorageNode<
     }
 
     pub async fn shutdown(&mut self) -> Result<()> {
+        info!("Shutting down TxExecWorker...");
         self.exec_worker.shutdown().await?;
+        info!("Shutting down BlockImportWorker...");
         self.import_worker.shutdown().await?;
+        info!("Shutting down HTTP Server...");
         if let Some((shutdown_tx, handler)) = self.srv.take() {
             shutdown_tx.send(()).ok();
             handler.await?;

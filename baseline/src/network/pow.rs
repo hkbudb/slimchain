@@ -51,6 +51,7 @@ impl BlockImportWorker {
 
             loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     Some(blk) = blk_rx.next() => {
                         let state_update = match verify_block(&db, height, &blk, verify_consensus).await {
                             Ok(state_update) => state_update,
@@ -66,7 +67,6 @@ impl BlockImportWorker {
 
                         height = height.next_height();
                     }
-                    _ = &mut shutdown_rx => break,
                 }
             }
         });
@@ -127,6 +127,7 @@ impl BlockProposalWorker {
 
             loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     res = propose_block(&miner_cfg, &db, height, &mut tx_rx, create_new_block) =>
                     {
                         let (block, state_update) = match res.expect("Failed to build the new block.") {
@@ -144,7 +145,6 @@ impl BlockProposalWorker {
 
                         height = height.next_height();
                     }
-                    _ = &mut shutdown_rx => break,
                 }
             }
         });

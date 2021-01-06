@@ -251,10 +251,10 @@ where
         let block_proposal_handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
+                    _ = &mut block_proposal_shutdown_rx => break,
                     Some(block_proposal) = block_proposal_rx.next() => {
                         network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
                     }
-                    _ = &mut block_proposal_shutdown_rx => break,
                 }
             }
         });

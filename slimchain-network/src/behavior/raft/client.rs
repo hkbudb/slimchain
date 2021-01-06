@@ -227,6 +227,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
     }
 
     pub async fn shutdown(&mut self) -> Result<()> {
+        info!("Shutting down Raft node...");
         if let Some(raft) = self.raft.take() {
             raft.shutdown().await?;
         } else {
@@ -235,10 +236,13 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
 
         self.raft_storage.save_to_db().await?;
 
+        info!("Shutting down BlockProposalWorker...");
         self.proposal_worker.shutdown().await?;
 
+        info!("Shutting down NetworkWorker...");
         self.network_worker.shutdown().await?;
 
+        info!("Shutting down HTTP Server...");
         if let Some((shutdown_tx, handler)) = self.srv.take() {
             shutdown_tx.send(()).ok();
             handler.await?;

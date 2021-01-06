@@ -43,12 +43,12 @@ impl BlockProposalWorker {
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => break,
                     res = Pin::new(&mut tx_rx).peek() => {
                         if res.is_none() {
                             break;
                         }
                     }
-                    _ = &mut shutdown_rx => break,
                 }
 
                 let blk_proposal = match propose_block(
