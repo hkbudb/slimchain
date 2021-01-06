@@ -67,8 +67,9 @@ where
                 return Ok(None);
             }
         };
+        let tx_id = tx_req.id();
 
-        record_event!("blk_recv_tx", "tx_id": tx_req.id(), "height": next_block_height.0);
+        record_event!("blk_recv_tx", "tx_id": tx_id, "height": next_block_height.0);
 
         match exec_tx(db, &update, &tx_req).await {
             Ok(new_update) => {
@@ -76,6 +77,7 @@ where
             }
             Err(e) => {
                 error!("Error during execution. Error: {}", e);
+                record_event!("discard_tx", "tx_id": tx_id, "reason": "tx_exec_error");
                 continue;
             }
         }
