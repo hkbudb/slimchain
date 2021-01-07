@@ -86,10 +86,12 @@ macro_rules! record_time {
     ($label:literal, $time:expr, $($fields:tt)*) => {
         match $time {
             t => {
+                let ts = $crate::chrono::Utc::now().to_rfc3339_opts($crate::chrono::SecondsFormat::Micros, true);
                 let fields = $crate::metrics::serde_json::json!({ $($fields)* });
                 let entry = $crate::metrics::serde_json::json!({
                     "k": "time",
                     "l": $label,
+                    "ts": ts.as_str(),
                     "t_in_us": t.as_micros() as u64,
                     "v": fields,
                 });
