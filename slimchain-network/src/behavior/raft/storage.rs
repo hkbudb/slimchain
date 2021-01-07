@@ -275,9 +275,9 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> StorageNode<
             .and(warp::path(STORAGE_TX_REQ_ROUTE_PATH))
             .and(warp_body_postcard())
             .and_then(move |req: SignedTxRequest| {
+                record_event!("storage_recv_tx", "tx_id": req.id());
                 let mut exec_worker_tx_req_tx = exec_worker_tx_req_tx.clone();
                 async move {
-                    record_event!("storage_recv_tx", "tx_id": req.id());
                     exec_worker_tx_req_tx
                         .send(req)
                         .await

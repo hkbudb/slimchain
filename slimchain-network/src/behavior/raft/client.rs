@@ -172,12 +172,13 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                 .and(warp::path(CLIENT_LEADER_REQ_ROUTE_PATH))
                 .and(warp_body_postcard())
                 .and_then(move |txs: Vec<TxProposal<Tx>>| {
+                    for tx in &txs {
+                        record_event!("miner_recv_tx", "tx_id": tx.tx.id());
+                    }
+
                     let raft_copy = raft_copy.clone();
                     let mut tx_tx_copy = tx_tx.clone();
-                    let mut input = stream::iter(txs).map(|tx| {
-                        record_event!("miner_recv_tx", "tx_id": tx.tx.id());
-                        Ok(tx)
-                    });
+                    let mut input = stream::iter(txs).map(Ok);
                     async move {
                         if !node_is_leader(raft_copy.as_ref()) {
                             return Err(warp::reject::custom(ClientNodeError::Other(anyhow!(
