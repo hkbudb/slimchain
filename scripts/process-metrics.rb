@@ -292,16 +292,16 @@ def process_storage_node_metrics!(file, storage_node_id:)
     case data["k"]
     when "event"
       case data["l"]
+      when "storage_recv_tx"
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+        tx.storage_recv_ts = DateTime.iso8601 data["ts"] unless tx.storage_recv_ts
       when "tx_commit"
       else
         warn "Unknown event #{data["l"]} in #{file}:#{line_no}"
       end
     when "time"
       case data["l"]
-      when "storage_recv_tx"
-        tx_id = data["v"]["tx_id"]
-        tx = $txs[tx_id]
-        tx.storage_recv_ts = DateTime.iso8601 data["ts"] unless tx.storage_recv_ts
       when "exec_time"
         tx = $txs[data["v"]["tx_id"]]
         tx.exec_time = data["t_in_us"]
