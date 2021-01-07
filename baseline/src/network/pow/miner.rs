@@ -13,6 +13,7 @@ use slimchain_network::p2p::{
     discovery::{Discovery, DiscoveryEvent},
     pubsub::{PubSub, PubSubEvent, PubSubTopic},
 };
+use slimchain_utils::record_event;
 use std::task::{Context, Poll};
 
 #[derive(NetworkBehaviour)]
@@ -63,10 +64,7 @@ impl NetworkBehaviourEventProcess<DiscoveryEvent> for MinerBehavior {
 impl NetworkBehaviourEventProcess<PubSubEvent<SignedTxRequest, Block>> for MinerBehavior {
     fn inject_event(&mut self, event: PubSubEvent<SignedTxRequest, Block>) {
         if let PubSubEvent::TxProposal(input) = event {
-            trace!(
-                tx_id = %input.id(),
-                "Recv tx proposal."
-            );
+            record_event!("miner_recv_tx", "tx_id": input.id());
             self.worker.add_tx(input);
         }
     }

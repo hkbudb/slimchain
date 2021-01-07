@@ -23,6 +23,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
+use slimchain_utils::record_event;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
@@ -94,15 +95,33 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                         NewBlockResponse::Ok => {}
                         NewBlockResponse::Err(e) => {
                             error!("Raft write error from response. Error: {}", e);
+
+                            for tx in blk_proposal.get_txs() {
+                                let tx_id = tx.id();
+                                record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_response", "detail": std::format!("{}", e));
+                            }
+
                             continue;
                         }
                     },
                     Err(ClientWriteError::ForwardToLeader(_, leader)) => {
                         warn!("Raft write should be forward to leader ({:?}).", leader);
+
+                        for tx in blk_proposal.get_txs() {
+                            let tx_id = tx.id();
+                            record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_non_leader", "detail": std::format!("leader={:?}", leader));
+                        }
+
                         continue;
                     }
                     Err(ClientWriteError::RaftError(e)) => {
                         error!("Raft write error from raft. Error: {}", e);
+
+                        for tx in blk_proposal.get_txs() {
+                            let tx_id = tx.id();
+                            record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error", "detail": std::format!("{}", e));
+                        }
+
                         continue;
                     }
                 }

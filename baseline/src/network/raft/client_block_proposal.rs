@@ -4,7 +4,10 @@ use super::{
     client_storage::ClientNodeStorage,
     message::{NewBlockRequest, NewBlockResponse},
 };
-use crate::{behavior::propose_block, block::raft::create_new_block};
+use crate::{
+    behavior::propose_block,
+    block::{raft::create_new_block, BlockTrait},
+};
 use async_raft::{
     error::ClientWriteError,
     raft::{ClientWriteRequest, ClientWriteResponse},
@@ -18,6 +21,7 @@ use slimchain_common::{
     error::{bail, Result},
     tx_req::SignedTxRequest,
 };
+use slimchain_utils::record_event;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
@@ -82,15 +86,33 @@ impl BlockProposalWorker {
                         NewBlockResponse::Ok => {}
                         NewBlockResponse::Err(e) => {
                             error!("Raft write error from response. Error: {}", e);
+
+                            for tx in blk.tx_list().iter() {
+                                let tx_id = tx.id();
+                                record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_response", "detail": std::format!("{}", e));
+                            }
+
                             continue;
                         }
                     },
                     Err(ClientWriteError::ForwardToLeader(_, leader)) => {
                         warn!("Raft write should be forward to leader ({:?}).", leader);
+
+                        for tx in blk.tx_list().iter() {
+                            let tx_id = tx.id();
+                            record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_non_leader", "detail": std::format!("leader={:?}", leader));
+                        }
+
                         continue;
                     }
                     Err(ClientWriteError::RaftError(e)) => {
                         error!("Raft write error from raft. Error: {}", e);
+
+                        for tx in blk.tx_list().iter() {
+                            let tx_id = tx.id();
+                            record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error", "detail": std::format!("{}", e));
+                        }
+
                         continue;
                     }
                 }

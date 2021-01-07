@@ -28,6 +28,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
+use slimchain_utils::record_event;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::task::JoinHandle;
 use warp::Filter;
@@ -174,10 +175,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                     let raft_copy = raft_copy.clone();
                     let mut tx_tx_copy = tx_tx.clone();
                     let mut input = stream::iter(txs).map(|tx| {
-                        trace!(
-                            tx_id = %tx.tx.id(),
-                            "Recv tx proposal."
-                        );
+                        record_event!("miner_recv_tx", "tx_id": tx.tx.id());
                         Ok(tx)
                     });
                     async move {

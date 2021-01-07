@@ -23,6 +23,7 @@ use slimchain_chain::{
 use slimchain_common::{basic::ShardId, error::Result, tx::TxTrait, tx_req::SignedTxRequest};
 use slimchain_tx_engine::TxEngine;
 use slimchain_tx_state::{StorageTxTrie, TxProposal};
+use slimchain_utils::record_event;
 use std::{
     pin::Pin,
     sync::{
@@ -128,7 +129,7 @@ impl<Tx: TxTrait + Serialize>
     fn inject_event(&mut self, event: RpcRequestResponseEvent<SignedTxRequest, ()>) {
         if let Some((tx_req, channel)) = handle_request_response_server_event(event) {
             let tx_req_id = tx_req.id();
-            trace!(%tx_req_id, "Recv TxReq");
+            record_event!("storage_recv_tx", "tx_id": tx_req_id);
             self.tx_req_tx
                 .start_send(tx_req)
                 .expect("Failed to send tx_req to TxEngine.");

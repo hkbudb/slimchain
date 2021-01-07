@@ -5,7 +5,7 @@ require "json"
 require "optparse"
 
 def warn(msg)
-  $stderr.puts "#{"\033[33m" if $stderr.tty?}WARN#{"\033[0m" if $stderr.tty?} #{msg}"
+  warn "#{"\033[33m" if $stderr.tty?}WARN#{"\033[0m" if $stderr.tty?} #{msg}"
 end
 
 def mean(values)
@@ -69,15 +69,17 @@ end
 
 class Tx
   attr_reader :id
-  attr_accessor :block_height, :send_ts, :propose_recv_ts, :commit_ts, :exec_time, :exec_storage_node, :exec_block_height
+  attr_accessor :block_height, :send_ts, :propose_recv_ts, :propose_recv_block_height, :commit_ts, :exec_time,
+                :exec_storage_node, :exec_block_height
 
   def initialize(id)
     @id = id
   end
 
-  def set_discard(reason:)
+  def set_discard(reason:, detail:)
     @discard = true
     @discard_reason = reason
+    @discard_detail = detail
   end
 
   def set_outdated
@@ -97,7 +99,7 @@ class Tx
   end
 
   def committed?
-    !@commit_ts.nil? && !conflicted? &&!outdated?
+    !@commit_ts.nil? && !conflicted? && !outdated?
   end
 
   def status_known?
@@ -150,6 +152,7 @@ class Tx
       block_height: block_height,
       send_ts: send_ts&.iso8601(6),
       propose_recv_ts: propose_recv_ts&.iso8601(6),
+      propose_recv_block_height: proprose_recv_block_height,
       commit_ts: commit_ts&.iso8601(6),
       exec_storage_node_id: exec_storage_node,
       exec_block_height: exec_block_height,
@@ -163,6 +166,7 @@ class Tx
       conflicted: conflicted?,
       discard: !!@discard,
       discard_reason: @discard_reason,
+      discard_detail: @discard_detail,
     }
   end
 end
@@ -224,12 +228,15 @@ def process_node_metrics!(file, client: false)
         end
       when "blk_recv_tx"
         tx_id = data["v"]["tx_id"]
+        height = data["v"]["height"]
         tx = $txs[tx_id]
         tx.propose_recv_ts = DateTime.iso8601 data["ts"] unless tx.propose_recv_ts
+        tx.propose_recv_block_height = height
       when "discard_tx"
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
         reason = data["v"]["reason"]
+        detail = data["v"]["detail"]
 
         case reason
         when "tx_outdated"
@@ -237,7 +244,7 @@ def process_node_metrics!(file, client: false)
         when "tx_conflict"
           tx.set_conflicted unless tx.status_known?
         else
-          tx.set_discard reason: reason
+          tx.set_discard reason: reason, detail: detail
         end
       when "propose_end"
         $blocks[data["v"]["height"]].propose_end_ts = DateTime.iso8601 data["ts"]
@@ -286,13 +293,12 @@ def process_storage_node_metrics!(file, storage_node_id:)
 end
 
 def post_process!
-
   $kept_blocks, $ignored_blocks = $blocks.partition { |_, blk| blk.keep? }
   $kept_txs, $ignored_txs = $txs.partition { |_, tx| tx.keep? }
 
   puts "Ignore #{$ignored_blocks.size} blocks. Remaining: #{$kept_blocks.size}"
   puts "Ignore #{$ignored_txs.size} txs. Remaining: #{$kept_txs.size}"
-  puts "Ignored TX without state: #{$ignored_txs.count{ |_, tx| !tx.status_known? }}"
+  puts "Ignored TX without state: #{$ignored_txs.count { |_, tx| !tx.status_known? }}"
   puts
 
   cal_success_rate!

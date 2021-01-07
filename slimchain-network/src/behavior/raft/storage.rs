@@ -26,7 +26,7 @@ use slimchain_common::{
 };
 use slimchain_tx_engine::TxEngine;
 use slimchain_tx_state::{StorageTxTrie, TxProposal};
-use slimchain_utils::ordered_stream::OrderedStream;
+use slimchain_utils::{ordered_stream::OrderedStream, record_event};
 use std::{
     net::SocketAddr,
     sync::{
@@ -277,6 +277,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> StorageNode<
             .and_then(move |req: SignedTxRequest| {
                 let mut exec_worker_tx_req_tx = exec_worker_tx_req_tx.clone();
                 async move {
+                    record_event!("storage_recv_tx", "tx_id": req.id());
                     exec_worker_tx_req_tx
                         .send(req)
                         .await

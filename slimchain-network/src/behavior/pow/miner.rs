@@ -22,6 +22,7 @@ use slimchain_chain::{
 };
 use slimchain_common::{error::Result, tx::TxTrait};
 use slimchain_tx_state::{TxProposal, TxTrie};
+use slimchain_utils::record_event;
 use std::task::{Context, Poll};
 
 #[derive(NetworkBehaviour)]
@@ -90,10 +91,7 @@ impl<Tx: TxTrait + Serialize>
 {
     fn inject_event(&mut self, event: PubSubEvent<TxProposal<Tx>, BlockProposal<Block, Tx>>) {
         if let PubSubEvent::TxProposal(input) = event {
-            trace!(
-                tx_id = %input.tx.id(),
-                "Recv tx proposal."
-            );
+            record_event!("miner_recv_tx", "tx_id": input.tx.id());
             self.worker.add_tx_proposal(input);
         }
     }
