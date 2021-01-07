@@ -9,7 +9,7 @@ use async_raft::{
 use async_trait::async_trait;
 use slimchain_common::{error::Result, tx_req::SignedTxRequest};
 use slimchain_network::{
-    behavior::raft::storage::fetch_leader_id,
+    behavior::raft::client_network::fetch_leader_id,
     http::{
         client_rpc::TxHttpRequest,
         common::*,
@@ -18,20 +18,20 @@ use slimchain_network::{
     },
 };
 use slimchain_utils::record_event;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 const MAX_RETRIES: usize = 3;
 
 pub struct ClientNodeNetwork {
     route_table: NetworkRouteTable,
-    leader_id_cache: Mutex<Option<PeerId>>,
+    leader_id: RwLock<Option<PeerId>>,
 }
 
 impl ClientNodeNetwork {
     pub fn new(route_table: NetworkRouteTable) -> Self {
         Self {
             route_table,
-            leader_id_cache: Mutex::new(None),
+            leader_id: RwLock::new(None),
         }
     }
 
@@ -50,7 +50,6 @@ impl ClientNodeNetwork {
             match self.forward_tx_reqs_to_leader(&reqs).await {
                 Ok(_) => return,
                 Err(e) => {
-                    *self.leader_id_cache.lock().await = None;
                     if i == MAX_RETRIES {
                         error!("Failed to send tx_req to raft leader. Error: {}", e);
                     }
@@ -61,18 +60,23 @@ impl ClientNodeNetwork {
 
     #[allow(clippy::ptr_arg)]
     pub async fn forward_tx_reqs_to_leader(&self, reqs: &Vec<SignedTxRequest>) -> Result<()> {
-        let mut leader_id_cache = self.leader_id_cache.lock().await;
-        let leader_id = match leader_id_cache.as_ref() {
-            Some(id) => *id,
+        let leader_id = match self.leader_id.read().await.clone() {
+            Some(id) => id,
             None => {
                 let id = fetch_leader_id(&self.route_table).await?;
-                *leader_id_cache = Some(id);
+                *self.leader_id.write().await = Some(id);
                 id
             }
         };
 
         let leader_addr = self.route_table.peer_address(leader_id)?;
-        send_reqs_to_leader(leader_addr, &reqs).await
+        match send_reqs_to_leader(leader_addr, &reqs).await {
+            Err(e) => {
+                *self.leader_id.write().await = None;
+                Err(e)
+            }
+            Ok(()) => Ok(()),
+        }
     }
 }
 

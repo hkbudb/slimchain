@@ -25,7 +25,7 @@ use slimchain_common::{
     iter::iter_result,
 };
 use slimchain_network::{
-    behavior::raft::storage::fetch_leader_id,
+    behavior::raft::client_network::fetch_leader_id,
     http::config::{NetworkConfig, NetworkRouteTable, PeerId},
 };
 use slimchain_tx_state::TxStateUpdate;

@@ -1,3 +1,4 @@
+use super::client_network::fetch_leader_id;
 use crate::http::{
     common::*,
     config::{NetworkConfig, NetworkRouteTable, PeerId},
@@ -15,12 +16,11 @@ use slimchain_chain::{
     consensus::raft::{verify_consensus, Block},
     db::DBPtr,
     latest::{LatestBlockHeaderPtr, LatestTxCount, LatestTxCountPtr},
-    role::Role,
     snapshot::Snapshot,
 };
 use slimchain_common::{
     basic::ShardId,
-    error::{anyhow, bail, Result},
+    error::{bail, Result},
     tx::TxTrait,
     tx_req::SignedTxRequest,
 };
@@ -28,41 +28,53 @@ use slimchain_tx_engine::TxEngine;
 use slimchain_tx_state::{StorageTxTrie, TxProposal};
 use slimchain_utils::{ordered_stream::OrderedStream, record_event};
 use std::{
+    marker::PhantomData,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
-use tokio::task::JoinHandle;
+use tokio::{sync::RwLock, task::JoinHandle};
 use warp::Filter;
 
 const MAX_RETRIES: usize = 3;
 
-pub async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> {
-    let rand_client = route_table
-        .random_peer(&Role::Client)
-        .ok_or_else(|| anyhow!("Failed to find the client node."))
-        .and_then(|peer_id| route_table.peer_address(peer_id))?;
-    get_leader(rand_client).await
+struct SendToLeader<Tx: TxTrait + Serialize> {
+    route_table: NetworkRouteTable,
+    leader_id: RwLock<Option<PeerId>>,
+    _marker: PhantomData<Tx>,
 }
 
-#[allow(clippy::ptr_arg)]
-async fn send_tx_proposals<Tx: TxTrait + Serialize>(
-    leader_id_cache: &mut Option<PeerId>,
-    route_table: &NetworkRouteTable,
-    tx_proposals: &Vec<TxProposal<Tx>>,
-) -> Result<()> {
-    let leader_id = match leader_id_cache.as_ref() {
-        Some(id) => *id,
-        None => {
-            let id = fetch_leader_id(route_table).await?;
-            *leader_id_cache = Some(id);
-            id
+impl<Tx: TxTrait + Serialize> SendToLeader<Tx> {
+    fn new(route_table: NetworkRouteTable) -> Self {
+        Self {
+            route_table,
+            leader_id: RwLock::new(None),
+            _marker: PhantomData,
         }
-    };
-    let leader_addr = route_table.peer_address(leader_id)?;
-    send_reqs_to_leader(leader_addr, tx_proposals).await
+    }
+
+    #[allow(clippy::ptr_arg)]
+    async fn send_tx_proposals(&self, tx_proposals: &Vec<TxProposal<Tx>>) -> Result<()> {
+        let leader_id = match self.leader_id.read().await.clone() {
+            Some(id) => id,
+            None => {
+                let id = fetch_leader_id(&self.route_table).await?;
+                *self.leader_id.write().await = Some(id);
+                id
+            }
+        };
+
+        let leader_addr = self.route_table.peer_address(leader_id)?;
+        match send_reqs_to_leader(leader_addr, tx_proposals).await {
+            Err(e) => {
+                *self.leader_id.write().await = None;
+                Err(e)
+            }
+            Ok(()) => Ok(()),
+        }
+    }
 }
 
 struct TxExecWorker {
@@ -79,26 +91,24 @@ impl TxExecWorker {
         db: &DBPtr,
         latest_block_header: &LatestBlockHeaderPtr,
     ) -> Self {
+        let send_to_leader = SendToLeader::new(route_table);
         let engine_shutdown_token = engine.shutdown_token();
         let (tx_req_tx, tx_req_rx) = mpsc::unbounded::<SignedTxRequest>();
-        let mut tx_exec_stream = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header);
+        let mut tx_exec_stream =
+            TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header).ready_chunks(64);
         let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
-            let mut leader_id_cache = None;
-
             'outer: loop {
                 tokio::select! {
                     _ = &mut shutdown_rx => break,
-                    Some(tx_proposal) = tx_exec_stream.next() => {
-                        let tx_proposals = vec![tx_proposal];
+                    Some(tx_proposals) = tx_exec_stream.next() => {
 
                         for i in 1..=MAX_RETRIES {
-                            match send_tx_proposals(&mut leader_id_cache, &route_table, &tx_proposals).await
+                            match send_to_leader.send_tx_proposals(&tx_proposals).await
                             {
                                 Ok(_) => continue 'outer,
                                 Err(e) => {
-                                    leader_id_cache = None;
                                     if i == MAX_RETRIES {
                                         error!("Failed to send tx_proposal to raft leader. Error: {}", e);
                                     }

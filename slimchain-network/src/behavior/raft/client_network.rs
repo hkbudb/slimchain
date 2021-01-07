@@ -23,19 +23,28 @@ use futures::{
 use serde::{Deserialize, Serialize};
 use slimchain_chain::{block_proposal::BlockProposal, consensus::raft::Block, role::Role};
 use slimchain_common::{
-    error::{bail, Result},
+    error::{anyhow, bail, Result},
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
 use slimchain_utils::record_event;
 use std::{marker::PhantomData, sync::Arc};
-use tokio::task::JoinHandle;
+use tokio::{sync::RwLock, task::JoinHandle};
+
+pub async fn fetch_leader_id(route_table: &NetworkRouteTable) -> Result<PeerId> {
+    let rand_client = route_table
+        .random_peer(&Role::Client)
+        .ok_or_else(|| anyhow!("Failed to find the client node."))
+        .and_then(|peer_id| route_table.peer_address(peer_id))?;
+    get_leader(rand_client).await
+}
 
 pub struct ClientNodeNetwork<Tx>
 where
     Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
 {
     route_table: NetworkRouteTable,
+    leader_id: RwLock<Option<PeerId>>,
     _marker: PhantomData<Tx>,
 }
 
@@ -46,6 +55,7 @@ where
     pub fn new(route_table: NetworkRouteTable) -> Self {
         Self {
             route_table,
+            leader_id: RwLock::new(None),
             _marker: PhantomData,
         }
     }
@@ -96,12 +106,26 @@ where
     #[tracing::instrument(level = "debug", skip(self, tx_proposals), err)]
     pub async fn forward_tx_proposal_to_leader(
         &self,
-        leader: PeerId,
         tx_proposals: &Vec<TxProposal<Tx>>,
     ) -> Result<()> {
-        debug_assert_ne!(leader, self.route_table.peer_id());
-        let addr = self.route_table.peer_address(leader)?;
-        send_reqs_to_leader(addr, tx_proposals).await
+        let leader_id = match self.leader_id.read().await.clone() {
+            Some(id) => id,
+            None => {
+                let id = fetch_leader_id(&self.route_table).await?;
+                *self.leader_id.write().await = Some(id);
+                id
+            }
+        };
+
+        debug_assert_ne!(leader_id, self.route_table.peer_id());
+        let addr = self.route_table.peer_address(leader_id)?;
+        match send_reqs_to_leader(addr, tx_proposals).await {
+            Err(e) => {
+                *self.leader_id.write().await = None;
+                Err(e)
+            }
+            Ok(()) => Ok(()),
+        }
     }
 
     #[allow(clippy::unit_arg)]
@@ -230,7 +254,7 @@ where
         let (req_tx, req_rx) = mpsc::unbounded();
         let req_fut = {
             let network = network.clone();
-            req_rx.for_each_concurrent(32, move |req| {
+            req_rx.for_each_concurrent(64, move |req| {
                 let network = network.clone();
                 async move { network.forward_tx_to_storage_node(req).await }
             })
