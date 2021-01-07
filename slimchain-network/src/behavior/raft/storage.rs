@@ -91,32 +91,39 @@ impl TxExecWorker {
         db: &DBPtr,
         latest_block_header: &LatestBlockHeaderPtr,
     ) -> Self {
-        let send_to_leader = SendToLeader::new(route_table);
+        let send_to_leader = Arc::new(SendToLeader::new(route_table));
         let engine_shutdown_token = engine.shutdown_token();
         let (tx_req_tx, tx_req_rx) = mpsc::unbounded::<SignedTxRequest>();
-        let mut tx_exec_stream =
-            TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header).ready_chunks(64);
-        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
-
-        let handle: JoinHandle<()> = tokio::spawn(async move {
-            'outer: loop {
-                tokio::select! {
-                    _ = &mut shutdown_rx => break,
-                    Some(tx_proposals) = tx_exec_stream.next() => {
-
-                        for i in 1..=MAX_RETRIES {
-                            match send_to_leader.send_tx_proposals(&tx_proposals).await
-                            {
-                                Ok(_) => continue 'outer,
-                                Err(e) => {
-                                    if i == MAX_RETRIES {
-                                        error!("Failed to send tx_proposal to raft leader. Error: {}", e);
+        let tx_exec_fut = TxExecuteStream::new(tx_req_rx, engine, &db, &latest_block_header)
+            .ready_chunks(8)
+            .for_each_concurrent(8, move |tx_proposals| {
+                let send_to_leader = send_to_leader.clone();
+                async move {
+                    for i in 1..=MAX_RETRIES {
+                        match send_to_leader.send_tx_proposals(&tx_proposals).await {
+                            Ok(_) => break,
+                            Err(e) => {
+                                if i == MAX_RETRIES {
+                                    error!(
+                                        "Failed to send tx_proposal to raft leader. Error: {}",
+                                        e
+                                    );
+                                    for tx in &tx_proposals {
+                                        let tx_id = tx.tx.id();
+                                        record_event!("discard_tx", "tx_id": tx_id, "reason": "storage_send_to_leader", "detail": std::format!("{}", e));
                                     }
                                 }
                             }
                         }
                     }
                 }
+            });
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+
+        let handle: JoinHandle<()> = tokio::spawn(async move {
+            tokio::select! {
+                _ = shutdown_rx => {}
+                _ = tx_exec_fut => {}
             }
         });
 
