@@ -230,7 +230,7 @@ where
         let (req_tx, req_rx) = mpsc::unbounded();
         let req_fut = {
             let network = network.clone();
-            req_rx.for_each_concurrent(8, move |req| {
+            req_rx.for_each_concurrent(32, move |req| {
                 let network = network.clone();
                 async move { network.forward_tx_to_storage_node(req).await }
             })
