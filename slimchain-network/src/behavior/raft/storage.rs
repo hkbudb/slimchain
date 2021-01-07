@@ -57,7 +57,8 @@ impl<Tx: TxTrait + Serialize> SendToLeader<Tx> {
 
     #[allow(clippy::ptr_arg)]
     async fn send_tx_proposals(&self, tx_proposals: &Vec<TxProposal<Tx>>) -> Result<()> {
-        let leader_id = match self.leader_id.read().await.clone() {
+        let leader_id = self.leader_id.read().await.clone();
+        let leader_id = match leader_id {
             Some(id) => id,
             None => {
                 let id = fetch_leader_id(&self.route_table).await?;

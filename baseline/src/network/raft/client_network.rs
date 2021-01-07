@@ -60,7 +60,8 @@ impl ClientNodeNetwork {
 
     #[allow(clippy::ptr_arg)]
     pub async fn forward_tx_reqs_to_leader(&self, reqs: &Vec<SignedTxRequest>) -> Result<()> {
-        let leader_id = match self.leader_id.read().await.clone() {
+        let leader_id = self.leader_id.read().await.clone();
+        let leader_id = match leader_id {
             Some(id) => id,
             None => {
                 let id = fetch_leader_id(&self.route_table).await?;
