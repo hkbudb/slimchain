@@ -152,7 +152,7 @@ class Tx
       block_height: block_height,
       send_ts: send_ts&.iso8601(6),
       propose_recv_ts: propose_recv_ts&.iso8601(6),
-      propose_recv_block_height: proprose_recv_block_height,
+      propose_recv_block_height: propose_recv_block_height,
       commit_ts: commit_ts&.iso8601(6),
       exec_storage_node_id: exec_storage_node,
       exec_block_height: exec_block_height,
