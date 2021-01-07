@@ -70,7 +70,7 @@ end
 class Tx
   attr_reader :id
   attr_accessor :block_height, :send_ts, :propose_recv_ts, :propose_recv_block_height, :commit_ts, :exec_time,
-                :exec_storage_node, :exec_block_height
+                :exec_storage_node, :exec_block_height, :miner_recv_ts, :exec_ts, :storage_recv_ts
 
   def initialize(id)
     @id = id
@@ -115,12 +115,20 @@ class Tx
     status_known?
   end
 
-  def propose_time
-    @propose_time ||= begin
+  def propose_end_ts
+    @propose_end_ts ||= begin
       return nil unless @block_height
 
-      end_ts = $blocks[@block_height]&.propose_end_ts
-      time_difference_in_us(@propose_recv_ts, end_ts) if @propose_recv_ts && end_ts
+      $blocks[@block_height]&.propose_end_ts
+    end
+  end
+
+  def propose_time
+    @propose_time ||= begin
+      return nil unless propose_recv_ts
+      return nil unless propose_end_ts
+
+      time_difference_in_us(propose_recv_ts, propose_end_ts)
     end
   end
 
@@ -150,17 +158,26 @@ class Tx
     {
       id: id,
       block_height: block_height,
+
       send_ts: send_ts&.iso8601(6),
+      storage_recv_ts: storage_recv_ts&.iso8601(6),
+      exec_ts: exec_ts&.iso8601(6),
+      miner_recv_ts: miner_recv_ts&.iso8601(6),
       propose_recv_ts: propose_recv_ts&.iso8601(6),
-      propose_recv_block_height: propose_recv_block_height,
+      propose_end_ts: propose_end_ts&.iso8601(6),
       commit_ts: commit_ts&.iso8601(6),
+
       exec_storage_node_id: exec_storage_node,
       exec_block_height: exec_block_height,
-      latency_in_us: latency,
+
+      propose_recv_block_height: propose_recv_block_height,
+
       exec_time_in_us: exec_time,
       propose_time_in_us: propose_time,
       block_mining_time_in_us: blk_mining_time,
       block_verify_time_in_us: blk_verify_time,
+      latency_in_us: latency,
+
       committed: committed?,
       outdated: outdated?,
       conflicted: conflicted?,
@@ -215,6 +232,16 @@ def process_node_metrics!(file, client: false)
         next unless client
 
         $txs[data["v"]["tx_id"]].send_ts = DateTime.iso8601 data["ts"]
+      when "miner_recv_tx"
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+        tx.miner_recv_ts = DateTime.iso8601 data["ts"] unless tx.miner_recv_ts
+      when "blk_recv_tx"
+        tx_id = data["v"]["tx_id"]
+        height = data["v"]["height"]
+        tx = $txs[tx_id]
+        tx.propose_recv_ts = DateTime.iso8601 data["ts"] unless tx.propose_recv_ts
+        tx.propose_recv_block_height = height
       when "tx_commit"
         next unless client
 
@@ -226,12 +253,6 @@ def process_node_metrics!(file, client: false)
           tx.block_height = block.height
           tx.commit_ts = block.commit_ts
         end
-      when "blk_recv_tx"
-        tx_id = data["v"]["tx_id"]
-        height = data["v"]["height"]
-        tx = $txs[tx_id]
-        tx.propose_recv_ts = DateTime.iso8601 data["ts"] unless tx.propose_recv_ts
-        tx.propose_recv_block_height = height
       when "discard_tx"
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
@@ -277,11 +298,16 @@ def process_storage_node_metrics!(file, storage_node_id:)
       end
     when "time"
       case data["l"]
+      when "storage_recv_tx"
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+        tx.storage_recv_ts = DateTime.iso8601 data["ts"] unless tx.storage_recv_ts
       when "exec_time"
         tx = $txs[data["v"]["tx_id"]]
         tx.exec_time = data["t_in_us"]
         tx.exec_storage_node = storage_node_id
         tx.exec_block_height = data["v"]["exec_block_height"]
+        tx.exec_ts = DateTime.iso8601 data["ts"]
       when "verify_block"
       else
         warn "Unknown time record #{data["l"]} in #{file}:#{line_no}"
