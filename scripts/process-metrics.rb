@@ -5,7 +5,7 @@ require "json"
 require "optparse"
 
 def warn(msg)
-  warn "#{"\033[33m" if $stderr.tty?}WARN#{"\033[0m" if $stderr.tty?} #{msg}"
+  Kernel.warn "#{"\033[33m" if $stderr.tty?}WARN#{"\033[0m" if $stderr.tty?} #{msg}"
 end
 
 def mean(values)
