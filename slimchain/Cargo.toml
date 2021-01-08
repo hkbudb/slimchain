@@ -50,8 +50,10 @@ slimchain-network = { path = "../slimchain-network" }
 slimchain-tee-sig = { path = "../slimchain-tee-sig", optional = true }
 slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-engine-simple = { path = "../slimchain-tx-engine-simple", optional = true }
-slimchain-tx-engine-tee = { path = "../slimchain-tx-engine-tee", optional = true }
 slimchain-utils = { path = "../slimchain-utils" }
 structopt = "0.3"
 tokio = { version = "0.2", features = ["full", "parking_lot"] }
 tracing = "0.1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+slimchain-tx-engine-tee = { path = "../slimchain-tx-engine-tee", optional = true }
