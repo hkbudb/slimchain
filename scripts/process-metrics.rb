@@ -518,6 +518,8 @@ if $PROGRAM_NAME == __FILE__
   File.write(options[:output], JSON.pretty_generate($result)) if options[:output]
   if options[:raw_output]
     raw_result = {}
+    raw_result["tx_send_start_ts"] = $tx_send_start_ts&.iso8601(6)
+    raw_result["tx_send_end_ts"] = $tx_send_end_ts&.iso8601(6)
     raw_result["kept_tx"] = $kept_txs.map { |_, tx| tx.to_hash }
     raw_result["kept_block"] = $kept_blocks.map { |_, blk| blk.to_hash }
     raw_result["ignored_tx"] = $ignored_txs.map { |_, tx| tx.to_hash }
