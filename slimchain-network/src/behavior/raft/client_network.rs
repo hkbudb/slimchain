@@ -108,7 +108,7 @@ where
         &self,
         tx_proposals: &Vec<TxProposal<Tx>>,
     ) -> Result<()> {
-        let leader_id = self.leader_id.read().await.clone();
+        let leader_id = *self.leader_id.read().await;
         let leader_id = match leader_id {
             Some(id) => id,
             None => {
