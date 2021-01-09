@@ -50,21 +50,17 @@ async fn test() {
         .await
         .unwrap();
 
-    let peer_id1 = swarmer1.peer_id().clone();
+    let peer_id1 = swarmer1.peer_id();
     let ctrl1 = swarmer1.spawn();
     let mut ctrl2 = swarmer2.spawn();
 
-    let remote_id = peer_id1.clone();
     ctrl2
-        .call(move |swarm| swarm.add_address(&remote_id, address))
+        .call(move |swarm| swarm.add_address(&peer_id1, address))
         .await
         .unwrap();
 
-    let remote_id = peer_id1.clone();
     let resp = ctrl2
-        .call_with_sender(move |swarm, ret| {
-            swarm.send_request(&remote_id, "World".to_string(), ret)
-        })
+        .call_with_sender(move |swarm, ret| swarm.send_request(&peer_id1, "World".to_string(), ret))
         .await
         .unwrap()
         .unwrap();

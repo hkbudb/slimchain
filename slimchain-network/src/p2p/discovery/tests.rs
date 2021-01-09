@@ -137,28 +137,24 @@ async fn test_without_mdns() {
     let (peer3, _addr3, mut ctrl3) = create_node(false, Role::Storage(ShardId::new(0, 1))).await;
     let (peer4, _addr4, mut ctrl4) = create_node(false, Role::Storage(ShardId::new(0, 1))).await;
 
-    let peer = peer0.clone();
     let addr = addr0.clone();
     ctrl1
-        .call(move |swarm| swarm.add_address(&peer, addr))
+        .call(move |swarm| swarm.add_address(&peer0, addr))
         .await
         .unwrap();
-    let peer = peer0.clone();
     let addr = addr0.clone();
     ctrl2
-        .call(move |swarm| swarm.add_address(&peer, addr))
+        .call(move |swarm| swarm.add_address(&peer0, addr))
         .await
         .unwrap();
-    let peer = peer0.clone();
     let addr = addr0.clone();
     ctrl3
-        .call(move |swarm| swarm.add_address(&peer, addr))
+        .call(move |swarm| swarm.add_address(&peer0, addr))
         .await
         .unwrap();
-    let peer = peer0.clone();
     let addr = addr0.clone();
     ctrl4
-        .call(move |swarm| swarm.add_address(&peer, addr))
+        .call(move |swarm| swarm.add_address(&peer0, addr))
         .await
         .unwrap();
 
