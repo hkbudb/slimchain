@@ -441,16 +441,18 @@ async fn main() -> Result<()> {
     info!("Time: {:?}", total_time);
     info!("Real rate: {:?} tx/s", real_rate);
 
-    let block_height = get_block_height(&opts.endpoint).await?;
-    let wait_start_time = Instant::now();
+    let mut cur_block_height = get_block_height(&opts.endpoint).await?;
+    let mut block_update_time = Instant::now();
 
     loop {
         delay_for(Duration::from_millis(500)).await;
-        let block_height2 = get_block_height(&opts.endpoint).await?;
+        let height = get_block_height(&opts.endpoint).await?;
 
-        if block_height2 > block_height
-            || (Instant::now() - wait_start_time) > Duration::from_secs(30)
-        {
+        if height > cur_block_height {
+            block_update_time = Instant::now();
+            cur_block_height = height;
+            continue;
+        } else if Instant::now() - block_update_time > Duration::from_secs(30) {
             break;
         }
     }
