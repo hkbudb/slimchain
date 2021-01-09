@@ -296,6 +296,13 @@ def process_storage_node_metrics!(file, storage_node_id:)
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
         tx.storage_recv_ts = DateTime.iso8601 data["ts"] unless tx.storage_recv_ts
+      when "discard_tx"
+        tx_id = data["v"]["tx_id"]
+        tx = $txs[tx_id]
+        reason = data["v"]["reason"]
+        detail = data["v"]["detail"]
+
+        tx.set_discard reason: reason, detail: detail
       when "tx_commit"
       else
         warn "Unknown event #{data["l"]} in #{file}:#{line_no}"
