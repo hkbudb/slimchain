@@ -168,14 +168,16 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
     let mut executor =
         evm::executor::StackExecutor::new(&evm_backend, usize::max_value(), &evm_config);
 
-    let caller_nonce = Nonce::from(evm_backend.basic(caller.into()).nonce);
-    let input_nonce = tx_req.nonce();
-    ensure!(
-        caller_nonce == input_nonce,
-        "Invalid nonce (expected: {}, actual: {}).",
-        caller_nonce,
-        input_nonce
-    );
+    let _caller_nonce = Nonce::from(evm_backend.basic(caller.into()).nonce);
+
+    // TODO: disable nonce check for exp.
+    // let input_nonce = tx_req.nonce();
+    // ensure!(
+    //     caller_nonce == input_nonce,
+    //     "Invalid nonce (expected: {}, actual: {}).",
+    //     caller_nonce,
+    //     input_nonce
+    // );
 
     let execute_result = match &tx_req {
         TxRequest::Create { code, .. } => executor.transact_create(
