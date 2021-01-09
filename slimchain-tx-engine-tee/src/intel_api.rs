@@ -2,7 +2,7 @@
 
 use percent_encoding::percent_decode_str;
 use sgx_types::*;
-use slimchain_common::error::{ensure, Context as _, Error, Result};
+use slimchain_common::error::{Context as _, Error, Result};
 use slimchain_tee_sig::AttestationReport;
 use std::io::Read;
 
@@ -20,13 +20,9 @@ pub(crate) fn get_intel_sigrl(quote_gid: sgx_epid_group_id_t, api_key: &str) -> 
     let gid_hex = hex::encode(gid.to_be_bytes());
     let resp = ureq::get(format!("{}/attestation/v4/sigrl/{}", BASE_URL, gid_hex).as_str())
         .set("Ocp-Apim-Subscription-Key", api_key)
-        .call();
+        .call()
+        .context("Failed to make http request for intel sigrl.")?;
 
-    ensure!(
-        resp.ok(),
-        "Failed to make http request. Status code: {}.",
-        resp.status()
-    );
     let mut reader = resp.into_reader();
     let mut body = Vec::new();
     reader.read_to_end(&mut body)?;
@@ -43,13 +39,8 @@ pub(crate) fn get_intel_report(quote: &[u8], api_key: &str) -> Result<Attestatio
 
     let resp = ureq::post(format!("{}/attestation/v4/report", BASE_URL).as_str())
         .set("Ocp-Apim-Subscription-Key", &api_key)
-        .send_json(encoded_body);
-
-    ensure!(
-        resp.ok(),
-        "Failed to make http request. Status code: {}.",
-        resp.status()
-    );
+        .send_json(encoded_body)
+        .context("Failed to make http request for intel report.")?;
 
     let encoded_sig = resp
         .header("X-IASReport-Signature")
