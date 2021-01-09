@@ -50,7 +50,7 @@ async fn test() {
         .await
         .unwrap();
 
-    let peer_id1 = swarmer1.peer_id();
+    let peer_id1 = *swarmer1.peer_id();
     let ctrl1 = swarmer1.spawn();
     let mut ctrl2 = swarmer2.spawn();
 
