@@ -106,14 +106,14 @@ where
         }
         event @ _ => {
             error!("RpcServer unknown event: {:?}", event);
-            unreachable!();
+            None
         }
     }
 }
 
 pub fn handle_request_response_client_event<Req, Resp>(
     event: RpcRequestResponseEvent<Req, Resp>,
-) -> (RpcRequestId, Result<Resp>)
+) -> Option<(RpcRequestId, Result<Resp>)>
 where
     Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
     Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
@@ -126,7 +126,7 @@ where
                     response,
                 },
             ..
-        } => (request_id, Ok(response)),
+        } => Some((request_id, Ok(response))),
         RpcRequestResponseEvent::OutboundFailure {
             request_id, error, ..
         } => {
@@ -134,11 +134,11 @@ where
                 "Failed to get the rpc response. Error: {:?}.",
                 error
             ));
-            (request_id, e)
+            Some((request_id, e))
         }
         event @ _ => {
             error!("RpcClient unknown event: {:?}", event);
-            unreachable!();
+            None
         }
     }
 }
@@ -187,7 +187,10 @@ where
     Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     fn inject_event(&mut self, event: RpcRequestResponseEvent<Req, Resp>) {
-        let (request_id, resp) = handle_request_response_client_event(event);
+        let (request_id, resp) = match handle_request_response_client_event(event) {
+            Some(res) => res,
+            None => return,
+        };
         let tx = match self.pending_responses.remove(&request_id) {
             Some(tx) => tx,
             None => return,

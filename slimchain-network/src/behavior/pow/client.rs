@@ -130,7 +130,10 @@ impl<Tx: TxTrait + Serialize>
     for ClientBehavior<Tx>
 {
     fn inject_event(&mut self, event: RpcRequestResponseEvent<SignedTxRequest, ()>) {
-        let (rpc_query_id, result) = handle_request_response_client_event(event);
+        let (rpc_query_id, result) = match handle_request_response_client_event(event) {
+            Some(res) => res,
+            None => return,
+        };
         let tx_req_id = self
             .pending_rpc_queries
             .remove(&rpc_query_id)
