@@ -65,9 +65,11 @@ pub struct Discovery {
     #[behaviour(ignore)]
     exp_queries: DelayQueue<KadQueryId>,
     #[behaviour(ignore)]
+    pending_retry_queries: DelayQueue<(QueryId, Role, Instant)>,
+    #[behaviour(ignore)]
     pending_events: VecDeque<DiscoveryEvent>,
     #[behaviour(ignore)]
-    pending_queries2: HashMap<QueryId, oneshot::Sender<Result<PeerId>>>,
+    pending_queries_using_ret: HashMap<QueryId, oneshot::Sender<Result<PeerId>>>,
 }
 
 impl Discovery {
@@ -112,8 +114,9 @@ impl Discovery {
             next_kad_query: delay_for(Duration::from_secs(0)),
             pending_queries: HashMap::new(),
             exp_queries: DelayQueue::new(),
+            pending_retry_queries: DelayQueue::new(),
             pending_events: VecDeque::new(),
-            pending_queries2: HashMap::new(),
+            pending_queries_using_ret: HashMap::new(),
         })
     }
 
@@ -190,7 +193,7 @@ impl Discovery {
         ret: oneshot::Sender<Result<PeerId>>,
     ) {
         let id = self.find_random_peer(role, timeout);
-        self.pending_queries2.insert(id, ret);
+        self.pending_queries_using_ret.insert(id, ret);
     }
 
     fn peer_table_add_node(&mut self, peer_id: PeerId, role: Role) {
@@ -232,7 +235,7 @@ impl Discovery {
     ) -> Poll<NetworkBehaviourAction<T, DiscoveryEvent>> {
         if let Some(event) = self.pending_events.pop_front() {
             let DiscoveryEvent::FindPeerResult { query_id, peer } = event;
-            if let Some(tx) = self.pending_queries2.remove(&query_id) {
+            if let Some(tx) = self.pending_queries_using_ret.remove(&query_id) {
                 tx.send(peer).ok();
             } else {
                 return Poll::Ready(NetworkBehaviourAction::GenerateEvent(
@@ -270,6 +273,29 @@ impl Discovery {
                         },
                     ));
                 }
+            }
+        }
+
+        while let Poll::Ready(Some(Ok(query))) = self.pending_retry_queries.poll_expired(cx) {
+            let (query_id, role, deadline) = query.into_inner();
+
+            if let Some(peer) = self.random_known_peer(&role) {
+                self.pending_events
+                    .push_back(DiscoveryEvent::FindPeerResult {
+                        query_id,
+                        peer: Ok(peer),
+                    });
+            } else if deadline <= Instant::now() {
+                self.pending_events
+                    .push_back(DiscoveryEvent::FindPeerResult {
+                        query_id,
+                        peer: Err(anyhow!("Timeout when find peer.")),
+                    });
+            } else {
+                let kad_query_id = self.kad.get_providers(role_to_kad_key(role));
+                let delay = self.exp_queries.insert_at(kad_query_id, deadline);
+                self.pending_queries
+                    .insert(kad_query_id, (query_id, role, delay));
             }
         }
 
@@ -343,10 +369,8 @@ impl NetworkBehaviourEventProcess<KademliaEvent> for Discovery {
                             peer: Err(anyhow!("Timeout when find peer.")),
                         });
                 } else {
-                    let kad_query_id = self.kad.get_providers(role_to_kad_key(role));
-                    let delay = self.exp_queries.insert_at(kad_query_id, deadline);
-                    self.pending_queries
-                        .insert(kad_query_id, (query_id, role, delay));
+                    self.pending_retry_queries
+                        .insert((query_id, role, deadline), Duration::from_millis(100));
                 }
             }
             KademliaEvent::QueryResult {
