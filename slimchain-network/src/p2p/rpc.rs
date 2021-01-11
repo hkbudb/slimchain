@@ -12,7 +12,7 @@ use slimchain_common::{
     collections::HashMap,
     error::{anyhow, Result},
 };
-use std::{iter, time::Duration};
+use std::{fmt, iter, time::Duration};
 
 pub use libp2p::request_response::{
     RequestId as RpcRequestId, RequestResponse as RpcRequestResponse,
@@ -85,8 +85,8 @@ pub fn handle_request_response_server_event<Req, Resp>(
     event: RpcRequestResponseEvent<Req, Resp>,
 ) -> Option<(Req, RpcResponseChannel<Resp>)>
 where
-    Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
+    Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     match event {
         RpcRequestResponseEvent::Message {
@@ -104,7 +104,10 @@ where
             trace!("RpcServer response sent: request_id={:?}", request_id);
             None
         }
-        _ => unreachable!(),
+        event @ _ => {
+            error!("RpcServer unknown event: {:?}", event);
+            unreachable!();
+        }
     }
 }
 
@@ -112,8 +115,8 @@ pub fn handle_request_response_client_event<Req, Resp>(
     event: RpcRequestResponseEvent<Req, Resp>,
 ) -> (RpcRequestId, Result<Resp>)
 where
-    Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
+    Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     match event {
         RpcRequestResponseEvent::Message {
@@ -133,15 +136,18 @@ where
             ));
             (request_id, e)
         }
-        _ => unreachable!(),
+        event @ _ => {
+            error!("RpcClient unknown event: {:?}", event);
+            unreachable!();
+        }
     }
 }
 
 #[derive(NetworkBehaviour)]
 pub struct RpcClient<Req, Resp>
 where
-    Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
+    Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     request_response: RpcInstant<Req, Resp>,
     #[behaviour(ignore)]
@@ -150,8 +156,8 @@ where
 
 impl<Req, Resp> RpcClient<Req, Resp>
 where
-    Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
+    Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     pub fn new(protocol_name: &str) -> Self {
         Self {
@@ -177,8 +183,8 @@ where
 impl<Req, Resp> NetworkBehaviourEventProcess<RpcRequestResponseEvent<Req, Resp>>
     for RpcClient<Req, Resp>
 where
-    Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
+    Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     fn inject_event(&mut self, event: RpcRequestResponseEvent<Req, Resp>) {
         let (request_id, resp) = handle_request_response_client_event(event);
@@ -193,8 +199,8 @@ where
 #[async_trait]
 impl<Req, Resp> crate::p2p::control::Shutdown for RpcClient<Req, Resp>
 where
-    Req: Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    Resp: Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    Req: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
+    Resp: Serialize + for<'de> Deserialize<'de> + fmt::Debug + Send + 'static,
 {
     async fn shutdown(&mut self) -> Result<()> {
         Ok(())
