@@ -296,6 +296,7 @@ def process_storage_node_metrics!(file, storage_node_id:)
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
         tx.storage_recv_ts = DateTime.iso8601 data["ts"] unless tx.storage_recv_ts
+      when "storage_recv_block"
       when "discard_tx"
         tx_id = data["v"]["tx_id"]
         tx = $txs[tx_id]
