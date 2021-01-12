@@ -45,7 +45,7 @@ impl<Tx: TxTrait + Serialize + 'static> ClientBehavior<Tx> {
 
         let mut discv = Discovery::new(keypair.public(), Role::Client, net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
-        let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal], &[]);
+        let pubsub = PubSub::new(keypair, &[PubSubTopic::BlockProposal], &[])?;
         let mut rpc_client = create_request_response_client("/tx_req/1");
 
         for peer in &net_cfg.peers {
