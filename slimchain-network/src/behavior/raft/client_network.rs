@@ -134,13 +134,17 @@ where
     }
 
     #[allow(clippy::unit_arg)]
-    #[tracing::instrument(level = "debug", skip(self, block_proposal), fields(height = block_proposal.get_block_height().0), err)]
+    #[allow(clippy::ptr_arg)]
+    #[tracing::instrument(level = "debug", skip(self, block_proposals), err)]
     pub async fn broadcast_block_proposal_to_storage_node(
         &self,
-        block_proposal: &BlockProposal<Block, Tx>,
+        block_proposals: &Vec<BlockProposal<Block, Tx>>,
     ) -> Result<()> {
-        let block_height = block_proposal.get_block_height();
-        let bytes = bytes::Bytes::from(postcard::to_allocvec(block_proposal)?);
+        if block_proposals.is_empty() {
+            return Ok(());
+        }
+
+        let bytes = bytes::Bytes::from(postcard::to_allocvec(block_proposals)?);
         let reqs = self
             .route_table
             .role_table()
@@ -172,7 +176,15 @@ where
 
         for (peer_id, resp) in future::join_all(reqs).await {
             if let Err(e) = resp {
-                error!(%block_height, %peer_id, "Failed to broadcast block proposal to storage node. Err: {:?}", e);
+                let begin_block_height = block_proposals
+                    .first()
+                    .expect("empty block proposals")
+                    .get_block_height();
+                let end_block_height = block_proposals
+                    .last()
+                    .expect("empty block proposals")
+                    .get_block_height();
+                error!(%begin_block_height, %end_block_height, %peer_id, "Failed to broadcast block proposal to storage node. Err: {:?}", e);
             }
         }
 
@@ -274,15 +286,15 @@ where
         });
 
         let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
-        let mut block_proposal_rx = block_proposal_rx.fuse();
+        let mut block_proposal_rx = block_proposal_rx.ready_chunks(8);
         let (block_proposal_shutdown_tx, mut block_proposal_shutdown_rx) = oneshot::channel();
 
         let block_proposal_handle = tokio::spawn(async move {
             loop {
                 tokio::select! {
                     _ = &mut block_proposal_shutdown_rx => break,
-                    Some(block_proposal) = block_proposal_rx.next() => {
-                        network.broadcast_block_proposal_to_storage_node(&block_proposal).await.ok();
+                    Some(block_proposals) = block_proposal_rx.next() => {
+                        network.broadcast_block_proposal_to_storage_node(&block_proposals).await.ok();
                     }
                 }
             }
