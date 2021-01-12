@@ -308,6 +308,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> StorageNode<
             .and(warp::path(STORAGE_BLOCK_IMPORT_ROUTE_PATH))
             .and(warp_body_postcard())
             .and_then(move |block_proposal: BlockProposal<Block, Tx>| {
+                record_event!("storage_recv_block", "height": block_proposal.get_block_height().0);
                 let mut import_worker_blk_tx = import_worker_blk_tx.clone();
                 async move {
                     import_worker_blk_tx
