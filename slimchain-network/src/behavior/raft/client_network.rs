@@ -101,6 +101,10 @@ where
         }
     }
 
+    pub async fn set_leader(&self, leader_id: PeerId) {
+        *self.leader_id.write().await = Some(leader_id);
+    }
+
     #[allow(clippy::ptr_arg)]
     #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, tx_proposals), err)]

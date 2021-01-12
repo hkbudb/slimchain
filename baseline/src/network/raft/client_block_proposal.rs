@@ -35,7 +35,7 @@ impl BlockProposalWorker {
     pub fn new(
         miner_cfg: &MinerConfig,
         raft_storage: Arc<ClientNodeStorage>,
-        _raft_network: Arc<ClientNodeNetwork>,
+        raft_network: Arc<ClientNodeNetwork>,
         raft: Arc<ClientNodeRaft>,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<SignedTxRequest>();
@@ -96,11 +96,35 @@ impl BlockProposalWorker {
                         }
                     },
                     Err(ClientWriteError::ForwardToLeader(_, leader)) => {
-                        warn!("Raft write should be forward to leader ({:?}).", leader);
+                        error!("Raft write should be forward to leader ({:?}).", leader);
 
                         for tx in blk.tx_list().iter() {
                             let tx_id = tx.id();
                             record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_non_leader", "detail": std::format!("leader={:?}", leader));
+                        }
+
+                        if let Some(leader_id) = leader {
+                            raft_network.set_leader(leader_id.into()).await;
+                        }
+
+                        let mut txs = Vec::with_capacity(tx_rx.size_hint().0);
+
+                        while let Some(tx) = tx_rx.next().now_or_never() {
+                            match tx {
+                                Some(tx) => {
+                                    txs.push(tx);
+                                }
+                                None => break,
+                            }
+                        }
+
+                        if let Err(e) = raft_network.forward_tx_reqs_to_leader(&txs).await {
+                            error!("Failed to forward buffered tx to leader. Error: {}", e);
+
+                            for tx in txs {
+                                let tx_id = tx.id();
+                                record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_forward_leader_error");
+                            }
                         }
 
                         continue;
@@ -111,6 +135,16 @@ impl BlockProposalWorker {
                         for tx in blk.tx_list().iter() {
                             let tx_id = tx.id();
                             record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error", "detail": std::format!("{}", e));
+                        }
+
+                        while let Some(tx) = tx_rx.next().now_or_never() {
+                            match tx {
+                                Some(tx) => {
+                                    let tx_id = tx.id();
+                                    record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error_buffered_tx");
+                                }
+                                None => break,
+                            }
                         }
 
                         continue;

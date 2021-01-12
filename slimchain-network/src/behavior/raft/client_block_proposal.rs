@@ -1,5 +1,6 @@
 use crate::behavior::raft::{
     client::ClientNodeRaft,
+    client_network::ClientNodeNetwork,
     client_storage::ClientNodeStorage,
     message::{NewBlockRequest, NewBlockResponse},
 };
@@ -38,6 +39,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
         chain_cfg: &ChainConfig,
         miner_cfg: &MinerConfig,
         raft_storage: Arc<ClientNodeStorage<Tx>>,
+        raft_network: Arc<ClientNodeNetwork<Tx>>,
         raft: Arc<ClientNodeRaft<Tx>>,
         mut block_proposal_broadcast_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
     ) -> Self {
@@ -105,11 +107,35 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                         }
                     },
                     Err(ClientWriteError::ForwardToLeader(_, leader)) => {
-                        warn!("Raft write should be forward to leader ({:?}).", leader);
+                        error!("Raft write should be forward to leader ({:?}).", leader);
 
                         for tx in blk_proposal.get_txs() {
                             let tx_id = tx.id();
                             record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_non_leader", "detail": std::format!("leader={:?}", leader));
+                        }
+
+                        if let Some(leader_id) = leader {
+                            raft_network.set_leader(leader_id.into()).await;
+                        }
+
+                        let mut txs = Vec::with_capacity(tx_rx.size_hint().0);
+
+                        while let Some(tx) = tx_rx.next().now_or_never() {
+                            match tx {
+                                Some(tx) => {
+                                    txs.push(tx);
+                                }
+                                None => break,
+                            }
+                        }
+
+                        if let Err(e) = raft_network.forward_tx_proposal_to_leader(&txs).await {
+                            error!("Failed to forward buffered tx to leader. Error: {}", e);
+
+                            for tx in txs {
+                                let tx_id = tx.tx.id();
+                                record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_forward_leader_error");
+                            }
                         }
 
                         continue;
@@ -120,6 +146,16 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                         for tx in blk_proposal.get_txs() {
                             let tx_id = tx.id();
                             record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error", "detail": std::format!("{}", e));
+                        }
+
+                        while let Some(tx) = tx_rx.next().now_or_never() {
+                            match tx {
+                                Some(tx) => {
+                                    let tx_id = tx.tx.id();
+                                    record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error_buffered_tx");
+                                }
+                                None => break,
+                            }
                         }
 
                         continue;

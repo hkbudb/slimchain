@@ -79,6 +79,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             chain_cfg,
             miner_cfg,
             raft_storage.clone(),
+            raft_network.clone(),
             raft.clone(),
             network_worker.get_block_proposal_tx(),
         );

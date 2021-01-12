@@ -35,6 +35,10 @@ impl ClientNodeNetwork {
         }
     }
 
+    pub async fn set_leader(&self, leader_id: PeerId) {
+        *self.leader_id.write().await = Some(leader_id);
+    }
+
     pub async fn forward_tx_http_reqs_to_leader(&self, tx_reqs: Vec<TxHttpRequest>) {
         let mut reqs = Vec::with_capacity(tx_reqs.len());
         for tx_req in tx_reqs {
