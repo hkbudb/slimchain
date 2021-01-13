@@ -101,6 +101,10 @@ impl<Tx: TxTrait + Serialize + 'static> StorageBehavior<Tx> {
         &mut self.discv
     }
 
+    pub fn pubsub_mut(&mut self) -> &mut PubSub<TxProposal<Tx>, BlockProposal<Block, Tx>> {
+        &mut self.pubsub
+    }
+
     fn poll_inner<T>(
         &mut self,
         cx: &mut Context,

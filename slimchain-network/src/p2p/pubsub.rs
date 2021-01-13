@@ -5,7 +5,7 @@ use libp2p::{
     },
     identity::Keypair,
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
-    NetworkBehaviour,
+    NetworkBehaviour, PeerId,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -129,6 +129,10 @@ where
         }
 
         Poll::Pending
+    }
+
+    pub fn add_explicit_peer(&mut self, peer: PeerId) {
+        self.gossipsub.add_explicit_peer(&peer);
     }
 
     pub fn report_known_peers(&self) {

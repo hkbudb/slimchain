@@ -87,6 +87,10 @@ impl<Tx: TxTrait + Serialize + 'static> ClientBehavior<Tx> {
     pub fn discv_mut(&mut self) -> &mut Discovery {
         &mut self.discv
     }
+
+    pub fn pubsub_mut(&mut self) -> &mut PubSub<TxProposal<Tx>, BlockProposal<Block, Tx>> {
+        &mut self.pubsub
+    }
 }
 
 impl<Tx: TxTrait + Serialize> NetworkBehaviourEventProcess<TxHttpRequest> for ClientBehavior<Tx> {

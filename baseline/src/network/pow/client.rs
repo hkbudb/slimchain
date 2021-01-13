@@ -56,6 +56,10 @@ impl ClientBehavior {
     pub fn discv_mut(&mut self) -> &mut Discovery {
         &mut self.discv
     }
+
+    pub fn pubsub_mut(&mut self) -> &mut PubSub<SignedTxRequest, Block> {
+        &mut self.pubsub
+    }
 }
 
 impl NetworkBehaviourEventProcess<TxHttpRequest> for ClientBehavior {
