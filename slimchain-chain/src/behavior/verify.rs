@@ -23,7 +23,7 @@ pub async fn verify_block<Tx, Block, TxTrie, VerifyConsensusFn>(
 where
     Tx: TxTrait,
     Block: BlockTrait,
-    TxTrie: TxTrieTrait,
+    TxTrie: TxTrieTrait + 'static,
     VerifyConsensusFn: Fn(&Block, &Block) -> Result<()>,
 {
     let begin = Instant::now();
@@ -80,7 +80,16 @@ where
         writes.merge(tx.tx_writes());
     }
 
-    let update = tokio::task::block_in_place(|| snapshot.tx_trie.apply_writes(&writes))?;
+    let (update_trie, update) = {
+        let mut old_trie = snapshot.tx_trie.clone();
+        tokio::task::spawn_blocking(move || -> Result<(TxTrie, TxStateUpdate)> {
+            let update = old_trie.apply_writes(&writes)?;
+            Ok((old_trie, update))
+        })
+        .await??
+    };
+    snapshot.tx_trie = update_trie;
+
     ensure!(
         blk_proposal.get_block().state_root() == snapshot.tx_trie.root_hash(),
         "Invalid state root in the block proposal (expect: {}, actual: {}).",

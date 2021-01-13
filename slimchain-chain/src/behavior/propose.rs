@@ -133,7 +133,15 @@ where
         .unwrap_or_default();
 
     snapshot.tx_trie.apply_diff(&merged_diff, false)?;
-    tokio::task::block_in_place(|| snapshot.tx_trie.apply_writes(&writes))?;
+    let update_trie = {
+        let mut old_trie = snapshot.tx_trie.clone();
+        tokio::task::spawn_blocking(move || -> Result<TxTrie> {
+            old_trie.apply_writes(&writes)?;
+            Ok(old_trie)
+        })
+        .await??
+    };
+    snapshot.tx_trie = update_trie;
 
     let new_state_root = snapshot.tx_trie.root_hash();
     let tx_list: BlockTxList = txs.iter().collect();
