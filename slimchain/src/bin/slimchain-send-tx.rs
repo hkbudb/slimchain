@@ -467,5 +467,7 @@ async fn main() -> Result<()> {
         info!("Current Raft Leader: {}", get_leader(&opts.endpoint).await?);
     }
 
+    send_record_event(&opts.endpoint, "quit-send-tx").await?;
+
     Ok(())
 }

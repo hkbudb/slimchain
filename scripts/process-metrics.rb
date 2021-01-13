@@ -225,6 +225,8 @@ def process_node_metrics!(file, client: false)
         when "end-send-tx"
           $tx_send_end_ts = DateTime.iso8601 data["ts"]
           $result["send_tx_real_rate"] = data["v"]["data"]["real_rate"]
+        when "quit-send-tx"
+          $tx_send_quit_ts = DateTime.iso8601 data["ts"]
         else
           warn "Unknown client_event #{data["v"]["info"]} in #{file}:#{line_no}"
         end
@@ -528,6 +530,7 @@ if $PROGRAM_NAME == __FILE__
     raw_result = {}
     raw_result["tx_send_start_ts"] = $tx_send_start_ts&.iso8601(6)
     raw_result["tx_send_end_ts"] = $tx_send_end_ts&.iso8601(6)
+    raw_result["tx_send_quit_ts"] = $tx_send_quit_ts&.iso8601(6)
     raw_result["kept_tx"] = $kept_txs.map { |_, tx| tx.to_hash }
     raw_result["kept_block"] = $kept_blocks.map { |_, blk| blk.to_hash }
     raw_result["ignored_tx"] = $ignored_txs.map { |_, tx| tx.to_hash }
