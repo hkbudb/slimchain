@@ -227,6 +227,9 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
     }
 
     pub async fn shutdown(&mut self) -> Result<()> {
+        info!("Shutting down BlockProposalWorker...");
+        self.proposal_worker.shutdown().await?;
+
         info!("Shutting down Raft node...");
         if let Some(raft) = self.raft.take() {
             raft.shutdown().await?;
@@ -235,9 +238,6 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
         }
 
         self.raft_storage.save_to_db().await?;
-
-        info!("Shutting down BlockProposalWorker...");
-        self.proposal_worker.shutdown().await?;
 
         info!("Shutting down NetworkWorker...");
         self.network_worker.shutdown().await?;
