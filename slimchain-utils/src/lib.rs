@@ -16,7 +16,7 @@ pub use toml;
 
 pub fn init_tracing_subscriber(default_level: &str) -> Result<()> {
     let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(format!("slimchain={}", default_level)));
+        .unwrap_or_else(|_| EnvFilter::new(format!("slimchain={},warn", default_level)));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .try_init()
