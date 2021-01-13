@@ -16,6 +16,7 @@ use slimchain_common::{
     error::{anyhow, ensure, Result},
 };
 use std::{
+    cmp,
     collections::VecDeque,
     task::{Context, Poll},
     time::Duration,
@@ -29,6 +30,7 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_millis(500);
 const CHECK_EXPLICIT_PEERS_TICKS: u64 = 5;
 const PUB_MAX_RETRIES: usize = 5;
 const PUB_INIT_RETRY_DELAY: Duration = Duration::from_millis(500);
+const PUB_MAX_RETRY_DELAY: Duration = Duration::from_secs(2);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
@@ -149,8 +151,15 @@ where
             panic!("PubSub: Failed to publish message. Reaching max retries.");
         }
 
-        self.retry_messages
-            .insert((topic, data, retries - 1, retry_delay * 2), retry_delay);
+        self.retry_messages.insert(
+            (
+                topic,
+                data,
+                retries - 1,
+                cmp::min(retry_delay * 2, PUB_MAX_RETRY_DELAY),
+            ),
+            retry_delay,
+        );
     }
 
     fn poll_inner<T>(
