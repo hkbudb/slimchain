@@ -23,7 +23,8 @@ use std::{
 const MAX_MESSAGE_SIZE: usize = 45_000_000;
 const MAX_TRANSMIT_SIZE: usize = 50_000_000;
 const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(1_800);
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
+const CHECK_EXPLICIT_PEERS_TICKS: u64 = 5;
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
@@ -88,6 +89,7 @@ where
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id_prefix("/slimchain/pubsub/1")
             .heartbeat_interval(HEARTBEAT_INTERVAL)
+            .check_explicit_peers_ticks(CHECK_EXPLICIT_PEERS_TICKS)
             .duplicate_cache_time(DUPLICATE_CACHE_TTL)
             .message_id_fn(|msg: &GossipsubMessage| {
                 let hash = msg.data.to_digest();
