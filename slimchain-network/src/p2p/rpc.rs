@@ -22,6 +22,9 @@ pub use libp2p::request_response::{
 pub mod codec;
 pub use codec::RpcCodec;
 
+const CONN_KEEP_ALIVE: Duration = Duration::from_secs(300);
+const CONN_TIMEOUT: Duration = Duration::from_secs(300);
+
 pub type RpcInstant<Req, Resp> = RpcRequestResponse<RpcCodec<Req, Resp>>;
 
 #[derive(Debug, Clone)]
@@ -60,8 +63,8 @@ where
 {
     let protocols = iter::once((RpcProtocol::new(protocol_name), protocol));
     let mut cfg = RequestResponseConfig::default();
-    cfg.set_connection_keep_alive(Duration::from_secs(300));
-    cfg.set_request_timeout(Duration::from_secs(300));
+    cfg.set_connection_keep_alive(CONN_KEEP_ALIVE);
+    cfg.set_request_timeout(CONN_TIMEOUT);
     RpcRequestResponse::new(RpcCodec::default(), protocols, cfg)
 }
 
