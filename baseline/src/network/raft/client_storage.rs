@@ -107,6 +107,10 @@ impl ClientNodeStorage {
         *miner_update = Some((blk_hash, tx_state_update));
     }
 
+    pub async fn reset_miner_update(&self) {
+        *self.miner_update.lock().await = None;
+    }
+
     #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     pub async fn save_to_db(&self) -> Result<()> {

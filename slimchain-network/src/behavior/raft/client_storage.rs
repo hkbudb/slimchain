@@ -109,6 +109,10 @@ where
         *miner_snapshot = Some((blk_hash, snapshot));
     }
 
+    pub async fn reset_miner_snapshot(&self) {
+        *self.miner_snapshot.lock().await = None;
+    }
+
     #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     pub async fn save_to_db(&self) -> Result<()> {

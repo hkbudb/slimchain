@@ -108,6 +108,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                     },
                     Err(ClientWriteError::ForwardToLeader(_, leader)) => {
                         error!("Raft write should be forward to leader ({:?}).", leader);
+                        raft_storage.reset_miner_snapshot().await;
 
                         for tx in blk_proposal.get_txs() {
                             let tx_id = tx.id();
@@ -142,6 +143,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                     }
                     Err(ClientWriteError::RaftError(e)) => {
                         error!("Raft write error from raft. Error: {}", e);
+                        raft_storage.reset_miner_snapshot().await;
 
                         for tx in blk_proposal.get_txs() {
                             let tx_id = tx.id();

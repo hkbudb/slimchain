@@ -97,6 +97,7 @@ impl BlockProposalWorker {
                     },
                     Err(ClientWriteError::ForwardToLeader(_, leader)) => {
                         error!("Raft write should be forward to leader ({:?}).", leader);
+                        raft_storage.reset_miner_update().await;
 
                         for tx in blk.tx_list().iter() {
                             let tx_id = tx.id();
@@ -131,6 +132,7 @@ impl BlockProposalWorker {
                     }
                     Err(ClientWriteError::RaftError(e)) => {
                         error!("Raft write error from raft. Error: {}", e);
+                        raft_storage.reset_miner_update().await;
 
                         for tx in blk.tx_list().iter() {
                             let tx_id = tx.id();
