@@ -81,7 +81,6 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             raft_storage.clone(),
             raft_network.clone(),
             raft.clone(),
-            network_worker.get_block_proposal_tx(),
         );
 
         let client_rpc_srv = {

@@ -134,17 +134,12 @@ where
     }
 
     #[allow(clippy::unit_arg)]
-    #[allow(clippy::ptr_arg)]
-    #[tracing::instrument(level = "debug", skip(self, block_proposals), err)]
+    #[tracing::instrument(level = "debug", skip(self, block_proposal), err)]
     pub async fn broadcast_block_proposal_to_storage_node(
         &self,
-        block_proposals: &Vec<BlockProposal<Block, Tx>>,
+        block_proposal: &BlockProposal<Block, Tx>,
     ) -> Result<()> {
-        if block_proposals.is_empty() {
-            return Ok(());
-        }
-
-        let bytes = bytes::Bytes::from(postcard::to_allocvec(block_proposals)?);
+        let bytes = bytes::Bytes::from(postcard::to_allocvec(block_proposal)?);
         let reqs = self
             .route_table
             .role_table()
@@ -176,15 +171,8 @@ where
 
         for (peer_id, resp) in future::join_all(reqs).await {
             if let Err(e) = resp {
-                let begin_block_height = block_proposals
-                    .first()
-                    .expect("empty block proposals")
-                    .get_block_height();
-                let end_block_height = block_proposals
-                    .last()
-                    .expect("empty block proposals")
-                    .get_block_height();
-                error!(%begin_block_height, %end_block_height, %peer_id, "Failed to broadcast block proposal to storage node. Err: {:?}", e);
+                let block_height = block_proposal.get_block_height();
+                error!(%block_height, %peer_id, "Failed to broadcast block proposal to storage node. Err: {:?}", e);
             }
         }
 
@@ -258,9 +246,7 @@ where
     req_handle: Option<JoinHandle<()>>,
     req_tx: mpsc::UnboundedSender<TxHttpRequest>,
     req_shutdown_tx: Option<oneshot::Sender<()>>,
-    block_proposal_handle: Option<JoinHandle<()>>,
-    block_proposal_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
-    block_proposal_shutdown_tx: Option<oneshot::Sender<()>>,
+    _marker: PhantomData<Tx>,
 }
 
 impl<Tx> ClientNodeNetworkWorker<Tx>
@@ -285,37 +271,16 @@ where
             }
         });
 
-        let (block_proposal_tx, block_proposal_rx) = mpsc::unbounded();
-        let mut block_proposal_rx = block_proposal_rx.ready_chunks(8);
-        let (block_proposal_shutdown_tx, mut block_proposal_shutdown_rx) = oneshot::channel();
-
-        let block_proposal_handle = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = &mut block_proposal_shutdown_rx => break,
-                    Some(block_proposals) = block_proposal_rx.next() => {
-                        network.broadcast_block_proposal_to_storage_node(&block_proposals).await.ok();
-                    }
-                }
-            }
-        });
-
         Self {
             req_handle: Some(req_handle),
             req_tx,
             req_shutdown_tx: Some(req_shutdown_tx),
-            block_proposal_handle: Some(block_proposal_handle),
-            block_proposal_tx,
-            block_proposal_shutdown_tx: Some(block_proposal_shutdown_tx),
+            _marker: PhantomData,
         }
     }
 
     pub fn get_req_tx(&self) -> mpsc::UnboundedSender<TxHttpRequest> {
         self.req_tx.clone()
-    }
-
-    pub fn get_block_proposal_tx(&self) -> mpsc::UnboundedSender<BlockProposal<Block, Tx>> {
-        self.block_proposal_tx.clone()
     }
 
     pub async fn shutdown(&mut self) -> Result<()> {
@@ -331,17 +296,6 @@ where
             bail!("Already shutdown.");
         }
 
-        self.block_proposal_tx.close_channel();
-        if let Some(shutdown_tx) = self.block_proposal_shutdown_tx.take() {
-            shutdown_tx.send(()).ok();
-        } else {
-            bail!("Already shutdown.");
-        }
-        if let Some(handler) = self.block_proposal_handle.take() {
-            handler.await?;
-        } else {
-            bail!("Already shutdown.");
-        }
         Ok(())
     }
 }
