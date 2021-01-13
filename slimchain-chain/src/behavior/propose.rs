@@ -18,7 +18,7 @@ use std::time::Instant;
 use tokio::time::timeout_at;
 
 #[tracing::instrument(level = "info", skip(chain_cfg, miner_cfg, snapshot, tx_proposals, new_block_fn), fields(height = snapshot.current_height().0 + 1), err)]
-pub async fn propose_block<Tx, Block, TxStream, NewBlockFn>(
+pub async fn propose_block<Tx, Block, TxStream, NewBlockFn, NewBlockFnOutput>(
     chain_cfg: &ChainConfig,
     miner_cfg: &MinerConfig,
     snapshot: &mut Snapshot<Block, TxTrie>,
@@ -29,7 +29,8 @@ where
     Tx: TxTrait,
     Block: BlockTrait + 'static,
     TxStream: Stream<Item = TxProposal<Tx>> + Unpin,
-    NewBlockFn: Fn(BlockHeader, &Block) -> Block + Send + 'static,
+    NewBlockFn: Fn(BlockHeader, &Block) -> NewBlockFnOutput,
+    NewBlockFnOutput: Future<Output = Result<Block>> + Send + 'static,
 {
     let begin = Instant::now();
     let deadline = begin + miner_cfg.max_block_interval;
@@ -146,7 +147,7 @@ where
         tx_list,
         new_state_root,
     );
-    let new_blk = tokio::task::block_in_place(move || new_block_fn(block_header, last_block));
+    let new_blk = new_block_fn(block_header, last_block).await?;
     let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(merged_diff));
 
     snapshot.remove_oldest_block()?;

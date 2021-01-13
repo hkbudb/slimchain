@@ -1,5 +1,6 @@
 use crate::block::{BlockHeader, BlockTrait, BlockTxList};
 use chrono::{DateTime, Utc};
+use futures::prelude::*;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::H256,
@@ -45,8 +46,11 @@ impl BlockTrait for Block {
     }
 }
 
-pub fn create_new_block(header: BlockHeader, _prev_blk: &Block) -> Block {
-    Block { header }
+pub fn create_new_block(
+    header: BlockHeader,
+    _prev_blk: &Block,
+) -> impl Future<Output = Result<Block>> {
+    async move { Ok(Block { header }) }
 }
 
 pub fn verify_consensus(_blk: &Block, _prev_blk: &Block) -> Result<()> {

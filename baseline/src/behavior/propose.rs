@@ -18,7 +18,7 @@ use std::time::Instant;
 use tokio::time::timeout_at;
 
 #[tracing::instrument(level = "info", skip(miner_cfg, db, last_block_height, tx_reqs, new_block_fn), fields(height = last_block_height.0 + 1), err)]
-pub async fn propose_block<Block, TxStream, NewBlockFn>(
+pub async fn propose_block<Block, TxStream, NewBlockFn, NewBlockFnOutput>(
     miner_cfg: &MinerConfig,
     db: &DBPtr,
     last_block_height: BlockHeight,
@@ -28,7 +28,8 @@ pub async fn propose_block<Block, TxStream, NewBlockFn>(
 where
     Block: BlockTrait + for<'de> Deserialize<'de> + 'static,
     TxStream: Stream<Item = SignedTxRequest> + Unpin,
-    NewBlockFn: Fn(BlockHeader, &Block) -> Block + Send + 'static,
+    NewBlockFn: Fn(BlockHeader, &Block) -> NewBlockFnOutput,
+    NewBlockFnOutput: Future<Output = Result<Block>> + Send + 'static,
 {
     let begin = Instant::now();
     let deadline = begin + miner_cfg.max_block_interval;
@@ -93,7 +94,7 @@ where
         BlockTxList(txs),
         new_state_root,
     );
-    let new_blk = tokio::task::block_in_place(move || new_block_fn(block_header, &last_block));
+    let new_blk = new_block_fn(block_header, &last_block).await?;
 
     let end = Instant::now();
     record_event!("propose_end", "height": new_blk.block_height().0);
