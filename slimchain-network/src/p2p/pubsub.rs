@@ -1,7 +1,7 @@
 use libp2p::{
     gossipsub::{
-        Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, IdentTopic,
-        MessageAuthenticity, MessageId, TopicHash,
+        error::PublishError, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage,
+        IdentTopic, MessageAuthenticity, TopicHash,
     },
     identity::Keypair,
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
@@ -10,6 +10,7 @@ use libp2p::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
+    basic::H256,
     collections::{HashMap, HashSet},
     digest::Digestible,
     error::{anyhow, ensure, Result},
@@ -19,12 +20,15 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
+use tokio::time::DelayQueue;
 
 const MAX_MESSAGE_SIZE: usize = 45_000_000;
 const MAX_TRANSMIT_SIZE: usize = 50_000_000;
 const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(1_800);
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
+const HEARTBEAT_INTERVAL: Duration = Duration::from_millis(500);
 const CHECK_EXPLICIT_PEERS_TICKS: u64 = 5;
+const PUB_MAX_RETRIES: usize = 5;
+const PUB_INIT_RETRY_DELAY: Duration = Duration::from_millis(500);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {
     let mut map = HashMap::with_capacity(2);
@@ -74,6 +78,12 @@ where
     pending_events: VecDeque<PubSubEvent<TxProposal, BlockProposal>>,
     #[behaviour(ignore)]
     sub_topics: HashSet<PubSubTopic>,
+    #[behaviour(ignore)]
+    retry_messages: DelayQueue<(PubSubTopic, Vec<u8>, usize, Duration)>,
+    #[behaviour(ignore)]
+    dup_cache: HashSet<H256>,
+    #[behaviour(ignore)]
+    dup_cache_ttl: DelayQueue<H256>,
 }
 
 impl<TxProposal, BlockProposal> PubSub<TxProposal, BlockProposal>
@@ -90,11 +100,6 @@ where
             .protocol_id_prefix("/slimchain/pubsub/1")
             .heartbeat_interval(HEARTBEAT_INTERVAL)
             .check_explicit_peers_ticks(CHECK_EXPLICIT_PEERS_TICKS)
-            .duplicate_cache_time(DUPLICATE_CACHE_TTL)
-            .message_id_fn(|msg: &GossipsubMessage| {
-                let hash = msg.data.to_digest();
-                MessageId::new(hash.as_bytes())
-            })
             .max_transmit_size(MAX_TRANSMIT_SIZE)
             .build()
             .map_err(|e| anyhow!("Failed to create gossipsub config. Error: {}", e))?;
@@ -118,16 +123,53 @@ where
             gossipsub,
             pending_events: VecDeque::new(),
             sub_topics: sub_topics.iter().copied().collect(),
+            retry_messages: DelayQueue::new(),
+            dup_cache: HashSet::new(),
+            dup_cache_ttl: DelayQueue::new(),
         })
+    }
+
+    fn publish_message(
+        &mut self,
+        topic: PubSubTopic,
+        data: Vec<u8>,
+        retries: usize,
+        retry_delay: Duration,
+    ) {
+        match self.gossipsub.publish(topic.into_topic(), data.clone()) {
+            Ok(_) => return,
+            Err(PublishError::InsufficientPeers) => {}
+            Err(e) => {
+                panic!("PubSub: Failed to publish message. Error: {:?}", e);
+            }
+        }
+
+        if retries == 0 {
+            self.report_known_peers();
+            panic!("PubSub: Failed to publish message. Reaching max retries.");
+        }
+
+        self.retry_messages
+            .insert((topic, data, retries - 1, retry_delay * 2), retry_delay);
     }
 
     fn poll_inner<T>(
         &mut self,
-        _: &mut Context,
+        cx: &mut Context,
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<T, PubSubEvent<TxProposal, BlockProposal>>> {
         if let Some(event) = self.pending_events.pop_front() {
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
+        }
+
+        while let Poll::Ready(Some(Ok(message))) = self.retry_messages.poll_expired(cx) {
+            let (topic, data, retries, delay) = message.into_inner();
+            trace!(retries, ?delay, "PubSub: retry to publish the message.");
+            self.publish_message(topic, data, retries, delay);
+        }
+
+        while let Poll::Ready(Some(Ok(key))) = self.dup_cache_ttl.poll_expired(cx) {
+            self.dup_cache.remove(key.get_ref());
         }
 
         Poll::Pending
@@ -164,9 +206,12 @@ where
             "PubSub: data is too large. Size={}.",
             data.len()
         );
-        self.gossipsub
-            .publish(PubSubTopic::TxProposal.into_topic(), data)
-            .map_err(|e| anyhow!("PubSub: Failed to publish tx proposal. Error: {:?}", e))?;
+        self.publish_message(
+            PubSubTopic::TxProposal,
+            data,
+            PUB_MAX_RETRIES,
+            PUB_INIT_RETRY_DELAY,
+        );
         Ok(())
     }
 
@@ -177,9 +222,12 @@ where
             "PubSub: data is too large. Size={}.",
             data.len()
         );
-        self.gossipsub
-            .publish(PubSubTopic::BlockProposal.into_topic(), data)
-            .map_err(|e| anyhow!("PubSub: Failed to publish block proposal. Error: {:?}", e))?;
+        self.publish_message(
+            PubSubTopic::BlockProposal,
+            data,
+            PUB_MAX_RETRIES,
+            PUB_INIT_RETRY_DELAY,
+        );
         Ok(())
     }
 }
@@ -212,6 +260,13 @@ where
             if !self.sub_topics.contains(topic) {
                 return;
             }
+
+            let data_hash = data.to_digest();
+
+            if !self.dup_cache.insert(data_hash) {
+                return;
+            }
+            self.dup_cache_ttl.insert(data_hash, DUPLICATE_CACHE_TTL);
 
             match topic {
                 PubSubTopic::TxProposal => {
