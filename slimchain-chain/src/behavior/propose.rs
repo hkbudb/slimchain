@@ -8,6 +8,7 @@ use chrono::Utc;
 use futures::prelude::*;
 use itertools::Itertools;
 use slimchain_common::{
+    basic::H256,
     error::{Context as _, Result},
     rw_set::TxWriteData,
     tx::TxTrait,
@@ -133,17 +134,17 @@ where
         .unwrap_or_default();
 
     snapshot.tx_trie.apply_diff(&merged_diff, false)?;
-    let update_trie = {
-        let mut old_trie = snapshot.tx_trie.clone();
-        tokio::task::spawn_blocking(move || -> Result<TxTrie> {
-            old_trie.apply_writes(&writes)?;
-            Ok(old_trie)
+    let (updated_trie, new_state_root) = {
+        let mut trie = snapshot.tx_trie.clone();
+        tokio::task::spawn_blocking(move || -> Result<(TxTrie, H256)> {
+            trie.apply_writes(&writes)?;
+            let root = trie.root_hash();
+            Ok((trie, root))
         })
         .await??
     };
-    snapshot.tx_trie = update_trie;
+    snapshot.tx_trie = updated_trie;
 
-    let new_state_root = snapshot.tx_trie.root_hash();
     let tx_list: BlockTxList = txs.iter().collect();
     let last_block = snapshot
         .get_block(last_block_height)

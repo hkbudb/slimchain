@@ -5,6 +5,7 @@ use crate::{
     snapshot::Snapshot,
 };
 use slimchain_common::{
+    basic::H256,
     error::{bail, ensure, Context as _, Result},
     rw_set::TxWriteData,
     tx::TxTrait,
@@ -80,18 +81,19 @@ where
         writes.merge(tx.tx_writes());
     }
 
-    let (update_trie, update) = {
-        let mut old_trie = snapshot.tx_trie.clone();
-        tokio::task::spawn_blocking(move || -> Result<(TxTrie, TxStateUpdate)> {
-            let update = old_trie.apply_writes(&writes)?;
-            Ok((old_trie, update))
+    let (updated_trie, new_state_root, update) = {
+        let mut trie = snapshot.tx_trie.clone();
+        tokio::task::spawn_blocking(move || -> Result<(TxTrie, H256, TxStateUpdate)> {
+            let update = trie.apply_writes(&writes)?;
+            let root = trie.root_hash();
+            Ok((trie, root, update))
         })
         .await??
     };
-    snapshot.tx_trie = update_trie;
+    snapshot.tx_trie = updated_trie;
 
     ensure!(
-        blk_proposal.get_block().state_root() == snapshot.tx_trie.root_hash(),
+        blk_proposal.get_block().state_root() == new_state_root,
         "Invalid state root in the block proposal (expect: {}, actual: {}).",
         blk_proposal.get_block().state_root(),
         snapshot.tx_trie.root_hash(),
