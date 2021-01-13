@@ -20,8 +20,8 @@ use std::{
     time::Duration,
 };
 
-const MAX_MESSAGE_SIZE: usize = 20_000_000;
-const MAX_TRANSMIT_SIZE: usize = 25_000_000;
+const MAX_MESSAGE_SIZE: usize = 45_000_000;
+const MAX_TRANSMIT_SIZE: usize = 50_000_000;
 const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(1_800);
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(2);
 
