@@ -96,7 +96,7 @@ where
         blk_proposal.get_block().state_root() == new_state_root,
         "Invalid state root in the block proposal (expect: {}, actual: {}).",
         blk_proposal.get_block().state_root(),
-        snapshot.tx_trie.root_hash(),
+        new_state_root,
     );
 
     snapshot.commit_block(blk_proposal.get_block().clone());
