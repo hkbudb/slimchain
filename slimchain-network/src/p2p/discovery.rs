@@ -29,7 +29,10 @@ use tokio::time::{
     delay_for, delay_queue::Key as DelayQueueKey, Delay, DelayQueue, Duration, Instant,
 };
 
-const PEER_ENTRY_TTL: Duration = Duration::from_secs(600);
+const PEER_ENTRY_TTL: Duration = Duration::from_secs(60);
+const RETRY_WAIT_INTERVAL: Duration = Duration::from_millis(100);
+const KAD_MAX_INTERVAL: Duration = Duration::from_secs(60);
+const KAD_INIT_INTERVAL: Duration = Duration::from_secs(1);
 
 create_id_type_u64!(QueryId);
 
@@ -110,7 +113,7 @@ impl Discovery {
             peer_table: HashMap::new(),
             rev_peer_table: HashMap::new(),
             exp_peers: DelayQueue::new(),
-            duration_to_next_kad: Duration::from_secs(1),
+            duration_to_next_kad: KAD_INIT_INTERVAL,
             next_kad_query: delay_for(Duration::from_secs(0)),
             pending_queries: HashMap::new(),
             exp_queries: DelayQueue::new(),
@@ -252,8 +255,7 @@ impl Discovery {
             self.kad.get_closest_peers(PeerId::random());
 
             self.next_kad_query = delay_for(self.duration_to_next_kad);
-            self.duration_to_next_kad =
-                cmp::min(self.duration_to_next_kad * 2, Duration::from_secs(60));
+            self.duration_to_next_kad = cmp::min(self.duration_to_next_kad * 2, KAD_MAX_INTERVAL);
         }
 
         while let Poll::Ready(Some(Ok(kad_query_id))) = self.exp_queries.poll_expired(cx) {
@@ -370,7 +372,7 @@ impl NetworkBehaviourEventProcess<KademliaEvent> for Discovery {
                         });
                 } else {
                     self.pending_retry_queries
-                        .insert((query_id, role, deadline), Duration::from_millis(100));
+                        .insert((query_id, role, deadline), RETRY_WAIT_INTERVAL);
                 }
             }
             KademliaEvent::QueryResult {
