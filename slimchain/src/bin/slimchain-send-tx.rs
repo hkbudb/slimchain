@@ -273,6 +273,10 @@ struct Opts {
     #[structopt(short, long)]
     rate: usize,
 
+    /// Wait period in seconds to check block committing after sending TX.
+    #[structopt(short, long, default_value = "60")]
+    wait: usize,
+
     /// Seed used for RNG.
     #[structopt(long)]
     seed: Option<u64>,
@@ -452,7 +456,7 @@ async fn main() -> Result<()> {
             block_update_time = Instant::now();
             cur_block_height = height;
             continue;
-        } else if Instant::now() - block_update_time > Duration::from_secs(30) {
+        } else if Instant::now() - block_update_time > Duration::from_secs(opts.wait) {
             break;
         }
     }
