@@ -275,7 +275,7 @@ struct Opts {
 
     /// Wait period in seconds to check block committing after sending TX.
     #[structopt(short, long, default_value = "60")]
-    wait: usize,
+    wait: u64,
 
     /// Seed used for RNG.
     #[structopt(long)]
