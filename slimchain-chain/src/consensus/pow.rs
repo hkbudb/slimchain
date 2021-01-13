@@ -165,7 +165,7 @@ mod tests {
             let mut header = blk.header.clone();
             header.height = header.height.next_height();
             header.time_stamp = Utc::now();
-            let new_blk = create_new_block(header, &blk).await;
+            let new_blk = create_new_block(header, &blk).await.unwrap();
             println!("diff = {}", new_blk.diff);
             println!("time = {}", new_blk.time_stamp() - blk.time_stamp());
             println!("nonce = {}", new_blk.nonce);
