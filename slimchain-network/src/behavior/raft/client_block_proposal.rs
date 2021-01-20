@@ -15,8 +15,9 @@ use futures::{
 use serde::{Deserialize, Serialize};
 use slimchain_chain::{
     behavior::propose_block,
+    block_proposal::BlockProposal,
     config::{ChainConfig, MinerConfig},
-    consensus::raft::create_new_block,
+    consensus::raft::{create_new_block, Block},
 };
 use slimchain_common::{
     error::{bail, Result},
@@ -40,6 +41,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
         raft_storage: Arc<ClientNodeStorage<Tx>>,
         raft_network: Arc<ClientNodeNetwork<Tx>>,
         raft: Arc<ClientNodeRaft<Tx>>,
+        mut block_proposal_broadcast_tx: mpsc::UnboundedSender<BlockProposal<Block, Tx>>,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<TxProposal<Tx>>();
         let mut tx_rx = tx_rx.fuse().peekable();
@@ -162,10 +164,14 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                     }
                 }
 
-                raft_network
-                    .broadcast_block_proposal_to_storage_node(&blk_proposal)
-                    .await
-                    .ok();
+                if cfg!(raft_async_broadcast_storage) {
+                    raft_network
+                        .broadcast_block_proposal_to_storage_node(&vec![blk_proposal])
+                        .await
+                        .ok();
+                } else {
+                    block_proposal_broadcast_tx.send(blk_proposal).await.ok();
+                }
             }
         });
 

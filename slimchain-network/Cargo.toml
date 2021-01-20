@@ -5,6 +5,12 @@ authors = ["Cheng XU <rust@xuc.me>"]
 edition = "2018"
 publish = false
 
+[features]
+default = [
+    # "raft_async_broadcast_storage",
+]
+raft_async_broadcast_storage = []
+
 [dependencies]
 async-raft = "0.6.0-alpha.1"
 async-trait = "0.1"
