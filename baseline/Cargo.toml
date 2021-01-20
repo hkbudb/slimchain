@@ -6,7 +6,8 @@ edition = "2018"
 publish = false
 
 [dependencies]
-async-raft = "0.6.0-alpha.1"
+# async-raft = "0.6.0-alpha.1"
+async-raft = { git = "https://github.com/xu-cheng/async-raft/", branch = "tokio" }
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 color-backtrace = "0.5"
@@ -27,6 +28,7 @@ slimchain-tx-executor = { path = "../slimchain-tx-executor" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
 slimchain-utils = { path = "../slimchain-utils" }
 structopt = "0.3"
+thiserror = "1.0"
 tokio = { version = "1.0", features = ["full", "parking_lot"] }
 tracing = "0.1"
 tracing-futures = "0.2"

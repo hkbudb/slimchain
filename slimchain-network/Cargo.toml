@@ -12,7 +12,8 @@ default = [
 raft_async_broadcast_storage = []
 
 [dependencies]
-async-raft = "0.6.0-alpha.1"
+# async-raft = "0.6.0-alpha.1"
+async-raft = { git = "https://github.com/xu-cheng/async-raft/", branch = "tokio" }
 async-trait = "0.1"
 bs58 = "0.4"
 bytes = "1.0"
@@ -30,6 +31,7 @@ slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
 slimchain-utils = { path = "../slimchain-utils" }
 surf = "2.1"
+thiserror = "1.0"
 tokio = { version = "1.0", features = ["full", "parking_lot"] }
 tokio-util = { version = "0.6", features = ["time"] }
 tracing = "0.1"

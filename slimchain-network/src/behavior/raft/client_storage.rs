@@ -43,6 +43,9 @@ struct RaftStateMachine {
     snapshot: Snapshot<Block, TxTrie>,
 }
 
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+pub enum ShutdownError {}
+
 pub struct ClientNodeStorage<Tx: TxTrait> {
     peer_id: PeerId,
     chain_cfg: ChainConfig,
@@ -139,6 +142,7 @@ where
     Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
 {
     type Snapshot = Cursor<Vec<u8>>;
+    type ShutdownError = ShutdownError;
 
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn get_membership_config(&self) -> Result<MembershipConfig> {

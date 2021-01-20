@@ -46,6 +46,9 @@ struct RaftStateMachine {
     latest_block: Block,
 }
 
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+pub enum ShutdownError {}
+
 pub struct ClientNodeStorage {
     peer_id: PeerId,
     route_table: NetworkRouteTable,
@@ -135,6 +138,7 @@ impl ClientNodeStorage {
 #[async_trait]
 impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
     type Snapshot = Cursor<Vec<u8>>;
+    type ShutdownError = ShutdownError;
 
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn get_membership_config(&self) -> Result<MembershipConfig> {
