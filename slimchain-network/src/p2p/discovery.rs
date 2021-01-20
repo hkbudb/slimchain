@@ -1,5 +1,6 @@
 use crate::p2p::config::NetworkConfig;
 use futures::{channel::oneshot, prelude::*};
+use futures_timer::Delay;
 use libp2p::{
     identify::{Identify, IdentifyEvent},
     identity::PublicKey,
@@ -24,10 +25,10 @@ use std::{
     collections::VecDeque,
     pin::Pin,
     task::{Context, Poll},
+    time::Duration,
 };
-use tokio::time::{
-    delay_for, delay_queue::Key as DelayQueueKey, Delay, DelayQueue, Duration, Instant,
-};
+use tokio::time::Instant;
+use tokio_util::time::delay_queue::{DelayQueue, Key as DelayQueueKey};
 
 const PEER_ENTRY_TTL: Duration = Duration::from_secs(60);
 const RETRY_WAIT_INTERVAL: Duration = Duration::from_millis(100);
@@ -114,7 +115,7 @@ impl Discovery {
             rev_peer_table: HashMap::new(),
             exp_peers: DelayQueue::new(),
             duration_to_next_kad: KAD_INIT_INTERVAL,
-            next_kad_query: delay_for(Duration::from_secs(0)),
+            next_kad_query: Delay::new(Duration::from_secs(0)),
             pending_queries: HashMap::new(),
             exp_queries: DelayQueue::new(),
             pending_retry_queries: DelayQueue::new(),
@@ -254,7 +255,7 @@ impl Discovery {
         while let Poll::Ready(_) = Pin::new(&mut self.next_kad_query).poll(cx) {
             self.kad.get_closest_peers(PeerId::random());
 
-            self.next_kad_query = delay_for(self.duration_to_next_kad);
+            self.next_kad_query = Delay::new(self.duration_to_next_kad);
             self.duration_to_next_kad = cmp::min(self.duration_to_next_kad * 2, KAD_MAX_INTERVAL);
         }
 

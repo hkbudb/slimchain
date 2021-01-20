@@ -1,4 +1,4 @@
-use bytes::{Buf, Bytes};
+use bytes::Bytes;
 use futures::io::Cursor;
 use serde::{Deserialize, Serialize};
 use slimchain_common::error::{ensure, Error, Result};
@@ -87,7 +87,7 @@ impl Reject for PostcardDecodeError {}
 pub fn warp_body_postcard<T: for<'de> Deserialize<'de> + Send>(
 ) -> impl Filter<Extract = (T,), Error = Rejection> + Copy {
     warp::filters::body::bytes().and_then(|buf: Bytes| async move {
-        postcard::from_bytes(buf.bytes()).map_err(|err| {
+        postcard::from_bytes(buf.as_ref()).map_err(|err| {
             debug!("request postcard body error: {}", err);
             warp::reject::custom(PostcardDecodeError(err))
         })

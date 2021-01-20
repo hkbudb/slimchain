@@ -33,7 +33,7 @@ async fn test() {
     };
 
     let handler = tokio::spawn(async move { swarm.next().await });
-    tokio::time::delay_for(tokio::time::Duration::from_millis(300)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
     send_tx_request(endpoint, signed_tx_req.clone())
         .await
         .unwrap();

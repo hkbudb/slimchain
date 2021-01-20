@@ -21,7 +21,7 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-use tokio::time::DelayQueue;
+use tokio_util::time::DelayQueue;
 
 const MAX_MESSAGE_SIZE: usize = 45_000_000;
 const MAX_TRANSMIT_SIZE: usize = 50_000_000;

@@ -213,7 +213,7 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
     assert_eq!(client_tx_latest.get(), storage_tx_latest.get());
 }
 
-#[tokio::test(core_threads = 4)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test() {
     let _guard = init_tracing_for_test();
 

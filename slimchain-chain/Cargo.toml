@@ -21,7 +21,7 @@ slimchain-common = { path = "../slimchain-common" }
 slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
 slimchain-utils = { path = "../slimchain-utils" }
-tokio = { version = "0.2", features = ["full", "parking_lot"] }
+tokio = { version = "1.0", features = ["full", "parking_lot"] }
 tracing = "0.1"
 tracing-futures = "0.2"
 

@@ -30,7 +30,7 @@ use std::{
     sync::Mutex,
 };
 use structopt::StructOpt;
-use tokio::time::{delay_for, delay_until, Duration, Instant};
+use tokio::time::{sleep, sleep_until, Duration, Instant};
 
 static YCSB: OnceCell<Mutex<io::BufReader<File>>> = OnceCell::new();
 static YCSB_READ_RE: Lazy<Regex> =
@@ -333,7 +333,7 @@ async fn main() -> Result<()> {
                     break;
                 }
                 Err(_) => {
-                    delay_for(ONE_SECOND).await;
+                    sleep(ONE_SECOND).await;
                     i += 1;
                     if i % 60 == 0 {
                         info!("Waiting for leader election...");
@@ -371,7 +371,7 @@ async fn main() -> Result<()> {
     send_tx_requests_with_shard(&opts.endpoint, deploy_txs.into_iter()).await?;
 
     loop {
-        delay_for(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(500)).await;
         let tx_count2 = get_tx_count(&opts.endpoint).await?;
 
         if tx_count2 >= tx_count + opts.contract.len() {
@@ -396,7 +396,7 @@ async fn main() -> Result<()> {
     let mut next_epoch = begin + ONE_SECOND;
 
     let mut reqs = Vec::with_capacity(opts.rate + 1);
-    let mut next_epoch_fut = delay_until(next_epoch);
+    let mut next_epoch_fut = sleep_until(next_epoch);
     for i in 0..opts.total {
         let (address, shard_id, contract) = contracts
             .choose(&mut rng)
@@ -418,7 +418,7 @@ async fn main() -> Result<()> {
             next_epoch_fut.await;
 
             next_epoch += ONE_SECOND;
-            next_epoch_fut = delay_until(next_epoch);
+            next_epoch_fut = sleep_until(next_epoch);
         }
 
         if (i + 1) % 1_000 == 0 {
@@ -449,7 +449,7 @@ async fn main() -> Result<()> {
     let mut block_update_time = Instant::now();
 
     loop {
-        delay_for(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(500)).await;
         let height = get_block_height(&opts.endpoint).await?;
 
         if height > cur_block_height {

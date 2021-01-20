@@ -151,14 +151,6 @@ impl<Tx: TxTrait + 'static> TxEngine<Tx> {
         }
     }
 
-    pub fn try_pop_result(&mut self) -> Option<TxTaskOutput<Tx>> {
-        let result = self.result_rx.try_recv().ok();
-        if result.is_some() {
-            self.remaining_tasks.fetch_sub(1, Ordering::SeqCst);
-        }
-        result
-    }
-
     pub async fn pop_result(&mut self) -> TxTaskOutput<Tx> {
         let result = self
             .result_rx

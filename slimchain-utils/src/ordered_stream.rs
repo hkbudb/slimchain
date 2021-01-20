@@ -83,7 +83,7 @@ where
 mod tests {
     use super::*;
     use futures::channel::mpsc;
-    use tokio::time::{delay_for, Duration};
+    use tokio::time::{sleep, Duration};
 
     #[tokio::test]
     async fn test_ordered_stream() {
@@ -98,17 +98,17 @@ mod tests {
         });
 
         tx.send((2, 2)).await.unwrap();
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         tx.send((1, 1)).await.unwrap();
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         tx.send((0, 0)).await.unwrap();
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         tx.send((3, 3)).await.unwrap();
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         tx.send((4, 4)).await.unwrap();
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         tx.send((5, 5)).await.unwrap();
-        delay_for(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         tx.close_channel();
 
         handle.await.unwrap();
