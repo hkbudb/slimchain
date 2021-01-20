@@ -32,7 +32,7 @@ ed25519 = { version = "1", default-features = false, features = ["serde"] }
 ed25519-dalek = { version = "1.0", default-features = false, features = ["alloc", "rand", "u64_backend"] }
 hashbrown = { version = "0.9", features = ["serde"] }
 hex = { version = "0.4", default-features = false }
-primitive-types = { version = "0.7", default-features = false, features = ["serde_no_std", "byteorder"] }
+primitive-types = { version = "0.8", default-features = false, features = ["serde_no_std", "byteorder"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 
 [dev-dependencies]
