@@ -166,7 +166,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
     let evm_backend = EVMBackend::new(backend);
     let evm_config = evm::Config::istanbul();
     let mut executor =
-        evm::executor::StackExecutor::new(&evm_backend, usize::max_value(), &evm_config);
+        evm::executor::StackExecutor::new(&evm_backend, u64::max_value(), &evm_config);
 
     let _caller_nonce = Nonce::from(evm_backend.basic(caller.into()).nonce);
 
@@ -184,7 +184,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
             caller.clone().into(),
             U256::zero(),
             code.clone().into(),
-            usize::max_value(),
+            u64::max_value(),
         ),
         TxRequest::Call { address, data, .. } => {
             executor
@@ -193,7 +193,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
                     address.clone().into(),
                     U256::zero(),
                     data.clone(),
-                    usize::max_value(),
+                    u64::max_value(),
                 )
                 .0
         }
