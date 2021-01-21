@@ -6,8 +6,8 @@ edition = "2018"
 publish = false
 
 [dependencies]
-# async-raft = "0.6.0-alpha.1"
-async-raft = { git = "https://github.com/xu-cheng/async-raft/", branch = "tokio" }
+# async-raft = "0.6.0"
+async-raft = { git = "https://github.com/async-raft/async-raft/" }
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 color-backtrace = "0.5"
