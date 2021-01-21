@@ -267,7 +267,7 @@ impl<Tx> ClientNodeNetworkWorker<Tx>
 where
     Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    pub fn new(network: Arc<ClientNodeNetwork<Tx>>) -> Self {
+    pub fn new(network: Arc<ClientNodeNetwork<Tx>>, async_broadcast_storage: bool) -> Self {
         let (req_tx, req_rx) = mpsc::unbounded();
         let req_fut = {
             let network = network.clone();
@@ -289,7 +289,7 @@ where
         let mut block_proposal_rx = block_proposal_rx.ready_chunks(8);
         let (block_proposal_shutdown_tx, mut block_proposal_shutdown_rx) = oneshot::channel();
 
-        let block_proposal_handle = if cfg!(raft_async_broadcast_storage) {
+        let block_proposal_handle = if async_broadcast_storage {
             tokio::spawn(async move {
                 loop {
                     tokio::select! {

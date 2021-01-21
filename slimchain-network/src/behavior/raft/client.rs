@@ -73,7 +73,8 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             raft_storage.clone(),
         ));
 
-        let network_worker = ClientNodeNetworkWorker::new(raft_network.clone());
+        let network_worker =
+            ClientNodeNetworkWorker::new(raft_network.clone(), raft_cfg.async_broadcast_storage);
 
         let proposal_worker = BlockProposalWorker::new(
             chain_cfg,
@@ -82,6 +83,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             raft_network.clone(),
             raft.clone(),
             network_worker.get_block_proposal_tx(),
+            raft_cfg.async_broadcast_storage,
         );
 
         let client_rpc_srv = {

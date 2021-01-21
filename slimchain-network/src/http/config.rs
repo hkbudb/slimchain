@@ -160,6 +160,9 @@ pub struct RaftConfig {
     ///
     /// Defaults to 3Mib.
     pub snapshot_max_chunk_size: Option<u64>,
+    /// How to broadcast the block to storage node
+    #[serde(default)]
+    pub async_broadcast_storage: bool,
 }
 
 impl RaftConfig {

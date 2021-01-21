@@ -95,3 +95,5 @@ snapshot_policy_logs_since_last = 5000
 #
 # Defaults to 3Mib.
 snapshot_max_chunk_size = 3145728
+# How to broadcast the block to storage node
+async_broadcast_storage = false
