@@ -224,6 +224,7 @@ mod tests {
         tx::TxTrait,
         tx_req::TxRequest,
     };
+    use slimchain_utils::serde::{binary_decode, binary_encode};
 
     #[test]
     fn test_serde() {
@@ -295,8 +296,8 @@ mod tests {
         let proposal =
             BlockProposal::new(block, vec![tx], BlockProposalTrie::Diff(Default::default()));
 
-        let bin = postcard::to_allocvec(&proposal).unwrap();
-        assert_eq!(proposal, postcard::from_bytes(&bin[..]).unwrap());
+        let bin = binary_encode(&proposal).unwrap();
+        assert_eq!(proposal, binary_decode(&bin[..]).unwrap());
 
         let json = serde_json::to_string(&proposal).unwrap();
         assert_eq!(proposal, serde_json::from_str(&json).unwrap());

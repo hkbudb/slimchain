@@ -11,6 +11,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::{TrieNode, TxStateUpdate, TxStateView};
+use slimchain_utils::serde::{binary_decode, binary_encode};
 use std::{path::Path, sync::Arc};
 
 pub const TOTAL_COLS: u32 = 5;
@@ -89,7 +90,7 @@ impl DB {
         self.db
             .get(col, key)
             .map_err(Error::msg)?
-            .map(|bin| postcard::from_bytes::<T>(&bin[..]).map_err(Error::msg))
+            .map(|bin| binary_decode::<T>(&bin[..]))
             .transpose()
     }
 
@@ -191,7 +192,7 @@ impl Transaction {
     }
 
     pub fn insert_object<T: Serialize>(&mut self, col: u32, key: &DBKey, value: &T) -> Result<()> {
-        let bin = postcard::to_allocvec(value)?;
+        let bin = binary_encode(value)?;
         self.inner.put_vec(col, key, bin);
         Ok(())
     }
