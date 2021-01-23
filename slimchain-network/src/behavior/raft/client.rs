@@ -110,14 +110,14 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             let raft_copy = raft.clone();
             let append_rpc = warp::post()
                 .and(warp::path(RAFT_APPEND_ENTRIES_ROUTE_PATH))
-                .and(warp_body_postcard())
+                .and(warp_body_binary())
                 .and_then(move |rpc| {
                     let raft_copy = raft_copy.clone();
                     async move {
                         raft_copy
                             .append_entries(rpc)
                             .await
-                            .map(|resp| warp_reply_postcard(&resp))
+                            .map(|resp| warp_reply_binary(&resp))
                             .map_err(|e| warp::reject::custom(ClientNodeError::RaftError(e)))
                     }
                 });
@@ -125,14 +125,14 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             let raft_copy = raft.clone();
             let install_rpc = warp::post()
                 .and(warp::path(RAFT_INSTALL_SNAPSHOT_ROUTE_PATH))
-                .and(warp_body_postcard())
+                .and(warp_body_binary())
                 .and_then(move |rpc| {
                     let raft_copy = raft_copy.clone();
                     async move {
                         raft_copy
                             .install_snapshot(rpc)
                             .await
-                            .map(|resp| warp_reply_postcard(&resp))
+                            .map(|resp| warp_reply_binary(&resp))
                             .map_err(|e| warp::reject::custom(ClientNodeError::RaftError(e)))
                     }
                 });
@@ -140,14 +140,14 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             let raft_copy = raft.clone();
             let vote_rpc = warp::post()
                 .and(warp::path(RAFT_VOTE_ROUTE_PATH))
-                .and(warp_body_postcard())
+                .and(warp_body_binary())
                 .and_then(move |rpc| {
                     let raft_copy = raft_copy.clone();
                     async move {
                         raft_copy
                             .vote(rpc)
                             .await
-                            .map(|resp| warp_reply_postcard(&resp))
+                            .map(|resp| warp_reply_binary(&resp))
                             .map_err(|e| warp::reject::custom(ClientNodeError::RaftError(e)))
                     }
                 });
@@ -164,7 +164,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                     async move {
                         get_current_leader(raft_copy.as_ref())
                             .await
-                            .map(|resp| warp_reply_postcard(&resp))
+                            .map(|resp| warp_reply_binary(&resp))
                             .map_err(|e| warp::reject::custom(ClientNodeError::Other(e)))
                     }
                 });
@@ -173,7 +173,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
             let tx_tx = proposal_worker.get_tx_tx();
             let leader_req_rpc = warp::post()
                 .and(warp::path(CLIENT_LEADER_REQ_ROUTE_PATH))
-                .and(warp_body_postcard())
+                .and(warp_body_binary())
                 .and_then(move |txs: Vec<TxProposal<Tx>>| {
                     for tx in &txs {
                         record_event!("miner_recv_tx", "tx_id": tx.tx.id());
@@ -192,7 +192,7 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> ClientNode<T
                         tx_tx_copy
                             .send_all(&mut input)
                             .await
-                            .map(|_| warp_reply_postcard(&()))
+                            .map(|_| warp_reply_binary(&()))
                             .map_err(|e| {
                                 warp::reject::custom(ClientNodeError::Other(Error::msg(e)))
                             })

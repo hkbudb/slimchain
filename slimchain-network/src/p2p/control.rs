@@ -5,7 +5,7 @@ use futures::{
     prelude::*,
 };
 use libp2p::{
-    build_tcp_ws_noise_mplex_yamux,
+    core::{muxing, transport},
     identity::Keypair,
     swarm::{
         protocols_handler::ProtocolsHandler, IntoProtocolsHandler, NetworkBehaviour, Swarm,
@@ -16,6 +16,26 @@ use libp2p::{
 use slimchain_common::error::{bail, Error, Result};
 use std::{pin::Pin, task::Poll};
 use tokio::task::JoinHandle;
+
+fn build_tcp_noise_yamux(
+    keypair: Keypair,
+) -> Result<transport::Boxed<(PeerId, muxing::StreamMuxerBox)>> {
+    use libp2p::{core, dns, noise, tcp, yamux, Transport};
+
+    let tcp = tcp::TcpConfig::new().nodelay(true);
+    let transport = dns::DnsConfig::new(tcp)?;
+
+    let noise_keys = noise::Keypair::<noise::X25519Spec>::new()
+        .into_authentic(&keypair)
+        .expect("Signing libp2p-noise static DH keypair failed.");
+
+    Ok(transport
+        .upgrade(core::upgrade::Version::V1)
+        .authenticate(noise::NoiseConfig::xx(noise_keys).into_authenticated())
+        .multiplex(yamux::YamuxConfig::default())
+        .timeout(std::time::Duration::from_secs(20))
+        .boxed())
+}
 
 #[async_trait]
 pub trait Shutdown {
@@ -45,7 +65,7 @@ where
 {
     pub fn new(key_pair: Keypair, behaviour: Behaviour) -> Result<Self> {
         let peer_id = key_pair.public().into_peer_id();
-        let transport = build_tcp_ws_noise_mplex_yamux(key_pair.clone())?;
+        let transport = build_tcp_noise_yamux(key_pair.clone())?;
         let swarm = Swarm::new(transport, behaviour, peer_id);
 
         Ok(Self {

@@ -14,6 +14,7 @@ use slimchain_common::{
     digest::Digestible,
     error::{anyhow, ensure, Result},
 };
+use slimchain_utils::serde::{binary_decode, binary_encode};
 use std::{
     cmp,
     collections::VecDeque,
@@ -203,7 +204,7 @@ where
     BlockProposal: Serialize + Send + 'static,
 {
     pub fn publish_tx_proposal(&mut self, input: &TxProposal) -> Result<()> {
-        let data = postcard::to_allocvec(input)?;
+        let data = binary_encode(input)?;
         ensure!(
             data.len() < MAX_MESSAGE_SIZE,
             "PubSub: data is too large. Size={}.",
@@ -211,7 +212,7 @@ where
         );
         self.publish_message(
             PubSubTopic::TxProposal,
-            data,
+            data.to_vec(),
             PUB_MAX_RETRIES,
             PUB_INIT_RETRY_DELAY,
         );
@@ -219,7 +220,7 @@ where
     }
 
     pub fn publish_block_proposal(&mut self, input: &BlockProposal) -> Result<()> {
-        let data = postcard::to_allocvec(input)?;
+        let data = binary_encode(input)?;
         ensure!(
             data.len() < MAX_MESSAGE_SIZE,
             "PubSub: data is too large. Size={}.",
@@ -227,7 +228,7 @@ where
         );
         self.publish_message(
             PubSubTopic::BlockProposal,
-            data,
+            data.to_vec(),
             PUB_MAX_RETRIES,
             PUB_INIT_RETRY_DELAY,
         );
@@ -266,14 +267,14 @@ where
 
             match topic {
                 PubSubTopic::TxProposal => {
-                    let input = postcard::from_bytes(data.as_slice())
-                        .expect("PubSub: Failed to decode message.");
+                    let input =
+                        binary_decode(data.as_slice()).expect("PubSub: Failed to decode message.");
                     self.pending_events
                         .push_back(PubSubEvent::TxProposal(input));
                 }
                 PubSubTopic::BlockProposal => {
-                    let input = postcard::from_bytes(data.as_slice())
-                        .expect("PubSub: Failed to decode message.");
+                    let input =
+                        binary_decode(data.as_slice()).expect("PubSub: Failed to decode message.");
                     self.pending_events
                         .push_back(PubSubEvent::BlockProposal(input));
                 }

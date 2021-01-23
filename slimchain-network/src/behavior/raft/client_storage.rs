@@ -26,6 +26,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::TxTrie;
+use slimchain_utils::serde::{binary_decode, binary_encode};
 use std::{collections::BTreeSet, io::Cursor, marker::PhantomData};
 use tokio::sync::{Mutex, RwLock};
 
@@ -403,7 +404,7 @@ where
                 membership: membership_config.clone(),
                 snapshot: sm_copy.snapshot,
             };
-            snapshot_bytes = postcard::to_allocvec(&snapshot)?;
+            snapshot_bytes = binary_encode(&snapshot)?.to_vec();
             *current_snapshot = Some(snapshot);
         };
 
@@ -430,7 +431,7 @@ where
         id: String,
         snapshot: Box<Self::Snapshot>,
     ) -> Result<()> {
-        let new_snapshot: RaftSnapshot = postcard::from_bytes(snapshot.get_ref().as_slice())?;
+        let new_snapshot: RaftSnapshot = binary_decode(snapshot.get_ref().as_slice())?;
 
         {
             let mut db_tx = DBTransaction::new();
@@ -500,7 +501,7 @@ where
     async fn get_current_snapshot(&self) -> Result<Option<CurrentSnapshotData<Self::Snapshot>>> {
         match &*self.raft_snapshot.read().await {
             Some(snapshot) => {
-                let reader = postcard::to_allocvec(&snapshot)?;
+                let reader = binary_encode(&snapshot)?.to_vec();
                 Ok(Some(CurrentSnapshotData {
                     index: snapshot.index,
                     term: snapshot.term,

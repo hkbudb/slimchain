@@ -6,6 +6,7 @@ use libp2p::{
     request_response::RequestResponseCodec,
 };
 use serde::{Deserialize, Serialize};
+use slimchain_utils::serde::{binary_decode, binary_encode};
 use std::io;
 
 /// Encode/decode the request and response to/from the network.
@@ -63,7 +64,7 @@ where
         let len = read_varint(socket).await?;
         let mut buf = vec![0; len];
         socket.read_exact(&mut buf).await?;
-        postcard::from_bytes(buf.as_ref()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        binary_decode(buf.as_ref()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     async fn read_response<Socket>(
@@ -77,7 +78,7 @@ where
         let len = read_varint(socket).await?;
         let mut buf = vec![0; len];
         socket.read_exact(&mut buf).await?;
-        postcard::from_bytes(buf.as_ref()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        binary_decode(buf.as_ref()).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     async fn write_request<Socket>(
@@ -89,8 +90,7 @@ where
     where
         Socket: AsyncWrite + Unpin + Send,
     {
-        let bin =
-            postcard::to_allocvec(&request).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let bin = binary_encode(&request).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         write_varint(socket, bin.len()).await?;
         socket.write_all(bin.as_ref()).await?;
         socket.close().await?;
@@ -106,8 +106,7 @@ where
     where
         Socket: AsyncWrite + Unpin + Send,
     {
-        let bin = postcard::to_allocvec(&response)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let bin = binary_encode(&response).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
         write_varint(socket, bin.len()).await?;
         socket.write_all(bin.as_ref()).await?;
         socket.close().await?;

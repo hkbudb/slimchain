@@ -29,6 +29,7 @@ use slimchain_network::{
     http::config::{NetworkConfig, NetworkRouteTable, PeerId},
 };
 use slimchain_tx_state::TxStateUpdate;
+use slimchain_utils::serde::{binary_decode, binary_encode};
 use std::{collections::BTreeSet, io::Cursor};
 use tokio::sync::{Mutex, RwLock};
 
@@ -392,7 +393,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
                 membership: membership_config.clone(),
                 latest_block: sm_copy.latest_block,
             };
-            snapshot_bytes = postcard::to_allocvec(&snapshot)?;
+            snapshot_bytes = binary_encode(&snapshot)?.to_vec();
             *current_snapshot = Some(snapshot);
         };
 
@@ -419,7 +420,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         id: String,
         snapshot: Box<Self::Snapshot>,
     ) -> Result<()> {
-        let new_snapshot: RaftSnapshot = postcard::from_bytes(snapshot.get_ref().as_slice())?;
+        let new_snapshot: RaftSnapshot = binary_decode(snapshot.get_ref().as_slice())?;
 
         {
             let mut db_tx = DBTransaction::new();
@@ -496,7 +497,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
     async fn get_current_snapshot(&self) -> Result<Option<CurrentSnapshotData<Self::Snapshot>>> {
         match &*self.raft_snapshot.read().await {
             Some(snapshot) => {
-                let reader = postcard::to_allocvec(&snapshot)?;
+                let reader = binary_encode(&snapshot)?.to_vec();
                 Ok(Some(CurrentSnapshotData {
                     index: snapshot.index,
                     term: snapshot.term,

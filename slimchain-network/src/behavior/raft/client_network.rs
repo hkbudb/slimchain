@@ -27,7 +27,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
-use slimchain_utils::record_event;
+use slimchain_utils::{record_event, serde::binary_encode};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::{sync::RwLock, task::JoinHandle};
 
@@ -84,7 +84,7 @@ where
 
         record_event!("tx_begin", "tx_id": tx_req_id);
 
-        let resp: Result<()> = send_post_request_using_postcard(
+        let resp: Result<()> = send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 storage_node_addr, NODE_RPC_ROUTE_PATH, STORAGE_TX_REQ_ROUTE_PATH
@@ -144,7 +144,7 @@ where
             return Ok(());
         }
 
-        let bytes = bytes::Bytes::from(postcard::to_allocvec(block_proposals)?);
+        let bytes = binary_encode(block_proposals)?;
         let reqs = self
             .route_table
             .role_table()
@@ -169,7 +169,7 @@ where
                 async move {
                     (
                         peer_id,
-                        send_post_request_using_postcard_bytes::<()>(&uri, bytes).await,
+                        send_post_request_using_binary_bytes::<()>(&uri, bytes).await,
                     )
                 }
             });
@@ -206,7 +206,7 @@ where
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
         let addr = self.route_table.peer_address(peer_id)?;
-        send_post_request_using_postcard(
+        send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 addr, NODE_RPC_ROUTE_PATH, RAFT_APPEND_ENTRIES_ROUTE_PATH
@@ -225,7 +225,7 @@ where
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
         let addr = self.route_table.peer_address(peer_id)?;
-        send_post_request_using_postcard(
+        send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 addr, NODE_RPC_ROUTE_PATH, RAFT_INSTALL_SNAPSHOT_ROUTE_PATH
@@ -240,7 +240,7 @@ where
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
         let addr = self.route_table.peer_address(peer_id)?;
-        send_post_request_using_postcard(
+        send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 addr, NODE_RPC_ROUTE_PATH, RAFT_VOTE_ROUTE_PATH

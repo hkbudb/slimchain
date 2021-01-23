@@ -59,7 +59,7 @@ pub async fn send_tx_requests_with_shard(
         .map(|(req, shard_id)| TxHttpRequest { req, shard_id })
         .collect();
 
-    send_post_request_using_postcard(
+    send_post_request_using_binary(
         &format!(
             "http://{}/{}/{}",
             endpoint, CLIENT_RPC_ROUTE_PATH, TX_REQ_ROUTE_PATH
@@ -107,7 +107,7 @@ async fn send_record_event_inner(endpoint: &str, req: RecordEventHttpRequest) ->
 }
 
 pub async fn get_tx_count(endpoint: &str) -> Result<usize> {
-    send_get_request_using_postcard(&format!(
+    send_get_request_using_binary(&format!(
         "http://{}/{}/{}",
         endpoint, CLIENT_RPC_ROUTE_PATH, TX_COUNT_ROUTE_PATH
     ))
@@ -115,7 +115,7 @@ pub async fn get_tx_count(endpoint: &str) -> Result<usize> {
 }
 
 pub async fn get_block_height(endpoint: &str) -> Result<BlockHeight> {
-    send_get_request_using_postcard(&format!(
+    send_get_request_using_binary(&format!(
         "http://{}/{}/{}",
         endpoint, CLIENT_RPC_ROUTE_PATH, BLOCK_HEIGHT_ROUTE_PATH
     ))
@@ -138,10 +138,10 @@ where
     let tx_req_fn = Arc::new(tx_req_fn);
     let tx_req_route = warp::post()
         .and(warp::path(TX_REQ_ROUTE_PATH))
-        .and(warp_body_postcard())
+        .and(warp_body_binary())
         .and_then(move |reqs: Vec<TxHttpRequest>| {
             tx_req_fn(reqs)
-                .map_ok(|_| warp_reply_postcard(&()))
+                .map_ok(|_| warp_reply_binary(&()))
                 .map_err(|e| warp::reject::custom(ClientRpcServerError(e)))
         });
     let record_event_route = warp::post()
@@ -156,14 +156,14 @@ where
         .and(warp::path(TX_COUNT_ROUTE_PATH))
         .map(move || {
             let tx_count = tx_count_fn();
-            warp_reply_postcard(&tx_count)
+            warp_reply_binary(&tx_count)
         });
     let block_height_fn = Arc::new(block_height_fn);
     let block_height_route = warp::get()
         .and(warp::path(BLOCK_HEIGHT_ROUTE_PATH))
         .map(move || {
             let block_height = block_height_fn();
-            warp_reply_postcard(&block_height)
+            warp_reply_binary(&block_height)
         });
     warp::path(CLIENT_RPC_ROUTE_PATH)
         .and(

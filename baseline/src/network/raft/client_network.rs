@@ -96,7 +96,7 @@ impl RaftNetwork<NewBlockRequest> for ClientNodeNetwork {
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
         let addr = self.route_table.peer_address(peer_id)?;
-        send_post_request_using_postcard(
+        send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 addr, NODE_RPC_ROUTE_PATH, RAFT_APPEND_ENTRIES_ROUTE_PATH
@@ -115,7 +115,7 @@ impl RaftNetwork<NewBlockRequest> for ClientNodeNetwork {
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
         let addr = self.route_table.peer_address(peer_id)?;
-        send_post_request_using_postcard(
+        send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 addr, NODE_RPC_ROUTE_PATH, RAFT_INSTALL_SNAPSHOT_ROUTE_PATH
@@ -130,7 +130,7 @@ impl RaftNetwork<NewBlockRequest> for ClientNodeNetwork {
         let peer_id = PeerId::from(target);
         debug_assert_ne!(peer_id, self.route_table.peer_id());
         let addr = self.route_table.peer_address(peer_id)?;
-        send_post_request_using_postcard(
+        send_post_request_using_binary(
             &format!(
                 "http://{}/{}/{}",
                 addr, NODE_RPC_ROUTE_PATH, RAFT_VOTE_ROUTE_PATH

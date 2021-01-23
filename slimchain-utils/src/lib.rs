@@ -10,7 +10,9 @@ pub mod contract;
 pub mod metrics;
 pub mod ordered_stream;
 pub mod path;
+pub mod serde;
 
+pub use bytes;
 pub use chrono;
 pub use toml;
 

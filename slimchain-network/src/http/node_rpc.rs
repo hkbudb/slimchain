@@ -15,7 +15,7 @@ pub const CLIENT_LEADER_ID_ROUTE_PATH: &str = "leader_id";
 pub const CLIENT_LEADER_REQ_ROUTE_PATH: &str = "leader_req";
 
 pub async fn get_leader(endpoint: &str) -> Result<PeerId> {
-    send_get_request_using_postcard(&format!(
+    send_get_request_using_binary(&format!(
         "http://{}/{}/{}",
         endpoint, NODE_RPC_ROUTE_PATH, CLIENT_LEADER_ID_ROUTE_PATH
     ))
@@ -24,7 +24,7 @@ pub async fn get_leader(endpoint: &str) -> Result<PeerId> {
 
 #[allow(clippy::ptr_arg)]
 pub async fn send_reqs_to_leader<Req: Serialize>(endpoint: &str, reqs: &Vec<Req>) -> Result<()> {
-    send_post_request_using_postcard(
+    send_post_request_using_binary(
         &format!(
             "http://{}/{}/{}",
             endpoint, NODE_RPC_ROUTE_PATH, CLIENT_LEADER_REQ_ROUTE_PATH,
