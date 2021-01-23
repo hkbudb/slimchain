@@ -1,7 +1,7 @@
 use libp2p::{
     gossipsub::{
         error::PublishError, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage,
-        IdentTopic, MessageAuthenticity, TopicHash,
+        IdentTopic, MessageAuthenticity, MessageId, TopicHash,
     },
     identity::Keypair,
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
@@ -10,7 +10,6 @@ use libp2p::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
-    basic::H256,
     collections::{HashMap, HashSet},
     digest::Digestible,
     error::{anyhow, ensure, Result},
@@ -82,10 +81,6 @@ where
     sub_topics: HashSet<PubSubTopic>,
     #[behaviour(ignore)]
     retry_messages: DelayQueue<(PubSubTopic, Vec<u8>, usize, Duration)>,
-    #[behaviour(ignore)]
-    dup_cache: HashSet<H256>,
-    #[behaviour(ignore)]
-    dup_cache_ttl: DelayQueue<H256>,
 }
 
 impl<TxProposal, BlockProposal> PubSub<TxProposal, BlockProposal>
@@ -100,6 +95,11 @@ where
     ) -> Result<Self> {
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id_prefix("/slimchain/pubsub/1")
+            .duplicate_cache_time(DUPLICATE_CACHE_TTL)
+            .message_id_fn(|msg: &GossipsubMessage| {
+                let hash = msg.data.to_digest();
+                MessageId::new(hash.as_bytes())
+            })
             .heartbeat_interval(HEARTBEAT_INTERVAL)
             .check_explicit_peers_ticks(CHECK_EXPLICIT_PEERS_TICKS)
             .max_transmit_size(MAX_TRANSMIT_SIZE)
@@ -126,8 +126,6 @@ where
             pending_events: VecDeque::new(),
             sub_topics: sub_topics.iter().copied().collect(),
             retry_messages: DelayQueue::new(),
-            dup_cache: HashSet::new(),
-            dup_cache_ttl: DelayQueue::new(),
         })
     }
 
@@ -175,10 +173,6 @@ where
             let (topic, data, retries, delay) = message.into_inner();
             trace!(retries, ?delay, "PubSub: retry to publish the message.");
             self.publish_message(topic, data, retries, delay);
-        }
-
-        while let Poll::Ready(Some(Ok(key))) = self.dup_cache_ttl.poll_expired(cx) {
-            self.dup_cache.remove(key.get_ref());
         }
 
         Poll::Pending
@@ -269,13 +263,6 @@ where
             if !self.sub_topics.contains(topic) {
                 return;
             }
-
-            let data_hash = data.to_digest();
-
-            if !self.dup_cache.insert(data_hash) {
-                return;
-            }
-            self.dup_cache_ttl.insert(data_hash, DUPLICATE_CACHE_TTL);
 
             match topic {
                 PubSubTopic::TxProposal => {
