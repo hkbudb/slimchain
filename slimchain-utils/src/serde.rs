@@ -1,10 +1,9 @@
-use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use slimchain_common::error::{Error, Result};
 
-pub fn binary_encode<T: Serialize>(value: &T) -> Result<Bytes> {
+pub fn binary_encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
     let data = postcard::to_allocvec(value).map_err(Error::msg)?;
-    Ok(Bytes::from(data))
+    Ok(data)
 }
 
 pub fn binary_decode<T: for<'de> Deserialize<'de>>(bytes: &[u8]) -> Result<T> {

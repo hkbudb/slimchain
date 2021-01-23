@@ -212,7 +212,7 @@ where
         );
         self.publish_message(
             PubSubTopic::TxProposal,
-            data.to_vec(),
+            data,
             PUB_MAX_RETRIES,
             PUB_INIT_RETRY_DELAY,
         );
@@ -228,7 +228,7 @@ where
         );
         self.publish_message(
             PubSubTopic::BlockProposal,
-            data.to_vec(),
+            data,
             PUB_MAX_RETRIES,
             PUB_INIT_RETRY_DELAY,
         );

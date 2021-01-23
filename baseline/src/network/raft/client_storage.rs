@@ -393,7 +393,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
                 membership: membership_config.clone(),
                 latest_block: sm_copy.latest_block,
             };
-            snapshot_bytes = binary_encode(&snapshot)?.to_vec();
+            snapshot_bytes = binary_encode(&snapshot)?;
             *current_snapshot = Some(snapshot);
         };
 
@@ -497,7 +497,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
     async fn get_current_snapshot(&self) -> Result<Option<CurrentSnapshotData<Self::Snapshot>>> {
         match &*self.raft_snapshot.read().await {
             Some(snapshot) => {
-                let reader = binary_encode(&snapshot)?.to_vec();
+                let reader = binary_encode(&snapshot)?;
                 Ok(Some(CurrentSnapshotData {
                     index: snapshot.index,
                     term: snapshot.term,

@@ -60,7 +60,7 @@ pub async fn send_post_request_using_binary<Req: Serialize, Resp: for<'de> Deser
     req: &Req,
 ) -> Result<Resp> {
     let mut resp = surf::post(uri)
-        .body(surf::Body::from_bytes(binary_encode(req)?.to_vec()))
+        .body(surf::Body::from_bytes(binary_encode(req)?))
         .await
         .map_err(Error::msg)?;
     check_resp!(resp);

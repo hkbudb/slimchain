@@ -27,7 +27,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::TxProposal;
-use slimchain_utils::{record_event, serde::binary_encode};
+use slimchain_utils::{bytes::Bytes, record_event, serde::binary_encode};
 use std::{marker::PhantomData, sync::Arc};
 use tokio::{sync::RwLock, task::JoinHandle};
 
@@ -144,7 +144,7 @@ where
             return Ok(());
         }
 
-        let bytes = binary_encode(block_proposals)?;
+        let bytes = Bytes::from(binary_encode(block_proposals)?);
         let reqs = self
             .route_table
             .role_table()

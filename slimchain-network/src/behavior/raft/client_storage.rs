@@ -404,7 +404,7 @@ where
                 membership: membership_config.clone(),
                 snapshot: sm_copy.snapshot,
             };
-            snapshot_bytes = binary_encode(&snapshot)?.to_vec();
+            snapshot_bytes = binary_encode(&snapshot)?;
             *current_snapshot = Some(snapshot);
         };
 
@@ -501,7 +501,7 @@ where
     async fn get_current_snapshot(&self) -> Result<Option<CurrentSnapshotData<Self::Snapshot>>> {
         match &*self.raft_snapshot.read().await {
             Some(snapshot) => {
-                let reader = binary_encode(&snapshot)?.to_vec();
+                let reader = binary_encode(&snapshot)?;
                 Ok(Some(CurrentSnapshotData {
                     index: snapshot.index,
                     term: snapshot.term,
