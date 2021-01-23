@@ -1,14 +1,17 @@
 use serde::{Deserialize, Serialize};
 use slimchain_common::error::{Error, Result};
+use snap::{read::FrameDecoder, write::FrameEncoder};
+use std::io::Cursor;
 
 pub fn binary_encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {
-    let data = postcard::to_allocvec(value).map_err(Error::msg)?;
-    Ok(data)
+    let mut encoder = FrameEncoder::new(Cursor::new(Vec::new()));
+    bincode::serialize_into(&mut encoder, value).map_err(Error::msg)?;
+    Ok(encoder.into_inner()?.into_inner())
 }
 
 pub fn binary_decode<T: for<'de> Deserialize<'de>>(bytes: &[u8]) -> Result<T> {
-    let value = postcard::from_bytes(bytes).map_err(Error::msg)?;
-    Ok(value)
+    let decoder = FrameDecoder::new(Cursor::new(bytes));
+    bincode::deserialize_from(decoder).map_err(Error::msg)
 }
 
 #[cfg(test)]
