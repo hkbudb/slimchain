@@ -418,6 +418,8 @@ def cal_block_statistics!
   total_commited_tx -= first_block.tx_list.size
   duration = ((last_block.commit_ts - first_block.commit_ts) * 24 * 60 * 60).to_f
   $result["throughput"] = total_commited_tx.to_f / duration
+  total_commited_blk = last_block.height - first_block.height
+  $result["blk_throughput"] = total_commited_blk.to_f / duration
 end
 
 def cal_storage_node_statistics!
@@ -450,11 +452,17 @@ def report!(storage: true)
     # Block Statistics
     total_block: #{$result["total_block"]}
     throughput: #{$result["throughput"].round(2)} tx/s
+    blk_throughput: #{$result["blk_throughput"].round(2)} blk/s
 
     \tavg\t50th\t90th\t95th percentile
     #tx\t#{$result["avg_tx_in_block"]}\t#{$result["50percentile_tx_in_block"]}\t#{$result["90percentile_tx_in_block"]}\t#{$result["95percentile_tx_in_block"]}
     mining\t#{format_time $result["avg_blk_mining_time_in_us"]}\t#{format_time $result["50percentile_blk_mining_time_in_us"]}\t#{format_time $result["90percentile_blk_mining_time_in_us"]}\t#{format_time $result["95percentile_blk_mining_time_in_us"]}
     verify\t#{format_time $result["avg_blk_verify_time_in_us"]}\t#{format_time $result["50percentile_blk_verify_time_in_us"]}\t#{format_time $result["90percentile_blk_verify_time_in_us"]}\t#{format_time $result["95percentile_blk_verify_time_in_us"]}
+
+    # Throughput
+    send_rate_real: #{$result["send_tx_real_rate"]&.round(2)} tx/s
+    real_throughput: #{$result["throughput"].round(2)} tx/s
+    capability: #{($result["blk_throughput"] * $result["avg_tx_in_block"]).round(2)} tx/s
   EOS
 
   return unless storage
