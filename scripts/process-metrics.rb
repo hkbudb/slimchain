@@ -462,7 +462,7 @@ def report!(storage: true)
     # Throughput
     send_rate_real: #{$result["send_tx_real_rate"]&.round(2)} tx/s
     real_throughput: #{$result["throughput"].round(2)} tx/s
-    capability: #{($result["blk_throughput"] * $result["avg_tx_in_block"]).round(2)} tx/s
+    capacity: #{($result["blk_throughput"] * $result["avg_tx_in_block"]).round(2)} tx/s
   EOS
 
   return unless storage
