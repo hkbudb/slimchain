@@ -124,15 +124,15 @@ impl Discovery {
         })
     }
 
-    pub fn add_address(&mut self, peer_id: &PeerId, address: Multiaddr) {
-        if peer_id != &self.peer_id {
-            self.kad.add_address(peer_id, address);
+    pub fn add_address(&mut self, peer_id: PeerId, address: Multiaddr) {
+        if peer_id != self.peer_id {
+            self.kad.add_address(&peer_id, address);
         }
     }
 
     pub fn add_address_from_net_config(&mut self, cfg: &NetworkConfig) {
         for peer in cfg.peers.iter() {
-            self.add_address(&peer.peer_id, peer.address.clone());
+            self.add_address(peer.peer_id, peer.address.clone());
         }
     }
 
@@ -322,7 +322,7 @@ impl NetworkBehaviourEventProcess<IdentifyEvent> for Discovery {
             self.peer_table_add_node(peer_id, role);
 
             for addr in info.listen_addrs {
-                self.add_address(&peer_id, addr);
+                self.add_address(peer_id, addr);
             }
         }
     }
@@ -333,7 +333,7 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for Discovery {
         if let MdnsEvent::Discovered(list) = event {
             for (peer_id, address) in list {
                 trace!("Discovered peer {} at {} from mdns.", peer_id, address);
-                self.add_address(&peer_id, address);
+                self.add_address(peer_id, address);
             }
         }
     }
