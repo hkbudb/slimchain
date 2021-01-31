@@ -32,17 +32,19 @@ make test-release
 
 ## Run Nodes
 
-* Create proper `config.toml` file based on `config.toml.example`.
+* Create proper `config.toml` file based on examples from `config_example`.
 * See help messages on how to run nodes and send txs:
 
 ```bash
-./target/release/slimchain-node-tee --help
-./target/release/slimchain-send-tx --help
+./target/release/slimchain-node-tee --help # run slimchain nodes
+./target/release/slimchain-send-tx --help # send tx
+./target/release/baseline-node --help # run baseline nodes
+./target/release/slimchain-inspect-db --help # check storage size
 ```
 
 ## Adjust Proof-of-Work Difficulty
 
-You can change the initial Proof-of-Work difficulty in the `config.toml`/`baseline_config.toml`.
+You can change the initial Proof-of-Work difficulty in the `config.toml`.
 
 To test the difficulty:
 
