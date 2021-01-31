@@ -100,6 +100,7 @@ where
         let peer_id = PeerId::from(keypair.public());
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id_prefix("/slimchain/pubsub/1")
+            .flood_publish(false)
             .duplicate_cache_time(DUPLICATE_CACHE_TTL)
             .message_id_fn(|msg: &GossipsubMessage| {
                 let hash = msg.data.to_digest();
