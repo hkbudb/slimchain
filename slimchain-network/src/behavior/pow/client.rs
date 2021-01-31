@@ -109,10 +109,10 @@ impl<Tx: TxTrait + Serialize> NetworkBehaviourEventProcess<DiscoveryEvent> for C
     fn inject_event(&mut self, event: DiscoveryEvent) {
         match event {
             DiscoveryEvent::FindPeerResult { query_id, peer } => {
-                let tx_req = self
-                    .pending_discv_queries
-                    .remove(&query_id)
-                    .expect("Cannot find tx_req.");
+                let tx_req = match self.pending_discv_queries.remove(&query_id) {
+                    Some(req) => req,
+                    None => return,
+                };
                 let tx_req_id = tx_req.id();
 
                 match peer {
