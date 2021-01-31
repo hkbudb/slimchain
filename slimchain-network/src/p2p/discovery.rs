@@ -10,6 +10,7 @@ use libp2p::{
         QueryResult as KadQueryResult,
     },
     mdns::{Mdns, MdnsEvent},
+    ping::{Ping, PingConfig, PingEvent},
     swarm::{toggle::Toggle, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     Multiaddr, NetworkBehaviour, PeerId,
 };
@@ -34,6 +35,8 @@ const PEER_ENTRY_TTL: Duration = Duration::from_secs(60);
 const RETRY_WAIT_INTERVAL: Duration = Duration::from_millis(100);
 const KAD_MAX_INTERVAL: Duration = Duration::from_secs(30);
 const KAD_INIT_INTERVAL: Duration = Duration::from_secs(1);
+const PING_INTERVAL: Duration = Duration::from_secs(10);
+const PING_TIMEOUT: Duration = Duration::from_secs(15);
 
 create_id_type_u64!(QueryId);
 
@@ -51,6 +54,7 @@ pub enum DiscoveryEvent {
 pub struct Discovery {
     kad: Kademlia<KadMemoryStore>,
     identify: Identify,
+    ping: Ping,
     mdns: Toggle<Mdns>,
     #[behaviour(ignore)]
     peer_id: PeerId,
@@ -94,6 +98,12 @@ impl Discovery {
             pk,
         );
 
+        let ping_cfg = PingConfig::new()
+            .with_interval(PING_INTERVAL)
+            .with_timeout(PING_TIMEOUT)
+            .with_keep_alive(true);
+        let ping = Ping::new(ping_cfg);
+
         let mdns = if enable_mdns {
             match Mdns::new().await {
                 Ok(mdns) => Some(mdns),
@@ -109,6 +119,7 @@ impl Discovery {
         Ok(Self {
             kad,
             identify,
+            ping,
             mdns: mdns.into(),
             peer_id,
             peer_table: HashMap::new(),
@@ -324,6 +335,15 @@ impl NetworkBehaviourEventProcess<IdentifyEvent> for Discovery {
             for addr in info.listen_addrs {
                 self.add_address(peer_id, addr);
             }
+        }
+    }
+}
+
+impl NetworkBehaviourEventProcess<PingEvent> for Discovery {
+    fn inject_event(&mut self, event: PingEvent) {
+        let PingEvent { peer, result } = event;
+        if result.is_err() {
+            self.peer_table_remove_expired_node(&peer);
         }
     }
 }

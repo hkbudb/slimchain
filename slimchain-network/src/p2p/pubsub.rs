@@ -147,7 +147,10 @@ where
 
         if retries == 0 {
             self.report_known_peers();
-            panic!("PubSub: Failed to publish message. Topic: {:?}. Reaching max retries.", topic);
+            panic!(
+                "PubSub: Failed to publish message. Topic: {:?}. Reaching max retries.",
+                topic
+            );
         }
 
         self.retry_messages.insert(
