@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
                     let behavior = ClientBehavior::new(db, &net_cfg).await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
-                    let miner_peer_id = ctrl
+                    let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {
                             swarm.discv_mut().find_random_peer_with_ret(
                                 Role::Miner,
@@ -80,8 +80,6 @@ async fn main() -> Result<()> {
                         })
                         .await?
                         .context("Failed to find miner.")?;
-                    ctrl.call(move |swarm| swarm.pubsub_mut().add_explicit_peer(miner_peer_id))
-                        .await?;
                     ctrl.run_until_interrupt().await?;
                 }
                 Role::Miner => {

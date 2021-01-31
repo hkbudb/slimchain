@@ -61,11 +61,12 @@ impl<Tx: TxTrait + Serialize + 'static> StorageBehavior<Tx> {
         let mut discv =
             Discovery::new(keypair.public(), Role::Storage(shard_id), net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
-        let pubsub = PubSub::new(
+        let mut pubsub = PubSub::new(
             keypair,
             &[PubSubTopic::BlockProposal],
             &[PubSubTopic::TxProposal],
         )?;
+        pubsub.add_peers_from_net_config(net_cfg);
         let rpc_server = create_request_response_server("/tx_req/1");
         let snapshot =
             Snapshot::<Block, StorageTxTrie>::load_from_db(&db, chain_cfg.state_len, shard_id)?;

@@ -82,7 +82,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                     let behavior = ClientBehavior::<Tx>::new(db, &chain_cfg, &net_cfg).await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
-                    let miner_peer_id = ctrl
+                    let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {
                             swarm.discv_mut().find_random_peer_with_ret(
                                 Role::Miner,
@@ -92,8 +92,6 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                         })
                         .await?
                         .context("Failed to find miner.")?;
-                    ctrl.call(move |swarm| swarm.pubsub_mut().add_explicit_peer(miner_peer_id))
-                        .await?;
                     ctrl.run_until_interrupt().await?;
                 }
                 Role::Miner => {
@@ -112,7 +110,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                             .await?;
                     let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
-                    let miner_peer_id = ctrl
+                    let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {
                             swarm.discv_mut().find_random_peer_with_ret(
                                 Role::Miner,
@@ -122,8 +120,6 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                         })
                         .await?
                         .context("Failed to find miner.")?;
-                    ctrl.call(move |swarm| swarm.pubsub_mut().add_explicit_peer(miner_peer_id))
-                        .await?;
                     ctrl.run_until_interrupt().await?;
                 }
             }

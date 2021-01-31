@@ -1,3 +1,4 @@
+use crate::p2p::config::NetworkConfig;
 use libp2p::{
     gossipsub::{
         error::PublishError, Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage,
@@ -77,6 +78,8 @@ where
 {
     gossipsub: Gossipsub,
     #[behaviour(ignore)]
+    peer_id: PeerId,
+    #[behaviour(ignore)]
     pending_events: VecDeque<PubSubEvent<TxProposal, BlockProposal>>,
     #[behaviour(ignore)]
     sub_topics: HashSet<PubSubTopic>,
@@ -94,6 +97,7 @@ where
         sub_topics: &[PubSubTopic],
         relay_topics: &[PubSubTopic],
     ) -> Result<Self> {
+        let peer_id = PeerId::from(keypair.public());
         let cfg = GossipsubConfigBuilder::default()
             .protocol_id_prefix("/slimchain/pubsub/1")
             .duplicate_cache_time(DUPLICATE_CACHE_TTL)
@@ -110,13 +114,7 @@ where
         let mut gossipsub = Gossipsub::new(MessageAuthenticity::Signed(keypair), cfg)
             .map_err(|e| anyhow!("Failed to create gossipsub. Error: {}", e))?;
 
-        for topic in sub_topics {
-            gossipsub
-                .subscribe(&topic.into_topic())
-                .map_err(|e| anyhow!("Failed to subscribe. Error: {:?}", e))?;
-        }
-
-        for topic in relay_topics {
+        for topic in sub_topics.iter().chain(relay_topics.iter()) {
             gossipsub
                 .subscribe(&topic.into_topic())
                 .map_err(|e| anyhow!("Failed to subscribe. Error: {:?}", e))?;
@@ -124,6 +122,7 @@ where
 
         Ok(Self {
             gossipsub,
+            peer_id,
             pending_events: VecDeque::new(),
             sub_topics: sub_topics.iter().copied().collect(),
             retry_messages: DelayQueue::new(),
@@ -147,7 +146,7 @@ where
 
         if retries == 0 {
             self.report_known_peers();
-            panic!("PubSub: Failed to publish message. Reaching max retries.");
+            panic!("PubSub: Failed to publish message. Topic: {:?}. Reaching max retries.", topic);
         }
 
         self.retry_messages.insert(
@@ -180,7 +179,15 @@ where
     }
 
     pub fn add_explicit_peer(&mut self, peer: PeerId) {
-        self.gossipsub.add_explicit_peer(&peer);
+        if peer != self.peer_id {
+            self.gossipsub.add_explicit_peer(&peer);
+        }
+    }
+
+    pub fn add_peers_from_net_config(&mut self, cfg: &NetworkConfig) {
+        for peer in cfg.peers.iter() {
+            self.add_explicit_peer(peer.peer_id);
+        }
     }
 
     pub fn report_known_peers(&self) {

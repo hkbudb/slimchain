@@ -30,7 +30,8 @@ impl MinerBehavior {
         let keypair = net_cfg.keypair.to_libp2p_keypair();
         let mut discv = Discovery::new(keypair.public(), Role::Miner, net_cfg.mdns).await?;
         discv.add_address_from_net_config(net_cfg);
-        let pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal], &[])?;
+        let mut pubsub = PubSub::new(keypair, &[PubSubTopic::TxProposal], &[])?;
+        pubsub.add_peers_from_net_config(net_cfg);
         let height = db.get_meta_object("height")?.unwrap_or_default();
         let latest_tx_count = LatestTxCount::new(0);
         let worker = BlockProposalWorker::new(miner_cfg.clone(), db, height, latest_tx_count);
