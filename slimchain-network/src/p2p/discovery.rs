@@ -31,7 +31,6 @@ use std::{
 use tokio::time::Instant;
 use tokio_util::time::delay_queue::{DelayQueue, Key as DelayQueueKey};
 
-const PEER_ENTRY_TTL: Duration = Duration::from_secs(60);
 const RETRY_WAIT_INTERVAL: Duration = Duration::from_millis(100);
 const KAD_MAX_INTERVAL: Duration = Duration::from_secs(30);
 const KAD_INIT_INTERVAL: Duration = Duration::from_secs(1);
@@ -61,9 +60,7 @@ pub struct Discovery {
     #[behaviour(ignore)]
     peer_table: HashMap<Role, HashSet<PeerId>>,
     #[behaviour(ignore)]
-    rev_peer_table: HashMap<PeerId, (Role, DelayQueueKey)>,
-    #[behaviour(ignore)]
-    exp_peers: DelayQueue<PeerId>,
+    rev_peer_table: HashMap<PeerId, Role>,
     #[behaviour(ignore)]
     duration_to_next_kad: Duration,
     #[behaviour(ignore)]
@@ -124,7 +121,6 @@ impl Discovery {
             peer_id,
             peer_table: HashMap::new(),
             rev_peer_table: HashMap::new(),
-            exp_peers: DelayQueue::new(),
             duration_to_next_kad: KAD_INIT_INTERVAL,
             next_kad_query: Delay::new(Duration::from_secs(0)),
             pending_queries: HashMap::new(),
@@ -215,24 +211,28 @@ impl Discovery {
         use slimchain_common::collections::hash_map::Entry;
 
         match self.rev_peer_table.entry(peer_id) {
-            Entry::Occupied(o) => {
+            Entry::Occupied(mut o) => {
                 trace!("Refresh node {} with role {}", peer_id, role);
-                let (role2, delay) = o.get();
-                debug_assert_eq!(&role, role2);
-                self.exp_peers.reset(delay, PEER_ENTRY_TTL);
+                let old_role = *o.get();
+                if old_role != role {
+                    *o.get_mut() = role;
+                    self.peer_table
+                        .get_mut(&old_role)
+                        .map(|list| list.remove(&peer_id));
+                    self.peer_table.entry(role).or_default().insert(peer_id);
+                }
             }
             Entry::Vacant(v) => {
                 trace!("Add node {} with role {}", peer_id, role);
-                let delay = self.exp_peers.insert(peer_id, PEER_ENTRY_TTL);
-                v.insert((role, delay));
+                v.insert(role);
                 self.peer_table.entry(role).or_default().insert(peer_id);
             }
         }
     }
 
-    fn peer_table_remove_expired_node(&mut self, peer_id: &PeerId) {
-        let (role, _delay) = match self.rev_peer_table.remove(peer_id) {
-            Some(entry) => entry,
+    fn peer_table_remove_node(&mut self, peer_id: PeerId) {
+        let role = match self.rev_peer_table.remove(&peer_id) {
+            Some(role) => role,
             None => {
                 return;
             }
@@ -240,7 +240,7 @@ impl Discovery {
         trace!("Remove node {} with role {}", peer_id, role);
         self.peer_table
             .get_mut(&role)
-            .map(|list| list.remove(peer_id));
+            .map(|list| list.remove(&peer_id));
     }
 
     fn poll_inner<T>(
@@ -257,10 +257,6 @@ impl Discovery {
                     DiscoveryEvent::FindPeerResult { query_id, peer },
                 ));
             }
-        }
-
-        while let Poll::Ready(Some(Ok(peer_id))) = self.exp_peers.poll_expired(cx) {
-            self.peer_table_remove_expired_node(peer_id.get_ref());
         }
 
         while let Poll::Ready(_) = Pin::new(&mut self.next_kad_query).poll(cx) {
@@ -343,7 +339,7 @@ impl NetworkBehaviourEventProcess<PingEvent> for Discovery {
     fn inject_event(&mut self, event: PingEvent) {
         let PingEvent { peer, result } = event;
         if result.is_err() {
-            self.peer_table_remove_expired_node(&peer);
+            self.peer_table_remove_node(peer);
         }
     }
 }
