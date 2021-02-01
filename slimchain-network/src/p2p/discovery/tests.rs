@@ -139,22 +139,22 @@ async fn test_without_mdns() {
 
     let addr = addr0.clone();
     ctrl1
-        .call(move |swarm| swarm.add_address(&peer0, addr))
+        .call(move |swarm| swarm.add_address(peer0, addr))
         .await
         .unwrap();
     let addr = addr0.clone();
     ctrl2
-        .call(move |swarm| swarm.add_address(&peer0, addr))
+        .call(move |swarm| swarm.add_address(peer0, addr))
         .await
         .unwrap();
     let addr = addr0.clone();
     ctrl3
-        .call(move |swarm| swarm.add_address(&peer0, addr))
+        .call(move |swarm| swarm.add_address(peer0, addr))
         .await
         .unwrap();
     let addr = addr0.clone();
     ctrl4
-        .call(move |swarm| swarm.add_address(&peer0, addr))
+        .call(move |swarm| swarm.add_address(peer0, addr))
         .await
         .unwrap();
 
