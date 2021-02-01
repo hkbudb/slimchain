@@ -2,7 +2,7 @@
 
 # The role of the node.
 [role]
-# Possible values: client, miner, storage.
+# Possible values: client, storage.
 role = "client"
 # Shard Id for storage node. Only valid when role = "storage".
 # shard_id = 0
@@ -58,7 +58,9 @@ role = "client"
 # shard_total = 1
 
 # Configure used in Raft
-# https://docs.rs/async-raft/0.6.0-alpha.1/async_raft/config/struct.Config.html
+# https://docs.rs/async-raft/0.6.0/async_raft/config/struct.Config.html
+# The values list in below are default values from async-raft.
+# You need to change them to proper ones based on the network condition.
 [raft]
 # The minimum election timeout in milliseconds.
 election_timeout_min = 150
@@ -96,4 +98,4 @@ snapshot_policy_logs_since_last = 5000
 # Defaults to 3Mib.
 snapshot_max_chunk_size = 3145728
 # How to broadcast the block to storage node
-async_broadcast_storage = false
+async_broadcast_storage = true

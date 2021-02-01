@@ -2,7 +2,7 @@
 
 # The role of the node.
 [role]
-# Possible values: client, miner
+# Possible values: client
 role = "client"
 
 # Chain configure.
@@ -36,7 +36,9 @@ peer_id = 1
 address = "a.b.c.d:8000"
 
 # Configure used in Raft
-# https://docs.rs/async-raft/0.6.0-alpha.1/async_raft/config/struct.Config.html
+# https://docs.rs/async-raft/0.6.0/async_raft/config/struct.Config.html
+# The values list in below are default values from async-raft.
+# You need to change them to proper ones based on the network condition.
 [raft]
 # The minimum election timeout in milliseconds.
 election_timeout_min = 150
