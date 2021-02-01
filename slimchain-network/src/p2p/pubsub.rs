@@ -27,10 +27,10 @@ use tokio_util::time::DelayQueue;
 const MAX_MESSAGE_SIZE: usize = 45_000_000;
 const MAX_TRANSMIT_SIZE: usize = 50_000_000;
 const DUPLICATE_CACHE_TTL: Duration = Duration::from_secs(1_800);
-const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
-const CHECK_EXPLICIT_PEERS_TICKS: u64 = 5;
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30);
+const CHECK_EXPLICIT_PEERS_TICKS: u64 = 2;
 const PUB_MAX_RETRIES: usize = 10;
-const PUB_INIT_RETRY_DELAY: Duration = Duration::from_millis(500);
+const PUB_INIT_RETRY_DELAY: Duration = Duration::from_secs(1);
 const PUB_MAX_RETRY_DELAY: Duration = Duration::from_secs(16);
 
 static TOPIC_MAP: Lazy<HashMap<TopicHash, PubSubTopic>> = Lazy::new(|| {

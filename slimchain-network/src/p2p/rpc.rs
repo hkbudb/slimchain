@@ -22,8 +22,8 @@ pub use libp2p::request_response::{
 pub mod codec;
 pub use codec::RpcCodec;
 
-const CONN_KEEP_ALIVE: Duration = Duration::from_secs(300);
-const CONN_TIMEOUT: Duration = Duration::from_secs(300);
+const CONN_KEEP_ALIVE: Duration = Duration::from_secs(30);
+const CONN_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub type RpcInstant<Req, Resp> = RpcRequestResponse<RpcCodec<Req, Resp>>;
 

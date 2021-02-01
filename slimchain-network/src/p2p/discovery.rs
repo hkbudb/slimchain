@@ -31,11 +31,11 @@ use std::{
 use tokio::time::Instant;
 use tokio_util::time::delay_queue::{DelayQueue, Key as DelayQueueKey};
 
-const RETRY_WAIT_INTERVAL: Duration = Duration::from_millis(100);
-const KAD_MAX_INTERVAL: Duration = Duration::from_secs(30);
+const RETRY_WAIT_INTERVAL: Duration = Duration::from_millis(500);
+const KAD_MAX_INTERVAL: Duration = Duration::from_secs(60);
 const KAD_INIT_INTERVAL: Duration = Duration::from_secs(1);
-const PING_INTERVAL: Duration = Duration::from_secs(10);
-const PING_TIMEOUT: Duration = Duration::from_secs(15);
+const PING_INTERVAL: Duration = Duration::from_secs(30);
+const PING_TIMEOUT: Duration = Duration::from_secs(45);
 
 create_id_type_u64!(QueryId);
 
