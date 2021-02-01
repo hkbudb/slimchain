@@ -107,7 +107,7 @@ where
             trace!("RpcServer response sent: request_id={:?}", request_id);
             None
         }
-        event @ _ => {
+        event => {
             error!("RpcServer unknown event: {:?}", event);
             None
         }
@@ -139,7 +139,7 @@ where
             ));
             Some((request_id, e))
         }
-        event @ _ => {
+        event => {
             error!("RpcClient unknown event: {:?}", event);
             None
         }
