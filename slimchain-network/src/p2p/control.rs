@@ -17,7 +17,7 @@ use slimchain_common::error::{bail, Error, Result};
 use std::{pin::Pin, task::Poll};
 use tokio::task::JoinHandle;
 
-const YAMUX_MAX_BUF_SIZE: usize = 1024 * 1024;
+const YAMUX_MAX_BUF_SIZE: usize = 1024 * 1024 * 2;
 const YAMUX_MAX_NUM_STREAM: usize = 8192;
 
 fn build_tcp_noise_yamux(
