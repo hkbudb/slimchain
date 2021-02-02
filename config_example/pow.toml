@@ -13,7 +13,7 @@ role = "client"
 # Possible values: ssi, occ.
 conflict_check = "ssi"
 # The number of blocks in the temp state.
-state_len = 8
+state_len = 64
 # Consensus method. Possible values: pow, raft.
 consensus = "pow"
 
@@ -24,11 +24,11 @@ consensus = "pow"
 #   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs
 
 # Max number of txs in one block. If missing, default to 512.
-max_txs = 8
+max_txs = 256
 # Min number of txs in one block.
-min_txs = 0
+min_txs = 1
 # Max time span used in collecting txs in milliseconds.
-max_block_interval = 1000
+max_block_interval = 2000
 
 # Configure used in TEE. Used by storage nodes with TEE only.
 # Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
