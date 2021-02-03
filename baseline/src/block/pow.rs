@@ -64,11 +64,12 @@ impl BlockTrait for Block {
 // https://ethereum.github.io/yellowpaper/paper.pdf
 #[inline]
 fn compute_diff(time_stamp: DateTime<Utc>, prev_blk: &Block) -> u64 {
-    compute_diff_inner(time_stamp, prev_blk.diff as i64, prev_blk.header.time_stamp)
+    compute_diff_inner(time_stamp, prev_blk.diff, prev_blk.header.time_stamp)
 }
 
 #[inline]
-fn compute_diff_inner(time_stamp: DateTime<Utc>, prev_diff: i64, prev_ts: DateTime<Utc>) -> u64 {
+fn compute_diff_inner(time_stamp: DateTime<Utc>, prev_diff: u64, prev_ts: DateTime<Utc>) -> u64 {
+    let prev_diff = prev_diff as i64;
     let delta = prev_diff / 2048;
     let time_span = (time_stamp - prev_ts).num_seconds() as i64;
     let coeff = core::cmp::max(1 - time_span / 10, -99);
@@ -93,7 +94,7 @@ pub fn create_new_block(
 ) -> impl Future<Output = Result<Block>> {
     debug!("Begin mining");
     let begin = Instant::now();
-    let prev_diff = prev_blk.diff as i64;
+    let prev_diff = prev_blk.diff;
     let prev_ts = prev_blk.header.time_stamp;
     let diff = compute_diff_inner(header.time_stamp, prev_diff, prev_ts);
 
@@ -120,7 +121,7 @@ pub fn create_new_block(
             ),
             blk.diff,
         ) {
-            blk.header.time_stamp = Utc::now();
+            blk.header.set_ts(Utc::now());
             blk.diff = compute_diff_inner(blk.header.time_stamp, prev_diff, prev_ts);
             blk.nonce += 1.into();
         }

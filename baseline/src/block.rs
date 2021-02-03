@@ -65,6 +65,10 @@ impl BlockHeader {
             state_root,
         }
     }
+
+    pub fn set_ts(&mut self, time_stamp: DateTime<Utc>) {
+        self.time_stamp = Utc.timestamp_millis(time_stamp.timestamp_millis());
+    }
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut)]
