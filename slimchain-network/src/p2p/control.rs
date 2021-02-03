@@ -17,13 +17,11 @@ use slimchain_common::error::{bail, Error, Result};
 use std::{pin::Pin, task::Poll};
 use tokio::task::JoinHandle;
 
-const YAMUX_MAX_BUF_SIZE: usize = 1024 * 1024 * 2;
-const YAMUX_MAX_NUM_STREAM: usize = 8192;
 
 fn build_tcp_noise_yamux(
     keypair: Keypair,
 ) -> Result<transport::Boxed<(PeerId, muxing::StreamMuxerBox)>> {
-    use libp2p::{core, dns, noise, tcp, yamux, Transport};
+    use libp2p::{core, dns, noise, tcp, Transport};
 
     let tcp = tcp::TcpConfig::new().nodelay(true);
     let transport = dns::DnsConfig::new(tcp)?;
@@ -32,14 +30,25 @@ fn build_tcp_noise_yamux(
         .into_authentic(&keypair)
         .expect("Signing libp2p-noise static DH keypair failed.");
 
-    let mut yamux_cfg = yamux::YamuxConfig::default();
-    yamux_cfg.set_max_buffer_size(YAMUX_MAX_BUF_SIZE);
-    yamux_cfg.set_max_num_streams(YAMUX_MAX_NUM_STREAM);
+    // use libp2p::yamux;
+    // const YAMUX_MAX_BUF_SIZE: usize = 1024 * 1024 * 16;
+    // const YAMUX_MAX_NUM_STREAM: usize = 8192;
+    // let mut mux_cfg = yamux::YamuxConfig::default();
+    // mux_cfg.set_max_buffer_size(YAMUX_MAX_BUF_SIZE);
+    // mux_cfg.set_max_num_streams(YAMUX_MAX_NUM_STREAM);
+    // mux_cfg.set_window_update_mode(yamux::WindowUpdateMode::on_read());
+
+    use libp2p::mplex;
+    let mut mux_cfg = mplex::MplexConfig::new();
+    const MPLEX_MAX_BUF_SIZE: usize = usize::MAX;
+    const MPLEX_MAX_NUM_STREAM: usize = 128;
+    mux_cfg.set_max_buffer_size(MPLEX_MAX_BUF_SIZE);
+    mux_cfg.set_max_num_streams(MPLEX_MAX_NUM_STREAM);
 
     Ok(transport
         .upgrade(core::upgrade::Version::V1)
         .authenticate(noise::NoiseConfig::xx(noise_keys).into_authenticated())
-        .multiplex(yamux_cfg)
+        .multiplex(mux_cfg)
         .timeout(std::time::Duration::from_secs(20))
         .boxed())
 }
