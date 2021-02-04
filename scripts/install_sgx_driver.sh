@@ -2,7 +2,7 @@
 
 SGX_DRIVER_VERSION="2.11.0_4505f07"
 
-set -e
+set -eo pipefail
 
 error() {
     echo "Error: $1" >&2
@@ -17,7 +17,7 @@ if [[ "$(cat /etc/issue)" != *"Ubuntu 18.04"* ]]; then
     error "Ubuntu 18.04 is required."
 fi
 
-curl -L "https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_driver_$SGX_DRIVER_VERSION.bin" \
+curl -fsSL "https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_driver_$SGX_DRIVER_VERSION.bin" \
     -o /tmp/sgx_linux_x64_driver.bin
 chmod +x /tmp/sgx_linux_x64_driver.bin
 mkdir -p /opt/intel

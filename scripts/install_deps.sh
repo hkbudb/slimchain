@@ -2,7 +2,7 @@
 
 SGX_SDK_VERSION="2.12.100.3"
 
-set -e
+set -eo pipefail
 
 error() {
     echo "Error: $1" >&2
@@ -24,14 +24,14 @@ apt-get install -y llvm-dev libclang-dev clang # required by bindgen
 apt-get install -y curl gnupg
 
 echo "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main" > /etc/apt/sources.list.d/intel-sgx.list
-curl -L https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
+curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
 curl -sL https://deb.nodesource.com/setup_14.x | bash -
 
 apt-get update -y
 apt-get install -y libsgx-uae-service libsgx-urts sgx-aesm-service
 apt-get install -y nodejs
 
-curl -L "https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_$SGX_SDK_VERSION.bin" \
+curl -fsSL "https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_$SGX_SDK_VERSION.bin" \
     -o /tmp/sgx_linux_x64_sdk.bin
 chmod +x /tmp/sgx_linux_x64_sdk.bin
 mkdir -p /opt/intel
