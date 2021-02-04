@@ -14,42 +14,34 @@ use libp2p::{
     Multiaddr, PeerId,
 };
 use slimchain_common::error::{bail, Error, Result};
-use std::{pin::Pin, task::Poll};
+use std::{pin::Pin, task::Poll, time::Duration};
 use tokio::task::JoinHandle;
 
+const YAMUX_MAX_BUF_SIZE: usize = 60_000_000;
+const YAMUX_MAX_NUM_STREAM: usize = 8192;
 
-fn build_tcp_noise_yamux(
-    keypair: Keypair,
+fn build_transport(
+    keypair: &Keypair,
 ) -> Result<transport::Boxed<(PeerId, muxing::StreamMuxerBox)>> {
-    use libp2p::{core, dns, noise, tcp, Transport};
+    use libp2p::{core::upgrade, dns, noise, tcp, yamux, Transport};
 
     let tcp = tcp::TcpConfig::new().nodelay(true);
     let transport = dns::DnsConfig::new(tcp)?;
 
     let noise_keys = noise::Keypair::<noise::X25519Spec>::new()
-        .into_authentic(&keypair)
+        .into_authentic(keypair)
         .expect("Signing libp2p-noise static DH keypair failed.");
 
-    // use libp2p::yamux;
-    // const YAMUX_MAX_BUF_SIZE: usize = 1024 * 1024 * 16;
-    // const YAMUX_MAX_NUM_STREAM: usize = 8192;
-    // let mut mux_cfg = yamux::YamuxConfig::default();
-    // mux_cfg.set_max_buffer_size(YAMUX_MAX_BUF_SIZE);
-    // mux_cfg.set_max_num_streams(YAMUX_MAX_NUM_STREAM);
-    // mux_cfg.set_window_update_mode(yamux::WindowUpdateMode::on_read());
-
-    use libp2p::mplex;
-    let mut mux_cfg = mplex::MplexConfig::new();
-    const MPLEX_MAX_BUF_SIZE: usize = usize::MAX;
-    const MPLEX_MAX_NUM_STREAM: usize = 128;
-    mux_cfg.set_max_buffer_size(MPLEX_MAX_BUF_SIZE);
-    mux_cfg.set_max_num_streams(MPLEX_MAX_NUM_STREAM);
+    let mut mux_cfg = yamux::YamuxConfig::default();
+    mux_cfg.set_max_buffer_size(YAMUX_MAX_BUF_SIZE);
+    mux_cfg.set_max_num_streams(YAMUX_MAX_NUM_STREAM);
+    mux_cfg.set_window_update_mode(yamux::WindowUpdateMode::on_read());
 
     Ok(transport
-        .upgrade(core::upgrade::Version::V1)
+        .upgrade(upgrade::Version::V1Lazy)
         .authenticate(noise::NoiseConfig::xx(noise_keys).into_authenticated())
         .multiplex(mux_cfg)
-        .timeout(std::time::Duration::from_secs(20))
+        .timeout(Duration::from_secs(20))
         .boxed())
 }
 
@@ -81,7 +73,7 @@ where
 {
     pub fn new(key_pair: Keypair, behaviour: Behaviour) -> Result<Self> {
         let peer_id = key_pair.public().into_peer_id();
-        let transport = build_tcp_noise_yamux(key_pair.clone())?;
+        let transport = build_transport(&key_pair)?;
         let swarm = Swarm::new(transport, behaviour, peer_id);
 
         Ok(Self {
