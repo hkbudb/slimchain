@@ -161,7 +161,7 @@ impl Discovery {
     pub fn random_known_peer(&self, role: &Role) -> Option<PeerId> {
         if let Some(list) = self.peer_table.get(role) {
             let mut rng = rand::thread_rng();
-            list.iter().choose(&mut rng).cloned()
+            list.iter().choose(&mut rng).copied()
         } else {
             None
         }
@@ -173,7 +173,7 @@ impl Discovery {
             list.iter()
                 .choose_multiple(&mut rng, amount)
                 .into_iter()
-                .cloned()
+                .copied()
                 .collect()
         } else {
             vec![]
