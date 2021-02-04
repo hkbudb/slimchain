@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SGX_DRIVER_VERSION="2.11.0_4505f07"
+SGX_DRIVER_VERSION="2.11.0_0373e2e"
 
 set -eo pipefail
 
