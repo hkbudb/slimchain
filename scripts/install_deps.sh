@@ -25,7 +25,7 @@ apt-get install -y curl gnupg
 
 echo "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main" > /etc/apt/sources.list.d/intel-sgx.list
 curl -fsSL https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add -
-curl -sL https://deb.nodesource.com/setup_14.x | bash -
+curl -sL https://deb.nodesource.com/setup_15.x | bash -
 
 apt-get update -y
 apt-get install -y libsgx-uae-service libsgx-urts sgx-aesm-service
