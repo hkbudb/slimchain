@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SGX_SDK_VERSION="2.12.100.4"
+SGX_SDK_VERSION="2.13.100.4"
 
 set -eo pipefail
 
