@@ -38,5 +38,3 @@ mkdir -p /opt/intel
 cd /opt/intel
 echo 'yes'| /tmp/sgx_linux_x64_sdk.bin
 rm /tmp/sgx_linux_x64_sdk.bin
-
-npm install -g truffle
