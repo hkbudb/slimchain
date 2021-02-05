@@ -211,6 +211,11 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
                     }
                 }
             }
+
+            snapshot
+                .write_async(&db)
+                .await
+                .expect("Failed to save the snapshot.");
         });
 
         Self {
