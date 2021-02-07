@@ -12,16 +12,12 @@ pub trait TxTrieTrait: Clone + Send + Sync {
     fn apply_diff(&mut self, diff: &TxTrieDiff, check_hash: bool) -> Result<()>;
     fn apply_writes(&mut self, writes: &TxWriteData) -> Result<TxStateUpdate>;
 
-    fn prune_account(
-        &mut self,
-        acc_addr: Address,
-        other_acc_addr: impl Iterator<Item = Address>,
-    ) -> Result<()>;
+    fn prune_account(&mut self, acc_addr: Address, kept_prefix_len: usize) -> Result<()>;
     fn prune_acc_state_key(
         &mut self,
         acc_addr: Address,
         key: StateKey,
-        other_keys: impl Iterator<Item = StateKey>,
+        kept_prefix_len: usize,
     ) -> Result<()>;
 
     #[cfg(feature = "draw")]

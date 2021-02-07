@@ -4,6 +4,7 @@ use slimchain_common::{
     collections::{HashMap, HashSet},
     error::{Context as _, Result},
 };
+use slimchain_merkle_trie::prelude::*;
 use slimchain_tx_state::TxTrieTrait;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
@@ -30,17 +31,57 @@ impl PruningData {
         let write_rev_map = access_map.write_rev_map();
 
         for acc_addr in self.accounts {
-            tx_trie.prune_account(acc_addr, write_rev_map.keys().copied())?;
+            let acc_addr_nibbles = acc_addr.as_nibbles();
+            let prev_common_len = write_rev_map
+                .range(..acc_addr)
+                .next_back()
+                .map(|(k, _v)| acc_addr_nibbles.common_prefix_len(&k));
+            let next_common_len = write_rev_map
+                .range(acc_addr..)
+                .next()
+                .map(|(k, _v)| acc_addr_nibbles.common_prefix_len(&k));
+            let max_common_len = [prev_common_len, next_common_len]
+                .iter()
+                .copied()
+                .filter_map(|x| x)
+                .max()
+                .unwrap_or(0);
+            let kept_prefix_len = if max_common_len == 0 {
+                1
+            } else {
+                max_common_len
+            };
+            tx_trie.prune_account(acc_addr, kept_prefix_len)?;
         }
 
         for (acc_addr, keys) in self.values {
-            let other_keys = write_rev_map
+            let other_state_values = write_rev_map
                 .get(&acc_addr)
                 .context("PruningData#prune_tx_trie: write_rev_access map cannot be found")?
-                .value_keys();
+                .state_values();
 
             for key in keys {
-                tx_trie.prune_acc_state_key(acc_addr, key, other_keys.iter().copied())?;
+                let key_nibbles = key.as_nibbles();
+                let prev_common_len = other_state_values
+                    .range(..key)
+                    .next_back()
+                    .map(|(k, _v)| key_nibbles.common_prefix_len(&k));
+                let next_common_len = other_state_values
+                    .range(key..)
+                    .next()
+                    .map(|(k, _v)| key_nibbles.common_prefix_len(&k));
+                let max_common_len = [prev_common_len, next_common_len]
+                    .iter()
+                    .copied()
+                    .filter_map(|x| x)
+                    .max()
+                    .unwrap_or(0);
+                let kept_prefix_len = if max_common_len == 0 {
+                    1
+                } else {
+                    max_common_len
+                };
+                tx_trie.prune_acc_state_key(acc_addr, key, kept_prefix_len)?;
             }
         }
 

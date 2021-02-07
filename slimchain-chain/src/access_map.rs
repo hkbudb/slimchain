@@ -23,7 +23,7 @@ pub struct AccessMap {
     read_map: im::Vector<ReadAccessItem>,
     write_map: im::Vector<WriteAccessItem>,
     read_rev_map: im::HashMap<Address, ReadRevAccessItem>,
-    write_rev_map: im::HashMap<Address, WriteRevAccessItem>,
+    write_rev_map: im::OrdMap<Address, WriteRevAccessItem>,
 }
 
 impl AccessMap {
@@ -34,7 +34,7 @@ impl AccessMap {
             read_map: im::vector![ReadAccessItem::default()],
             write_map: im::vector![WriteAccessItem::default()],
             read_rev_map: im::HashMap::new(),
-            write_rev_map: im::HashMap::new(),
+            write_rev_map: im::OrdMap::new(),
         }
     }
 
@@ -165,8 +165,8 @@ impl AccessMap {
             .expect("AccessMap: Failed to access write_map.");
         for (&acc_addr, write) in write_entry.iter() {
             let mut write_rev_entry = match self.write_rev_map.entry(acc_addr) {
-                im::hashmap::Entry::Occupied(o) => o,
-                im::hashmap::Entry::Vacant(_) => unreachable!(),
+                im::ordmap::Entry::Occupied(o) => o,
+                im::ordmap::Entry::Vacant(_) => unreachable!(),
             };
 
             let entry = write_rev_entry.get_mut();
@@ -198,7 +198,7 @@ impl AccessMap {
         pruning
     }
 
-    fn write_rev_map(&self) -> &'_ im::HashMap<Address, WriteRevAccessItem> {
+    pub(crate) fn write_rev_map(&self) -> &'_ im::OrdMap<Address, WriteRevAccessItem> {
         &self.write_rev_map
     }
 }

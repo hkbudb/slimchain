@@ -185,12 +185,8 @@ impl AccountTrie {
         Ok(())
     }
 
-    fn prune_state_key(
-        &mut self,
-        key: StateKey,
-        other_keys: impl Iterator<Item = StateKey>,
-    ) -> Result<()> {
-        self.state_trie = prune_key2(&self.state_trie, &key, other_keys, true)?;
+    fn prune_state_key(&mut self, key: StateKey, kept_prefix_len: usize) -> Result<()> {
+        self.state_trie = prune_key(&self.state_trie, &key, kept_prefix_len)?;
         Ok(())
     }
 }
@@ -340,17 +336,13 @@ impl TxTrieTrait for TxTrie {
         Ok(update)
     }
 
-    fn prune_account(
-        &mut self,
-        acc_addr: Address,
-        other_acc_addr: impl Iterator<Item = Address>,
-    ) -> Result<()> {
+    fn prune_account(&mut self, acc_addr: Address, kept_prefix_len: usize) -> Result<()> {
         let _acc_trie = self.acc_tries.remove(&acc_addr);
         debug_assert!(
             _acc_trie.is_some(),
             "TxTrie#prune_account: Account is already pruned."
         );
-        self.main_trie = prune_key2(&self.main_trie, &acc_addr, other_acc_addr, true)?;
+        self.main_trie = prune_key(&self.main_trie, &acc_addr, kept_prefix_len)?;
         Ok(())
     }
 
@@ -358,10 +350,10 @@ impl TxTrieTrait for TxTrie {
         &mut self,
         acc_addr: Address,
         key: StateKey,
-        other_keys: impl Iterator<Item = StateKey>,
+        kept_prefix_len: usize,
     ) -> Result<()> {
         match self.acc_tries.get_mut(&acc_addr) {
-            Some(acc_trie) => acc_trie.prune_state_key(key, other_keys)?,
+            Some(acc_trie) => acc_trie.prune_state_key(key, kept_prefix_len)?,
             None => bail!(
                 "TxTrie#prune_acc_state_key: cannot find acc_trie. Address: {}",
                 acc_addr

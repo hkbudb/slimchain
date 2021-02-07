@@ -25,7 +25,12 @@ fn create_tx_engine(_cfg: &Config, _enclave: &Option<PathBuf>) -> Result<TxEngin
     bail!("not support!");
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    slimchain::node::node_main(create_tx_engine).await
+fn main() -> Result<()> {
+    use tokio::runtime::Builder;
+    Builder::new_multi_thread()
+        .enable_all()
+        .thread_stack_size(16 * 1024 * 1024) // increase thread stack size
+        .build()
+        .unwrap()
+        .block_on(async { slimchain::node::node_main(create_tx_engine).await })
 }

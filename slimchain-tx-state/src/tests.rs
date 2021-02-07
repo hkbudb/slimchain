@@ -1,5 +1,4 @@
 use super::*;
-use core::iter;
 use slimchain_common::{
     basic::ShardId, create_address, create_state_key, create_tx_read_data, create_tx_write_set,
 };
@@ -548,24 +547,22 @@ fn test_prune() {
 
     let key1 =
         create_state_key!("0000000000000000000000000000000000000000000000000000000000000000");
-    let key2 =
+    let _key2 =
         create_state_key!("0000000000000000000000000000000000000000000000000000000000000001");
 
     let mut trie1 = TxTrie::default();
     trie1.apply_writes(&write_set).unwrap();
     let root = trie1.root_hash();
 
-    trie1.prune_account(addr1, iter::once(addr2)).unwrap();
+    trie1.prune_account(addr1, 39).unwrap();
     assert_eq!(trie1.acc_tries.len(), 1);
     assert_eq!(trie1.root_hash(), root);
 
-    trie1
-        .prune_acc_state_key(addr2, key1, iter::once(key2))
-        .unwrap();
+    trie1.prune_acc_state_key(addr2, key1, 63).unwrap();
     assert_eq!(trie1.acc_tries.len(), 1);
     assert_eq!(trie1.root_hash(), root);
 
-    trie1.prune_account(addr2, iter::empty()).unwrap();
+    trie1.prune_account(addr2, 1).unwrap();
     assert_eq!(trie1.acc_tries.len(), 0);
     assert_eq!(trie1.root_hash(), root);
 
@@ -579,17 +576,15 @@ fn test_prune() {
     trie2_storage.apply_update(update).unwrap();
     assert_eq!(trie2.out_shard.len(), 1);
 
-    trie2.prune_account(addr1, iter::once(addr2)).unwrap();
+    trie2.prune_account(addr1, 39).unwrap();
     assert_eq!(trie2.out_shard.len(), 1);
     assert_eq!(trie2.root_hash(), root);
 
-    trie2
-        .prune_acc_state_key(addr2, key1, iter::once(key2))
-        .unwrap();
+    trie2.prune_acc_state_key(addr2, key1, 63).unwrap();
     assert_eq!(trie2.out_shard.len(), 1);
     assert_eq!(trie2.root_hash(), root);
 
-    trie2.prune_account(addr2, iter::empty()).unwrap();
+    trie2.prune_account(addr2, 1).unwrap();
     assert_eq!(trie2.out_shard.len(), 0);
     assert_eq!(trie2.root_hash(), root);
 
@@ -603,17 +598,15 @@ fn test_prune() {
     trie3_storage.apply_update(update).unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
 
-    trie3.prune_account(addr1, iter::once(addr2)).unwrap();
+    trie3.prune_account(addr1, 39).unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
     assert_eq!(trie3.root_hash(), root);
 
-    trie3
-        .prune_acc_state_key(addr2, key1, iter::once(key2))
-        .unwrap();
+    trie3.prune_acc_state_key(addr2, key1, 63).unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
     assert_eq!(trie3.root_hash(), root);
 
-    trie3.prune_account(addr2, iter::empty()).unwrap();
+    trie3.prune_account(addr2, 1).unwrap();
     assert_eq!(trie3.out_shard.len(), 0);
     assert_eq!(trie3.root_hash(), root);
 }

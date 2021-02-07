@@ -34,12 +34,8 @@ impl StorageAccountTrie {
         self.state_trie = state_trie;
     }
 
-    fn prune_state_key(
-        &mut self,
-        key: StateKey,
-        other_keys: impl Iterator<Item = StateKey>,
-    ) -> Result<()> {
-        self.state_trie = prune_key2(&self.state_trie, &key, other_keys, true)?;
+    fn prune_state_key(&mut self, key: StateKey, kept_prefix_len: usize) -> Result<()> {
+        self.state_trie = prune_key(&self.state_trie, &key, kept_prefix_len)?;
         Ok(())
     }
 }
@@ -266,11 +262,7 @@ impl TxTrieTrait for StorageTxTrie {
         Ok(updates)
     }
 
-    fn prune_account(
-        &mut self,
-        acc_addr: Address,
-        _other_acc_addr: impl Iterator<Item = Address>,
-    ) -> Result<()> {
+    fn prune_account(&mut self, acc_addr: Address, _kept_prefix_len: usize) -> Result<()> {
         if self.shard_id.contains(acc_addr) {
             return Ok(());
         }
@@ -283,14 +275,14 @@ impl TxTrieTrait for StorageTxTrie {
         &mut self,
         acc_addr: Address,
         key: StateKey,
-        other_keys: impl Iterator<Item = StateKey>,
+        kept_prefix_len: usize,
     ) -> Result<()> {
         if self.shard_id.contains(acc_addr) {
             return Ok(());
         }
 
         match self.out_shard.get_mut(&acc_addr) {
-            Some(acc_trie) => acc_trie.prune_state_key(key, other_keys)?,
+            Some(acc_trie) => acc_trie.prune_state_key(key, kept_prefix_len)?,
             None => bail!(
                 "StorageTxTrie#prune_acc_state_key: cannot find acc_trie. Address: {}",
                 acc_addr
