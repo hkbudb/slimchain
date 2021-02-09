@@ -63,22 +63,19 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
                 tokio::select! {
                     _ = &mut shutdown_rx => break,
                     Some(blk_proposal) = blk_rx.next() => {
-                        let state_update = {
-                            let snapshot_backup = snapshot.clone();
-                            match verify_block(
-                                &chain_cfg,
-                                &mut snapshot,
-                                &blk_proposal,
-                                verify_consensus,
-                            )
-                            .await
-                            {
-                                Ok(state_update) => state_update,
-                                Err(e) => {
-                                    snapshot = snapshot_backup;
-                                    error!("Failed to import block. Error: {}", e);
-                                    continue;
-                                }
+                        let snapshot_backup = snapshot.clone();
+                        let state_update = match verify_block(
+                            &chain_cfg,
+                            &mut snapshot,
+                            &blk_proposal,
+                            verify_consensus,
+                        ).await
+                        {
+                            Ok(state_update) => state_update,
+                            Err(e) => {
+                                error!("Failed to import block. Error: {}", e);
+                                snapshot = snapshot_backup;
+                                continue;
                             }
                         };
 
@@ -97,7 +94,7 @@ impl<Tx: TxTrait + Serialize> BlockImportWorker<Tx> {
                         };
 
                         if let Err(e) = commit_res {
-                            if let Ok(db_tx) = snapshot_to_db_tx(&snapshot) {
+                            if let Ok(db_tx) = snapshot_to_db_tx(&snapshot_backup) {
                                 db.write_async(db_tx).await.ok();
                             }
                             panic!("Failed to commit the block. Error: {}", e);
@@ -207,10 +204,7 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
                         }
                     }
                     None => {
-                        snapshot_backup
-                            .write_async(&db)
-                            .await
-                            .expect("Failed to save the snapshot.");
+                        snapshot = snapshot_backup;
                         break;
                     }
                 }
