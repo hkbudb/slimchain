@@ -157,7 +157,7 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
         db: DBPtr,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<TxProposal<Tx>>();
-        let mut tx_rx = tx_rx.fuse();
+        let mut tx_rx = tx_rx.fuse().peekable();
 
         let (mut blk_tx, blk_rx) = mpsc::unbounded::<BlockProposal<Block, Tx>>();
         let blk_rx = blk_rx.fuse();
@@ -166,48 +166,52 @@ impl<Tx: TxTrait + Serialize> BlockProposalWorker<Tx> {
 
         let handle: JoinHandle<()> = tokio::spawn(async move {
             loop {
-                let snapshot_backup = snapshot.clone();
-
                 tokio::select! {
                     _ = &mut shutdown_rx => break,
-                    res = propose_block(
-                        &chain_cfg,
-                        &miner_cfg,
-                        &mut snapshot,
-                        &mut tx_rx,
-                        create_new_block,
-                    ) => {
-                        let blk_proposal = match res {
-                            Ok(blk_proposal) => blk_proposal,
-                            Err(e) => {
-                                snapshot_backup.write_async(&db).await.ok();
-                                panic!("Failed to build the new block. Error: {}", e);
-                            }
-                        };
-
-                        match blk_proposal {
-                            Some(blk_proposal) => {
-                                if let Err(e) =
-                                    commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count)
-                                        .await
-                                {
-                                    snapshot_backup.write_async(&db).await.ok();
-                                    panic!("Failed to commit the new block. Error: {}", e);
-                                }
-                                if let Err(e) = blk_tx.start_send(blk_proposal) {
-                                    snapshot_backup.write_async(&db).await.ok();
-                                    panic!("Failed to send the block proposal. Error: {}", e);
-                                }
-                            }
-                            None => {
-                                snapshot_backup
-                                    .write_async(&db)
-                                    .await
-                                    .expect("Failed to save the snapshot.");
-                                break;
-                            }
+                    res = Pin::new(&mut tx_rx).peek() => {
+                        if res.is_none() {
+                            break;
                         }
+                    }
+                }
 
+                let snapshot_backup = snapshot.clone();
+                let blk_proposal = match propose_block(
+                    &chain_cfg,
+                    &miner_cfg,
+                    &mut snapshot,
+                    &mut tx_rx,
+                    create_new_block,
+                )
+                .await
+                {
+                    Ok(blk_proposal) => blk_proposal,
+                    Err(e) => {
+                        snapshot_backup.write_async(&db).await.ok();
+                        panic!("Failed to build the new block. Error: {}", e);
+                    }
+                };
+
+                match blk_proposal {
+                    Some(blk_proposal) => {
+                        if let Err(e) =
+                            commit_block(&blk_proposal, &db, &latest_block_header, &latest_tx_count)
+                                .await
+                        {
+                            snapshot_backup.write_async(&db).await.ok();
+                            panic!("Failed to commit the new block. Error: {}", e);
+                        }
+                        if let Err(e) = blk_tx.start_send(blk_proposal) {
+                            snapshot_backup.write_async(&db).await.ok();
+                            panic!("Failed to send the block proposal. Error: {}", e);
+                        }
+                    }
+                    None => {
+                        snapshot_backup
+                            .write_async(&db)
+                            .await
+                            .expect("Failed to save the snapshot.");
+                        break;
                     }
                 }
             }

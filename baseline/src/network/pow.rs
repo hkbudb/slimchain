@@ -115,7 +115,7 @@ impl BlockProposalWorker {
         latest_tx_count: LatestTxCountPtr,
     ) -> Self {
         let (tx_tx, tx_rx) = mpsc::unbounded::<SignedTxRequest>();
-        let mut tx_rx = tx_rx.fuse();
+        let mut tx_rx = tx_rx.fuse().peekable();
 
         let (mut blk_tx, blk_rx) = mpsc::unbounded::<Block>();
         let blk_rx = blk_rx.fuse();
@@ -128,24 +128,31 @@ impl BlockProposalWorker {
             loop {
                 tokio::select! {
                     _ = &mut shutdown_rx => break,
-                    res = propose_block(&miner_cfg, &db, height, &mut tx_rx, create_new_block) =>
-                    {
-                        let (block, state_update) = match res.expect("Failed to build the new block.") {
-                            Some(res) => res,
-                            None => break,
-                        };
-
-                        commit_block(&db, &block, &state_update, &latest_tx_count)
-                            .await
-                            .expect("Failed to commit the block.");
-
-                        if let Err(e) = blk_tx.start_send(block) {
-                            panic!("Failed to send the block. Error: {}", e);
+                    res = Pin::new(&mut tx_rx).peek() => {
+                        if res.is_none() {
+                            break;
                         }
-
-                        height = height.next_height();
                     }
                 }
+
+                let (block, state_update) =
+                    match propose_block(&miner_cfg, &db, height, &mut tx_rx, create_new_block)
+                        .await
+                        .expect("Failed to build the new block.")
+                    {
+                        Some(res) => res,
+                        None => break,
+                    };
+
+                commit_block(&db, &block, &state_update, &latest_tx_count)
+                    .await
+                    .expect("Failed to commit the block.");
+
+                if let Err(e) = blk_tx.start_send(block) {
+                    panic!("Failed to send the block. Error: {}", e);
+                }
+
+                height = height.next_height();
             }
         });
 
