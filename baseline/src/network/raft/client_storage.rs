@@ -115,7 +115,6 @@ impl ClientNodeStorage {
         *self.miner_update.lock().await = None;
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     pub async fn save_to_db(&self) -> Result<()> {
         let sm = self.raft_sm.read().await;
@@ -193,7 +192,6 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         Ok(state)
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, hs), err)]
     async fn save_hard_state(&self, hs: &HardState) -> Result<()> {
         let mut db_tx = DBTransaction::new();
@@ -213,7 +211,6 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
             .collect())
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn delete_logs_from(&self, start: u64, stop: Option<u64>) -> Result<()> {
         if let Some(stop) = stop {
@@ -239,7 +236,6 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         self.db.write_async(db_tx).await
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn append_entry_to_log(&self, entry: &Entry<NewBlockRequest>) -> Result<()> {
         let mut db_tx = DBTransaction::new();
@@ -249,7 +245,6 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         self.db.write_async(db_tx).await
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn replicate_to_log(&self, entries: &[Entry<NewBlockRequest>]) -> Result<()> {
         let mut db_tx = DBTransaction::new();
@@ -325,7 +320,6 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         Ok(NewBlockResponse::Ok)
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn replicate_to_state_machine(&self, entries: &[(&u64, &NewBlockRequest)]) -> Result<()> {
         for (index, data) in entries {
@@ -410,7 +404,6 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         Ok((String::from(""), Box::new(Cursor::new(Vec::new()))))
     }
 
-    #[allow(clippy::unit_arg)]
     #[tracing::instrument(level = "debug", skip(self, snapshot), err)]
     async fn finalize_snapshot_installation(
         &self,

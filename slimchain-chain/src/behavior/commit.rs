@@ -24,7 +24,6 @@ fn record_txs<Tx, Block>(
     record_event!("tx_commit", "tx_ids": tx_ids, "height": blk_proposal.get_block_height().0);
 }
 
-#[allow(clippy::unit_arg)]
 #[tracing::instrument(level = "info", skip(blk_proposal, db, latest_block_header, latest_tx_count), fields(height = blk_proposal.get_block_height().0), err)]
 pub async fn commit_block<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
@@ -45,7 +44,6 @@ where
     Ok(())
 }
 
-#[allow(clippy::unit_arg)]
 #[tracing::instrument(level = "info", skip(blk_proposal, state_update, db, latest_block_header, latest_tx_count), fields(height = blk_proposal.get_block_height().0), err)]
 pub async fn commit_block_storage_node<Tx, Block>(
     blk_proposal: &BlockProposal<Block, Tx>,
