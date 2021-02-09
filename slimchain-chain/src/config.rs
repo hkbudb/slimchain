@@ -19,7 +19,7 @@ pub struct MinerConfig {
     /// Max number of txs in one block.
     #[serde(default = "default_max_txs")]
     pub max_txs: usize,
-    /// Min number of txs in one block.
+    /// Min number of txs in one block. It should be greater than 0.
     #[serde(default)]
     pub min_txs: usize,
     /// Max time span used in collecting txs.
