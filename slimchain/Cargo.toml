@@ -21,6 +21,14 @@ required-features = ["simple"]
 name = "slimchain-inspect-pow-tee"
 required-features = ["tee"]
 
+[[bin]]
+name = "slimchain-inspect-raft-simple"
+required-features = ["simple"]
+
+[[bin]]
+name = "slimchain-inspect-raft-tee"
+required-features = ["tee"]
+
 [features]
 default = [
     "simple",
