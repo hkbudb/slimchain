@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 COPY ./scripts/install_deps.sh /tmp/install_deps.sh
 COPY ./rust-sgx-sdk/rust-toolchain /tmp/rust-toolchain
