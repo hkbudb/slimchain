@@ -28,7 +28,7 @@ apt-get install -y build-essential autoconf libtool libssl-dev pkg-config
 apt-get install -y llvm-dev libclang-dev clang # required by bindgen
 apt-get install -y curl gnupg
 
-case "OS" in
+case "$OS" in
     "Ubuntu-18.04")
         echo "deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu bionic main" > /etc/apt/sources.list.d/intel-sgx.list
         SGX_SDK_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_sdk_$SGX_SDK_VERSION.bin"
