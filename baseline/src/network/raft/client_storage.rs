@@ -16,13 +16,13 @@ use async_raft::{
     RaftStorage,
 };
 use async_trait::async_trait;
+use itertools::process_results;
 use serde::{Deserialize, Serialize};
 use slimchain_chain::latest::{LatestTxCount, LatestTxCountPtr};
 use slimchain_common::{
     basic::{BlockHeight, H256},
     digest::Digestible,
     error::{anyhow, ensure, Context, Result},
-    iter::iter_result,
 };
 use slimchain_network::{
     behavior::raft::client_network::fetch_leader_id,
@@ -143,7 +143,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
     #[tracing::instrument(level = "debug", skip(self), err)]
     async fn get_membership_config(&self) -> Result<MembershipConfig> {
         let log = self.raft_log.read().await;
-        let cfg_opt = iter_result(
+        let cfg_opt = process_results(
             log.iter().rev().map(|idx| self.read_log(*idx)),
             |mut iter| {
                 iter.find_map(|entry| match &entry.payload {
@@ -334,7 +334,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
         let last_applied_log = sm_copy.last_applied_log;
         let membership_config = {
             let log = self.raft_log.read().await;
-            iter_result(log.iter().rev().map(|idx| self.read_log(*idx)), |iter| {
+            process_results(log.iter().rev().map(|idx| self.read_log(*idx)), |iter| {
                 iter.skip_while(|entry| entry.index > last_applied_log)
                     .find_map(|entry| match &entry.payload {
                         EntryPayload::ConfigChange(cfg) => Some(cfg.membership.clone()),
@@ -419,7 +419,7 @@ impl RaftStorage<NewBlockRequest, NewBlockResponse> for ClientNodeStorage {
             let mut db_tx = DBTransaction::new();
             let mut log = self.raft_log.write().await;
             let membership_config =
-                iter_result(log.iter().rev().map(|idx| self.read_log(*idx)), |iter| {
+                process_results(log.iter().rev().map(|idx| self.read_log(*idx)), |iter| {
                     iter.skip_while(|entry| entry.index > index)
                         .find_map(|entry| match &entry.payload {
                             EntryPayload::ConfigChange(cfg) => Some(cfg.membership.clone()),
