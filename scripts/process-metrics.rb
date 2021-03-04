@@ -154,6 +154,19 @@ class Tx
     end
   end
 
+  def exec_wait_time
+    @exec_wait_time ||= begin
+      storage_time = time_difference_in_us(exec_ts, storage_recv_ts) if exec_ts && storage_recv_ts
+      storage_time - exec_time if storage_time && exec_time
+    end
+  end
+
+  def propose_wait_time
+    @propose_wait_time ||= begin
+      time_difference_in_us(propose_recv_ts, miner_recv_ts) if propose_recv_ts && miner_recv_ts
+    end
+  end
+
   def to_hash
     {
       id: id,
@@ -172,7 +185,9 @@ class Tx
 
       propose_recv_block_height: propose_recv_block_height,
 
+      exec_wait_time_in_us: exec_wait_time,
       exec_time_in_us: exec_time,
+      propose_wait_time_in_us: propose_wait_time,
       propose_time_in_us: propose_time,
       block_mining_time_in_us: blk_mining_time,
       block_verify_time_in_us: blk_verify_time,
