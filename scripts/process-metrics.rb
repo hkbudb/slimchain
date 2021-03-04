@@ -381,11 +381,23 @@ def cal_tx_statistics!
   $result["90percentile_latency_in_us"] = percentile(latency, 0.9, sorted: true)
   $result["95percentile_latency_in_us"] = percentile(latency, 0.95, sorted: true)
 
+  tx_exec_wait_time = committed_tx.map { |_, tx| tx.exec_wait_time || 0 }.to_a.sort
+  $result["avg_tx_exec_wait_time_in_us"] = mean(tx_exec_wait_time)
+  $result["50percentile_tx_exec_wait_time_in_us"] = percentile(tx_exec_wait_time, 0.5, sorted: true)
+  $result["90percentile_tx_exec_wait_time_in_us"] = percentile(tx_exec_wait_time, 0.9, sorted: true)
+  $result["95percentile_tx_exec_wait_time_in_us"] = percentile(tx_exec_wait_time, 0.95, sorted: true)
+
   tx_exec_time = committed_tx.map { |_, tx| tx.exec_time || 0 }.to_a.sort
   $result["avg_tx_exec_time_in_us"] = mean(tx_exec_time)
   $result["50percentile_tx_exec_time_in_us"] = percentile(tx_exec_time, 0.5, sorted: true)
   $result["90percentile_tx_exec_time_in_us"] = percentile(tx_exec_time, 0.9, sorted: true)
   $result["95percentile_tx_exec_time_in_us"] = percentile(tx_exec_time, 0.95, sorted: true)
+
+  tx_propose_wait_time = committed_tx.map { |_, tx| tx.propose_wait_time }.to_a.sort
+  $result["avg_tx_propose_wait_time_in_us"] = mean(tx_propose_wait_time)
+  $result["50percentile_tx_propose_wait_time_in_us"] = percentile(tx_propose_wait_time, 0.5, sorted: true)
+  $result["90percentile_tx_propose_wait_time_in_us"] = percentile(tx_propose_wait_time, 0.9, sorted: true)
+  $result["95percentile_tx_propose_wait_time_in_us"] = percentile(tx_propose_wait_time, 0.95, sorted: true)
 
   tx_propose_time = committed_tx.map { |_, tx| tx.propose_time }.to_a.sort
   $result["avg_tx_blk_propose_time_in_us"] = mean(tx_propose_time)
@@ -459,7 +471,9 @@ def report!(storage: true)
 
     \tavg\t50th\t90th\t95th percentile
     latency\t#{format_time $result["avg_latency_in_us"]}\t#{format_time $result["50percentile_latency_in_us"]}\t#{format_time $result["90percentile_latency_in_us"]}\t#{format_time $result["95percentile_latency_in_us"]}
+    exec-wait\t#{format_time $result["avg_tx_exec_wait_time_in_us"]}\t#{format_time $result["50percentile_tx_exec_wait_time_in_us"]}\t#{format_time $result["90percentile_tx_exec_wait_time_in_us"]}\t#{format_time $result["95percentile_tx_exec_wait_time_in_us"]}
     exec\t#{format_time $result["avg_tx_exec_time_in_us"]}\t#{format_time $result["50percentile_tx_exec_time_in_us"]}\t#{format_time $result["90percentile_tx_exec_time_in_us"]}\t#{format_time $result["95percentile_tx_exec_time_in_us"]}
+    propose-wait\t#{format_time $result["avg_tx_propose_wait_time_in_us"]}\t#{format_time $result["50percentile_tx_propose_wait_time_in_us"]}\t#{format_time $result["90percentile_tx_propose_wait_time_in_us"]}\t#{format_time $result["95percentile_tx_propose_wait_time_in_us"]}
     propose\t#{format_time $result["avg_tx_blk_propose_time_in_us"]}\t#{format_time $result["50percentile_tx_blk_propose_time_in_us"]}\t#{format_time $result["90percentile_tx_blk_propose_time_in_us"]}\t#{format_time $result["95percentile_tx_blk_propose_time_in_us"]}
     mining\t#{format_time $result["avg_tx_blk_mining_time_in_us"]}\t#{format_time $result["50percentile_tx_blk_mining_time_in_us"]}\t#{format_time $result["90percentile_tx_blk_mining_time_in_us"]}\t#{format_time $result["95percentile_tx_blk_mining_time_in_us"]}
     verify\t#{format_time $result["avg_tx_blk_verify_time_in_us"]}\t#{format_time $result["50percentile_tx_blk_verify_time_in_us"]}\t#{format_time $result["90percentile_tx_blk_verify_time_in_us"]}\t#{format_time $result["95percentile_tx_blk_verify_time_in_us"]}
