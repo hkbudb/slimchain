@@ -156,14 +156,14 @@ class Tx
 
   def exec_wait_time
     @exec_wait_time ||= begin
-      storage_time = time_difference_in_us(exec_ts, storage_recv_ts) if exec_ts && storage_recv_ts
+      storage_time = time_difference_in_us(storage_recv_ts, exec_ts) if storage_recv_ts && exec_ts
       storage_time - exec_time if storage_time && exec_time
     end
   end
 
   def propose_wait_time
     @propose_wait_time ||= begin
-      time_difference_in_us(propose_recv_ts, miner_recv_ts) if propose_recv_ts && miner_recv_ts
+      time_difference_in_us(miner_recv_ts, propose_recv_ts) if miner_recv_ts && propose_recv_ts
     end
   end
 
