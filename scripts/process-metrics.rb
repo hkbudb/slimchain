@@ -49,9 +49,9 @@ class Block
   end
 
   def keep?
-    return false unless @commit_ts
-    return false if @commit_ts <= $tx_send_start_ts
-    return false if @commit_ts >= $tx_send_end_ts
+    return false unless commit_ts
+    return false if commit_ts <= $tx_send_start_ts
+    return false if commit_ts >= $tx_send_end_ts
 
     true
   end
@@ -99,7 +99,7 @@ class Tx
   end
 
   def committed?
-    !@commit_ts.nil? && !conflicted? && !outdated?
+    !commit_ts.nil? && !conflicted? && !outdated?
   end
 
   def status_known?
@@ -107,19 +107,19 @@ class Tx
   end
 
   def keep?
-    return false unless @send_ts
-    return false if @send_ts <= $tx_send_start_ts
-    return false if @send_ts >= $tx_send_end_ts
-    return false if @commit_ts && @commit_ts >= $tx_send_end_ts
+    return false unless send_ts
+    return false if send_ts <= $tx_send_start_ts
+    return false if send_ts >= $tx_send_end_ts
+    return false if commit_ts && commit_ts >= $tx_send_end_ts
 
     status_known?
   end
 
   def propose_end_ts
     @propose_end_ts ||= begin
-      return nil unless @block_height
+      return nil unless block_height
 
-      $blocks[@block_height]&.propose_end_ts
+      $blocks[block_height]&.propose_end_ts
     end
   end
 
@@ -134,36 +134,45 @@ class Tx
 
   def blk_mining_time
     @blk_mining_time ||= begin
-      return nil unless @block_height
+      return nil unless block_height
 
-      $blocks[@block_height].mining_time
+      $blocks[block_height].mining_time
     end
   end
 
   def blk_verify_time
     @blk_verify_time ||= begin
-      return nil unless @block_height
+      return nil unless block_height
 
-      $blocks[@block_height].verify_time
+      $blocks[block_height].verify_time
     end
   end
 
   def latency
     @latency ||= begin
-      time_difference_in_us(@send_ts, @commit_ts) if @send_ts && @commit_ts
+      return nil unless send_ts
+      return nil unless commit_ts
+
+      time_difference_in_us(send_ts, commit_ts)
     end
   end
 
   def exec_wait_time
     @exec_wait_time ||= begin
-      storage_time = time_difference_in_us(storage_recv_ts, exec_ts) if storage_recv_ts && exec_ts
-      storage_time - exec_time if storage_time && exec_time
+      return nil unless storage_recv_ts
+      return nil unless exec_ts
+      return nil unless exec_time
+
+      time_difference_in_us(storage_recv_ts, exec_ts) - exec_time
     end
   end
 
   def propose_wait_time
     @propose_wait_time ||= begin
-      time_difference_in_us(miner_recv_ts, propose_recv_ts) if miner_recv_ts && propose_recv_ts
+      return nil unless miner_recv_ts
+      return nil unless propose_recv_ts
+
+      time_difference_in_us(miner_recv_ts, propose_recv_ts)
     end
   end
 
