@@ -1,5 +1,7 @@
 # SlimChain
 
+**WARNING**: This is an academic proof-of-concept prototype, and in particular has not received careful code review. This implementation is NOT ready for production use.
+
 ## Install Dependencies
 
 * OS: Ubuntu 18.04 LTS or Ubuntu 20.04 LTS.
