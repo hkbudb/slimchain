@@ -30,11 +30,11 @@ blake2b_simd = { version = "0.5", default-features = false }
 derive_more = "0.99"
 ed25519 = { version = "1", default-features = false, features = ["serde"] }
 ed25519-dalek = { version = "1.0", default-features = false, features = ["alloc", "rand", "u64_backend"] }
-hashbrown = { version = "0.9", features = ["serde"] }
+hashbrown = { version = "0.11", features = ["serde"] }
 hex = { version = "0.4", default-features = false }
 primitive-types = { version = "0.8", default-features = false, features = ["serde_no_std", "byteorder"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 
 [dev-dependencies]
-postcard = { version = "0.5", features = ["alloc"] }
+postcard = { version = "0.6", features = ["alloc"] }
 rand = "0.7"
