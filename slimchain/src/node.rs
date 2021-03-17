@@ -136,6 +136,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
             match role {
                 Role::Client => {
                     let miner_cfg: MinerConfig = cfg.get("miner")?;
+                    info!("Miner Cfg: {:#?}", miner_cfg);
                     let mut client: ClientNode<Tx> =
                         ClientNode::new(db, &chain_cfg, &miner_cfg, &net_cfg, &raft_cfg).await?;
                     info!("Press Ctrl-C to quit.");
