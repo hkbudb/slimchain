@@ -33,7 +33,7 @@ clean:
 .PHONY: clean
 
 clippy:
-	cargo clippy --tests
+	cargo clippy --all-targets
 .PHONY: clippy
 
 cov:
