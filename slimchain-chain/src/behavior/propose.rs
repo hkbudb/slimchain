@@ -8,15 +8,22 @@ use chrono::Utc;
 use futures::prelude::*;
 use itertools::Itertools;
 use slimchain_common::{
-    basic::H256,
+    basic::{BlockHeight, H256},
     error::{Context as _, Result},
     rw_set::TxWriteData,
     tx::TxTrait,
 };
-use slimchain_tx_state::{merge_tx_trie_diff, TxProposal, TxTrie, TxTrieDiff, TxTrieTrait};
+use slimchain_tx_state::{
+    merge_tx_trie_diff, TxProposal, TxTrie, TxTrieDiff, TxTrieTrait, TxWriteSetTrie,
+};
 use slimchain_utils::record_event;
 use std::time::Instant;
 use tokio::time::timeout_at;
+
+enum TxTries {
+    Diff(Vec<TxTrieDiff>),
+    UncompressedTries(Vec<(BlockHeight, TxWriteSetTrie)>),
+}
 
 #[tracing::instrument(level = "info", skip(chain_cfg, miner_cfg, snapshot, tx_proposals, new_block_fn), fields(height = snapshot.current_height().0 + 1), err)]
 pub async fn propose_block<Tx, Block, TxStream, NewBlockFn, NewBlockFnOutput>(
@@ -37,7 +44,11 @@ where
     let deadline = begin + miner_cfg.max_block_interval;
 
     let mut txs: Vec<Tx> = Vec::with_capacity(miner_cfg.max_txs);
-    let mut tx_trie_diffs: Vec<TxTrieDiff> = Vec::with_capacity(miner_cfg.max_txs);
+    let mut tx_tries = if miner_cfg.compress_trie {
+        TxTries::Diff(Vec::with_capacity(miner_cfg.max_txs))
+    } else {
+        TxTries::UncompressedTries(Vec::with_capacity(miner_cfg.max_txs))
+    };
 
     let last_block_height = snapshot.current_height();
     let next_block_height = last_block_height.next_height();
@@ -118,22 +129,39 @@ where
             continue;
         }
 
-        let diff = snapshot.tx_trie.diff_missing_branches(&write_trie);
-
         snapshot.access_map.add_read(tx.tx_reads());
         snapshot.access_map.add_write(tx.tx_writes());
         writes.merge(tx.tx_writes());
 
         txs.push(tx);
-        tx_trie_diffs.push(diff);
+        match &mut tx_tries {
+            TxTries::Diff(diffs) => {
+                let diff = snapshot.tx_trie.diff_missing_branches(&write_trie);
+                diffs.push(diff);
+            }
+            TxTries::UncompressedTries(tries) => {
+                tries.push((tx_block_height, write_trie));
+            }
+        }
     }
 
-    let merged_diff = tx_trie_diffs
-        .into_iter()
-        .tree_fold1(|l, r| merge_tx_trie_diff(&l, &r))
-        .unwrap_or_default();
+    let blk_proposal_trie = match tx_tries {
+        TxTries::Diff(diffs) => {
+            let merged_diff = diffs
+                .into_iter()
+                .tree_fold1(|l, r| merge_tx_trie_diff(&l, &r))
+                .unwrap_or_default();
+            snapshot.tx_trie.apply_diff(&merged_diff, false)?;
+            BlockProposalTrie::Diff(merged_diff)
+        }
+        TxTries::UncompressedTries(tries) => {
+            for (_, trie) in &tries {
+                snapshot.tx_trie.update_missing_branches(trie)?;
+            }
+            BlockProposalTrie::UncompressedTries(tries)
+        }
+    };
 
-    snapshot.tx_trie.apply_diff(&merged_diff, false)?;
     let (updated_trie, new_state_root) = {
         let mut trie = snapshot.tx_trie.clone();
         tokio::task::spawn_blocking(move || -> Result<(TxTrie, H256)> {
@@ -157,7 +185,7 @@ where
         new_state_root,
     );
     let new_blk = new_block_fn(block_header, last_block).await?;
-    let blk_proposal = BlockProposal::new(new_blk, txs, BlockProposalTrie::Diff(merged_diff));
+    let blk_proposal = BlockProposal::new(new_blk, txs, blk_proposal_trie);
 
     snapshot.remove_oldest_block()?;
     snapshot.commit_block(blk_proposal.get_block().clone());

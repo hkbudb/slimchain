@@ -43,6 +43,15 @@ where
         BlockProposalTrie::Diff(diff) => {
             snapshot.tx_trie.apply_diff(diff, true)?;
         }
+        BlockProposalTrie::UncompressedTries(tries) => {
+            for (tx_block_height, trie) in tries {
+                let tx_block = snapshot
+                    .get_block(*tx_block_height)
+                    .context("Failed to get the block for tx")?;
+                trie.verify(tx_block.state_root())?;
+                snapshot.tx_trie.update_missing_branches(trie)?;
+            }
+        }
     }
 
     snapshot.access_map.alloc_new_block();

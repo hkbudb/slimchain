@@ -25,10 +25,17 @@ pub struct MinerConfig {
     /// Max time span used in collecting txs.
     #[serde(deserialize_with = "slimchain_utils::config::deserialize_duration_from_millis")]
     pub max_block_interval: Duration,
+    /// Whether to compress partial tries. Default true.
+    #[serde(default = "default_compress_trie")]
+    pub compress_trie: bool,
 }
 
 fn default_max_txs() -> usize {
     512
+}
+
+fn default_compress_trie() -> bool {
+    true
 }
 
 #[derive(Debug, Copy, Clone, Deserialize)]

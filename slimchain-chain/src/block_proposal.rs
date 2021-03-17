@@ -211,6 +211,7 @@ impl<'de, Block: BlockTrait + Deserialize<'de>, Tx: TxTrait + Deserialize<'de>> 
 pub enum BlockProposalTrie {
     Trie(TxWriteSetTrie),
     Diff(TxTrieDiff),
+    UncompressedTries(Vec<(BlockHeight, TxWriteSetTrie)>),
 }
 
 #[cfg(test)]

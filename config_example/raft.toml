@@ -19,6 +19,8 @@ consensus = "raft"
 
 # Configure for miners.
 [miner]
+# Whether to compress partial tries. Default true.
+compress_trie = true
 # The following three configures control when to create a new block.
 # A block is created if:
 #   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs

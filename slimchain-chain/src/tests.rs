@@ -214,10 +214,11 @@ async fn test_chain_cycle(chain_cfg: &ChainConfig, miner_cfg: &MinerConfig) {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test() {
+async fn test1() {
     let _guard = init_tracing_for_test();
 
     let miner_cfg = MinerConfig {
+        compress_trie: true,
         max_txs: 1,
         min_txs: 1,
         max_block_interval: Duration::from_millis(100),
@@ -233,5 +234,27 @@ async fn test() {
             warn!(state_len, ?conflict_check);
             test_chain_cycle(&chain_cfg, &miner_cfg).await;
         }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test2() {
+    let _guard = init_tracing_for_test();
+
+    let miner_cfg = MinerConfig {
+        compress_trie: false,
+        max_txs: 1,
+        min_txs: 1,
+        max_block_interval: Duration::from_millis(100),
+    };
+
+    for state_len in 1..=3 {
+        let chain_cfg = ChainConfig {
+            conflict_check: ConflictCheck::SSI,
+            state_len,
+            consensus: Consensus::Raft,
+        };
+        warn!(state_len);
+        test_chain_cycle(&chain_cfg, &miner_cfg).await;
     }
 }
