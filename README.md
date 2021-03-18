@@ -34,7 +34,7 @@ make test-release
 
 ## Run Nodes
 
-* Create proper `config.toml` file based on examples from `config_example`.
+* Create proper `config.toml` file based on examples from `config-example`.
 * See help messages on how to run nodes and send txs:
 
 ```bash
