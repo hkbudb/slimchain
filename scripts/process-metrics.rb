@@ -373,6 +373,7 @@ def cal_success_rate!
   conflicted = $kept_txs.count { |_, tx| tx.conflicted? }
   outdated = $kept_txs.count { |_, tx| tx.outdated? }
   $result["total_tx"] = total
+  $result["ignored_tx"] = $ignored_txs.size
   $result["committed_tx"] = committed
   $result["conflicted_tx"] = conflicted
   $result["outdated_tx"] = outdated
@@ -431,6 +432,7 @@ def cal_block_statistics!
   tx_count = $kept_blocks.map { |_, blk| blk.tx_list.size }.to_a.sort
 
   $result["total_block"] = $kept_blocks.size
+  $result["ignored_block"] = $ignored_blocks.size
   $result["avg_tx_in_block"] = mean(tx_count)
   $result["50percentile_tx_in_block"] = percentile(tx_count, 0.5, sorted: true)
   $result["90percentile_tx_in_block"] = percentile(tx_count, 0.9, sorted: true)
