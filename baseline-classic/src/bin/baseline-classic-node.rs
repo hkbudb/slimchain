@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate tracing;
 
-use baseline::{config::ChainConfig, db::DB, init_tracing};
+use baseline_classic::{config::ChainConfig, db::DB, init_tracing};
 use slimchain_chain::{config::MinerConfig, consensus::Consensus, role::Role};
 use slimchain_common::error::{bail, Context as _, Result};
 use slimchain_utils::{config::Config, path::binary_directory};
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
 
     match chain_cfg.consensus {
         Consensus::PoW => {
-            use baseline::network::pow::*;
+            use baseline_classic::network::pow::*;
             use slimchain_chain::config::PoWConfig;
             use slimchain_network::p2p::{config::NetworkConfig, control::Swarmer};
 
@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
             }
         }
         Consensus::Raft => {
-            use baseline::network::raft::client::ClientNode;
+            use baseline_classic::network::raft::client::ClientNode;
             use slimchain_network::http::config::{NetworkConfig, RaftConfig};
 
             let net_cfg: NetworkConfig = cfg.get("network")?;

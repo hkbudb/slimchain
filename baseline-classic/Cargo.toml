@@ -1,5 +1,5 @@
 [package]
-name = "baseline"
+name = "baseline-classic"
 version = "0.1.0"
 authors = ["Cheng XU <rust@xuc.me>"]
 edition = "2018"

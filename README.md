@@ -40,7 +40,7 @@ make test-release
 ```bash
 ./target/release/slimchain-node-tee --help # run slimchain nodes
 ./target/release/slimchain-send-tx --help # send tx
-./target/release/baseline-node --help # run baseline nodes
+./target/release/baseline-classic-node --help # run baseline (classic) nodes
 ./target/release/slimchain-inspect-db --help # check storage size
 ```
 

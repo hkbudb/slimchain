@@ -15,7 +15,7 @@ use tracing_subscriber::EnvFilter;
 pub fn init_tracing_subscriber(default_level: &str) -> Result<()> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         EnvFilter::new(format!(
-            "slimchain={},baseline={},warp::reject=off,warn",
+            "slimchain={},baseline_classic={},warp::reject=off,warn",
             default_level, default_level
         ))
     });
