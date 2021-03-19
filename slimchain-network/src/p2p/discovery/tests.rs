@@ -61,6 +61,7 @@ async fn create_node(mdns: bool, role: Role) -> (PeerId, Multiaddr, Control<Disc
             .await
             .unwrap(),
     )
+    .await
     .unwrap();
     let address = swarmer.listen_on_str("/ip4/127.0.0.1/tcp/0").await.unwrap();
     let ctrl = swarmer.spawn();

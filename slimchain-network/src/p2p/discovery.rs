@@ -9,7 +9,7 @@ use libp2p::{
         Kademlia, KademliaConfig, KademliaEvent, QueryId as KadQueryId,
         QueryResult as KadQueryResult,
     },
-    mdns::{Mdns, MdnsEvent},
+    mdns::{Mdns, MdnsConfig, MdnsEvent},
     ping::{Ping, PingConfig, PingEvent},
     swarm::{toggle::Toggle, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     Multiaddr, NetworkBehaviour, PeerId,
@@ -102,7 +102,8 @@ impl Discovery {
         let ping = Ping::new(ping_cfg);
 
         let mdns = if enable_mdns {
-            match Mdns::new().await {
+            let mdns_cfg = MdnsConfig::default();
+            match Mdns::new(mdns_cfg).await {
                 Ok(mdns) => Some(mdns),
                 Err(e) => {
                     error!("Failed to enable mdns. Error: {}", e);

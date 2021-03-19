@@ -42,8 +42,10 @@ async fn test() {
     let keypair1 = Keypair::generate_ed25519();
     let keypair2 = Keypair::generate_ed25519();
 
-    let mut swarmer1 = Swarmer::new(keypair1, TestServer::new()).unwrap();
-    let swarmer2 = Swarmer::new(keypair2, RpcClient::<String, String>::new("/test/1")).unwrap();
+    let mut swarmer1 = Swarmer::new(keypair1, TestServer::new()).await.unwrap();
+    let swarmer2 = Swarmer::new(keypair2, RpcClient::<String, String>::new("/test/1"))
+        .await
+        .unwrap();
 
     let address = swarmer1
         .listen_on_str("/ip4/127.0.0.1/tcp/0")

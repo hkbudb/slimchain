@@ -14,7 +14,7 @@ async fn test() {
     let mut swarm = {
         let keypair = libp2p::identity::Keypair::generate_ed25519();
         let peer_id = keypair.public().into_peer_id();
-        let transport = libp2p::build_development_transport(keypair).unwrap();
+        let transport = libp2p::development_transport(keypair).await.unwrap();
         libp2p::swarm::Swarm::new(
             transport,
             ClientHttpServer::new(endpoint, || 1, || 1.into()).unwrap(),

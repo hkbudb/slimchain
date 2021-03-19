@@ -80,7 +80,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
             match role {
                 Role::Client => {
                     let behavior = ClientBehavior::<Tx>::new(db, &chain_cfg, &net_cfg).await?;
-                    let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
+                    let swarmer =
+                        Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior).await?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {
@@ -99,7 +100,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                     info!("Miner Cfg: {:#?}", miner_cfg);
                     let behavior =
                         MinerBehavior::<Tx>::new(db, &chain_cfg, &miner_cfg, &net_cfg).await?;
-                    let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
+                    let swarmer =
+                        Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior).await?;
                     let ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     ctrl.run_until_interrupt().await?;
                 }
@@ -108,7 +110,8 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                     let behavior =
                         StorageBehavior::<Tx>::new(db, engine, shard_id, &chain_cfg, &net_cfg)
                             .await?;
-                    let swarmer = Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior)?;
+                    let swarmer =
+                        Swarmer::new(net_cfg.keypair.to_libp2p_keypair(), behavior).await?;
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {

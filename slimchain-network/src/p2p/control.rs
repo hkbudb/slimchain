@@ -20,13 +20,13 @@ use tokio::task::JoinHandle;
 const YAMUX_MAX_BUF_SIZE: usize = 60_000_000;
 const YAMUX_MAX_NUM_STREAM: usize = 8192;
 
-fn build_transport(
+async fn build_transport(
     keypair: &Keypair,
 ) -> Result<transport::Boxed<(PeerId, muxing::StreamMuxerBox)>> {
     use libp2p::{core::upgrade, dns, noise, tcp, yamux, Transport};
 
     let tcp = tcp::TcpConfig::new().nodelay(true);
-    let transport = dns::DnsConfig::new(tcp)?;
+    let transport = dns::DnsConfig::system(tcp).await?;
 
     let noise_keys = noise::Keypair::<noise::X25519Spec>::new()
         .into_authentic(keypair)
@@ -71,9 +71,9 @@ where
     <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Send + 'static,
     <<<Behaviour as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::OutEvent: Send + 'static,
 {
-    pub fn new(key_pair: Keypair, behaviour: Behaviour) -> Result<Self> {
+    pub async fn new(key_pair: Keypair, behaviour: Behaviour) -> Result<Self> {
         let peer_id = key_pair.public().into_peer_id();
-        let transport = build_transport(&key_pair)?;
+        let transport = build_transport(&key_pair).await?;
         let swarm = Swarm::new(transport, behaviour, peer_id);
 
         Ok(Self {
