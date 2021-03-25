@@ -60,7 +60,7 @@ slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-engine-simple = { path = "../slimchain-tx-engine-simple", optional = true }
 slimchain-utils = { path = "../slimchain-utils" }
 structopt = "0.3"
-tokio = { version = "1.3", features = ["full", "parking_lot"] }
+tokio = { version = "1.4", features = ["full", "parking_lot"] }
 tracing = "0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
