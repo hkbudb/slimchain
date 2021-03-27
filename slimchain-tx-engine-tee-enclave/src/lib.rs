@@ -4,9 +4,9 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 
-use std::boxed::Box;
 use once_cell::race::OnceBox;
 use slimchain_common::ed25519::Keypair;
+use std::boxed::Box;
 
 pub(crate) mod exec_tx;
 pub(crate) mod quote_pk;

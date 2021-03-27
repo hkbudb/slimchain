@@ -25,7 +25,8 @@ pub unsafe extern "C" fn ecall_quote_pk(
 
 fn quote_pk(quote_target: sgx_target_info_t) -> Result<sgx_report_t> {
     let mut report_data = sgx_report_data_t::default();
-    report_data.d[..PUBLIC_KEY_LENGTH].copy_from_slice(&crate::get_key_pair().public.as_bytes()[..]);
+    report_data.d[..PUBLIC_KEY_LENGTH]
+        .copy_from_slice(&crate::get_key_pair().public.as_bytes()[..]);
     rsgx_create_report(&quote_target, &report_data)
         .map_err(|e| anyhow!("Failed to create report. Reason: {}.", e))
 }
