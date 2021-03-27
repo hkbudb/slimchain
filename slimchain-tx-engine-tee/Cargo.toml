@@ -24,7 +24,7 @@ slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
 slimchain-utils = { path = "../slimchain-utils" }
 tracing = "0.1"
-ureq = { version = "2.0", features = ["json"] }
+ureq = { version = "2.1", features = ["json"] }
 
 [dev-dependencies]
 tokio = { version = "1.4", features = ["rt", "macros", "parking_lot"] }
