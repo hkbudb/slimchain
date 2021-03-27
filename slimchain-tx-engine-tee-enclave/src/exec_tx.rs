@@ -1,4 +1,3 @@
-use crate::KEY_PAIR;
 use sgx_types::*;
 use slimchain_common::{
     basic::{Address, BlockHeight, Code, Nonce, StateKey, StateValue, H256, U256},
@@ -271,7 +270,7 @@ fn exec_tx(
         writes: exec_output.writes,
     };
 
-    let signed_tx = raw_tx.sign(&*KEY_PAIR);
+    let signed_tx = raw_tx.sign(crate::get_key_pair());
 
     Ok(signed_tx)
 }

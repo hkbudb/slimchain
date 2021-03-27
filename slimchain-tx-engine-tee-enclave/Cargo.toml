@@ -15,7 +15,7 @@ opt-level = 3
 panic = "abort"
 
 [dependencies]
-lazy_static = { version = "1.4", features = ["spin_no_std"] }
+once_cell = { version = "1.7", default-features = false, features = ["alloc", "race"] }
 postcard = { version = "0.6", features = ["alloc"] }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }

@@ -3,18 +3,19 @@
 
 #[macro_use]
 extern crate sgx_tstd as std;
-#[macro_use]
-extern crate lazy_static;
 
+use std::boxed::Box;
+use once_cell::race::OnceBox;
 use slimchain_common::ed25519::Keypair;
 
 pub(crate) mod exec_tx;
 pub(crate) mod quote_pk;
 pub(crate) mod rand;
 
-lazy_static! {
-    pub(crate) static ref KEY_PAIR: Keypair = {
+pub(crate) fn get_key_pair() -> &'static Keypair {
+    static KEY_PAIR: OnceBox<Keypair> = OnceBox::new();
+    KEY_PAIR.get_or_init(|| {
         let mut rng = rand::os_rng();
-        Keypair::generate(&mut rng)
-    };
+        Box::new(Keypair::generate(&mut rng))
+    })
 }
