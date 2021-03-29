@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 const YAMUX_MAX_BUF_SIZE: usize = 60_000_000;
 const YAMUX_MAX_NUM_STREAM: usize = 8192;
 
-async fn build_transport(
+pub(crate) async fn build_transport(
     keypair: &Keypair,
 ) -> Result<transport::Boxed<(PeerId, muxing::StreamMuxerBox)>> {
     use libp2p::{core::upgrade, dns, noise, tcp, yamux, Transport};

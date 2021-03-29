@@ -1,5 +1,5 @@
 use super::*;
-use crate::http::client_rpc::*;
+use crate::{http::client_rpc::*, p2p::control::build_transport};
 use rand::SeedableRng;
 use serial_test::serial;
 use slimchain_common::{ed25519::Keypair, tx_req::TxRequest};
@@ -14,7 +14,7 @@ async fn test() {
     let mut swarm = {
         let keypair = libp2p::identity::Keypair::generate_ed25519();
         let peer_id = keypair.public().into_peer_id();
-        let transport = libp2p::development_transport(keypair).await.unwrap();
+        let transport = build_transport(&keypair).await.unwrap();
         libp2p::swarm::Swarm::new(
             transport,
             ClientHttpServer::new(endpoint, || 1, || 1.into()).unwrap(),
