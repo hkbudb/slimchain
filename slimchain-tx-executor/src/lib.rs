@@ -10,7 +10,6 @@ use evm::backend::Backend as _;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{Address, Code, Nonce, StateKey, StateValue, H160, H256, U256},
-    digest::Digestible,
     error::{ensure, Context as _, Error, Result},
     rw_set::{TxReadData, TxWriteData},
     tx_req::{SignedTxRequest, TxRequest},
@@ -64,16 +63,17 @@ impl<'a, B: Backend> EVMBackend<'a, B> {
         })
     }
 
-    fn map_code<T>(&self, acc_address: Address, f: impl FnOnce(&Code) -> T) -> T {
-        f(self.reads.borrow_mut().get_or_add_code(acc_address, || {
-            match self.backend.get_code(acc_address) {
+    fn get_code(&self, acc_address: Address) -> Code {
+        self.reads
+            .borrow_mut()
+            .get_or_add_code(acc_address, || match self.backend.get_code(acc_address) {
                 Ok(code) => code,
                 Err(err) => {
                     self.set_error(err);
                     Default::default()
                 }
-            }
-        }))
+            })
+            .clone()
     }
 
     fn get_value(&self, acc_address: Address, key: StateKey) -> StateValue {
@@ -130,22 +130,17 @@ impl<'a, B: Backend> evm::backend::Backend for EVMBackend<'a, B> {
             nonce: nonce.into(),
         }
     }
-    fn code_hash(&self, address: H160) -> H256 {
-        let acc_address: Address = address.into();
-        self.map_code(acc_address, |c| c.to_digest())
-    }
-    fn code_size(&self, address: H160) -> usize {
-        let acc_address: Address = address.into();
-        self.map_code(acc_address, |c| c.len())
-    }
     fn code(&self, address: H160) -> Vec<u8> {
         let acc_address: Address = address.into();
-        self.map_code(acc_address, |c| c.clone().into())
+        self.get_code(acc_address).into()
     }
     fn storage(&self, address: H160, index: H256) -> H256 {
         let acc_address: Address = address.into();
         let key: StateKey = index.into();
         self.get_value(acc_address, key).into()
+    }
+    fn original_storage(&self, address: H160, index: H256) -> Option<H256> {
+        Some(self.storage(address, index))
     }
 }
 
@@ -165,8 +160,9 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
 
     let evm_backend = EVMBackend::new(backend);
     let evm_config = evm::Config::istanbul();
-    let mut executor =
-        evm::executor::StackExecutor::new(&evm_backend, u64::max_value(), &evm_config);
+    let evm_metadata = evm::executor::StackSubstateMetadata::new(u64::max_value(), &&evm_config);
+    let evm_state = evm::executor::MemoryStackState::new(evm_metadata, &evm_backend);
+    let mut executor = evm::executor::StackExecutor::new(evm_state, &evm_config);
 
     let _caller_nonce = Nonce::from(evm_backend.basic(caller.into()).nonce);
 
@@ -212,7 +208,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
     let mut reads = evm_backend.take_reads();
     let mut writes = TxWriteData::default();
 
-    let (applies, _logs) = executor.deconstruct();
+    let (applies, _logs) = executor.into_state().deconstruct();
     for apply in applies {
         match apply {
             evm::backend::Apply::Modify {
