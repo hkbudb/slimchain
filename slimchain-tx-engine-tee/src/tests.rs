@@ -58,8 +58,8 @@ async fn test() {
             },
         ..
     } = task_engine.pop_result().await;
-    assert!(write_trie1.verify(states.state_root()).is_ok());
-    assert!(tx1.verify_sig().is_ok());
+    write_trie1.verify(states.state_root()).unwrap();
+    tx1.verify_sig().unwrap();
 
     assert!(tx1
         .raw_tx
@@ -98,8 +98,8 @@ async fn test() {
             },
         ..
     } = task_engine.pop_result().await;
-    assert!(write_trie2.verify(states.state_root()).is_ok());
-    assert!(tx2.verify_sig().is_ok());
+    write_trie2.verify(states.state_root()).unwrap();
+    tx2.verify_sig().unwrap();
 
     assert!(tx2
         .raw_tx

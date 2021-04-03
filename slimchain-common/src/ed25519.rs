@@ -185,6 +185,6 @@ mod tests {
         let hash = H256::repeat_byte(0x12);
         let keypair = Keypair::generate(&mut rng);
         let pk_sig = PubSigPair::create(&keypair, hash);
-        assert!(pk_sig.verify(hash).is_ok());
+        pk_sig.verify(hash).unwrap();
     }
 }

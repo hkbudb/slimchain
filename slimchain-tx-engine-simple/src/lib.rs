@@ -159,8 +159,8 @@ mod tests {
             ..
         } = task_engine.pop_result().await;
         assert_eq!(task_engine.remaining_tasks(), 0);
-        assert!(write_trie1.verify(states.state_root()).is_ok());
-        assert!(tx1.verify_sig().is_ok());
+        write_trie1.verify(states.state_root()).unwrap();
+        tx1.verify_sig().unwrap();
 
         assert!(tx1
             .raw_tx
@@ -201,8 +201,8 @@ mod tests {
             ..
         } = task_engine.pop_result().await;
         assert_eq!(task_engine.remaining_tasks(), 0);
-        assert!(write_trie2.verify(states.state_root()).is_ok());
-        assert!(tx2.verify_sig().is_ok());
+        write_trie2.verify(states.state_root()).unwrap();
+        tx2.verify_sig().unwrap();
 
         assert!(tx2
             .raw_tx

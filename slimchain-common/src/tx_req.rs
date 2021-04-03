@@ -121,7 +121,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let keypair = Keypair::generate(&mut rng);
         let signed_tx_req = tx_req.sign(&keypair);
-        assert!(signed_tx_req.verify().is_ok());
+        signed_tx_req.verify().unwrap();
     }
 
     #[test]

@@ -107,7 +107,7 @@ fn test_read_write() {
         0.into()
     );
     let read_proof1 = read_ctx1.generate_proof().unwrap();
-    assert!(read_proof1.verify(&read1, state.state_root()).is_ok());
+    read_proof1.verify(&read1, state.state_root()).unwrap();
 
     let write2 = create_tx_write_set! {
         "0000000000000000000000000000000000000000" => {
@@ -159,7 +159,7 @@ fn test_read_write() {
         8.into()
     );
     let read_proof2 = read_ctx2.generate_proof().unwrap();
-    assert!(read_proof2.verify(&read2, state.state_root()).is_ok());
+    read_proof2.verify(&read2, state.state_root()).unwrap();
 
     let read3 = create_tx_read_data! {
         "0000000000000000000000000000000000000010" => {
@@ -169,7 +169,7 @@ fn test_read_write() {
     let mut read_ctx3 = TxStateReadContext::new(state.state_view(), state.state_root());
     assert_eq!(read_ctx3.get_nonce(acc_addr2).unwrap(), 2.into());
     let read_proof3 = read_ctx3.generate_proof().unwrap();
-    assert!(read_proof3.verify(&read3, state.state_root()).is_ok());
+    read_proof3.verify(&read3, state.state_root()).unwrap();
 }
 
 #[cfg(feature = "partial_trie")]
@@ -303,7 +303,7 @@ fn test_tx_trie() {
         &write_set1,
     )
     .unwrap();
-    assert!(write_set1_trie.verify(client1.root_hash()).is_ok());
+    write_set1_trie.verify(client1.root_hash()).unwrap();
     let write_set1_diff = client1.diff_missing_branches(&write_set1_trie);
 
     full_node.apply_diff(&write_set1_diff, true).unwrap();
@@ -375,7 +375,7 @@ fn test_tx_trie() {
         &write_set2,
     )
     .unwrap();
-    assert!(write_set2_trie.verify(client1.root_hash()).is_ok());
+    write_set2_trie.verify(client1.root_hash()).unwrap();
     let write_set2_diff = client1.diff_missing_branches(&write_set2_trie);
 
     client1.apply_diff(&write_set2_diff, true).unwrap();
@@ -437,7 +437,7 @@ fn test_tx_trie() {
         &write_set3,
     )
     .unwrap();
-    assert!(write_set3_trie.verify(client1.root_hash()).is_ok());
+    write_set3_trie.verify(client1.root_hash()).unwrap();
     let write_set3_diff = client1.diff_missing_branches(&write_set3_trie);
 
     let write_set4_trie = TxWriteSetTrie::new(
@@ -446,7 +446,7 @@ fn test_tx_trie() {
         &write_set4,
     )
     .unwrap();
-    assert!(write_set4_trie.verify(client1.root_hash()).is_ok());
+    write_set4_trie.verify(client1.root_hash()).unwrap();
     let write_set4_diff = client1.diff_missing_branches(&write_set4_trie);
 
     let write_set34_diff = merge_tx_trie_diff(&write_set3_diff, &write_set4_diff);

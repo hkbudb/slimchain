@@ -53,6 +53,6 @@ mod tests {
         let mut rng = rand::thread_rng();
         let keypair = Keypair::generate(&mut rng);
         let signed_tx = raw_tx.sign(&keypair);
-        assert!(signed_tx.verify_sig().is_ok());
+        signed_tx.verify_sig().unwrap();
     }
 }
