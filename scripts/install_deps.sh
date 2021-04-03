@@ -45,6 +45,7 @@ apt-get update -y
 apt-get install -y libsgx-uae-service libsgx-urts sgx-aesm-service
 apt-get install -y nodejs
 
+echo "install $SGX_SDK_URL..."
 curl -fsSL "$SGX_SDK_URL" -o /tmp/sgx_linux_x64_sdk.bin
 chmod +x /tmp/sgx_linux_x64_sdk.bin
 mkdir -p /opt/intel

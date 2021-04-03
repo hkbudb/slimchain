@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-SGX_DRIVER_VERSION="2.11.0_0373e2e"
+DCAP_SGX_DRIVER_VERSION="1.41"
+OOT_SGX_DRIVER_VERSION="2.11.0_0373e2e"
 
 set -eo pipefail
 
@@ -16,16 +17,21 @@ fi
 RELEASE_INFO="$(cat /etc/issue)"
 if [[ "$RELEASE_INFO" = *"Ubuntu 18.04"* ]]; then
     OS="Ubuntu-18.04"
-    SGX_DERIVER_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_driver_$SGX_DRIVER_VERSION.bin"
+    DCAP_SGX_DERIVER_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_driver_$DCAP_SGX_DRIVER_VERSION.bin"
+    OOT_SGX_DERIVER_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu18.04-server/sgx_linux_x64_driver_$OOT_SGX_DRIVER_VERSION.bin"
 elif [[ "$RELEASE_INFO" = *"Ubuntu 20.04"* ]]; then
     OS="Ubuntu-20.04"
-    SGX_DERIVER_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu20.04-server/sgx_linux_x64_driver_$SGX_DRIVER_VERSION.bin"
+    DCAP_SGX_DERIVER_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu20.04-server/sgx_linux_x64_driver_$DCAP_SGX_DRIVER_VERSION.bin"
+    OOT_SGX_DERIVER_URL="https://download.01.org/intel-sgx/latest/linux-latest/distro/ubuntu20.04-server/sgx_linux_x64_driver_$OOT_SGX_DRIVER_VERSION.bin"
 else
     error "Ubuntu 18.04 or Ubuntu 20.04 is required."
 fi
 
-curl -fsSL "$SGX_DERIVER_URL" -o /tmp/sgx_linux_x64_driver.bin
-chmod +x /tmp/sgx_linux_x64_driver.bin
-mkdir -p /opt/intel
-/tmp/sgx_linux_x64_driver.bin
-rm /tmp/sgx_linux_x64_driver.bin
+for url in "$DCAP_SGX_DERIVER_URL" "$OOT_SGX_DERIVER_URL"; do
+    echo "install $url..."
+    curl -fsSL "$url" -o /tmp/sgx_linux_x64_driver.bin
+    chmod +x /tmp/sgx_linux_x64_driver.bin
+    mkdir -p /opt/intel
+    /tmp/sgx_linux_x64_driver.bin
+    rm /tmp/sgx_linux_x64_driver.bin
+done
