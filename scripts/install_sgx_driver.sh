@@ -29,9 +29,10 @@ fi
 
 for url in "$DCAP_SGX_DERIVER_URL" "$OOT_SGX_DERIVER_URL"; do
     echo "install $url..."
+    rm -f /tmp/sgx_linux_x64_driver.bin
     curl -fsSL "$url" -o /tmp/sgx_linux_x64_driver.bin
     chmod +x /tmp/sgx_linux_x64_driver.bin
     mkdir -p /opt/intel
     /tmp/sgx_linux_x64_driver.bin
-    rm /tmp/sgx_linux_x64_driver.bin
+    rm -f /tmp/sgx_linux_x64_driver.bin
 done
