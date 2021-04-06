@@ -10,7 +10,7 @@ pub struct BlockHeightList(im::Vector<BlockHeight>);
 
 impl<V: Into<BlockHeight>> FromIterator<V> for BlockHeightList {
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
-        let list = Self(im::Vector::from_iter(iter.into_iter().map(|v| v.into())));
+        let list = Self(iter.into_iter().map(|v| v.into()).collect());
         assert!(list.is_monotonic_increasing());
         list
     }

@@ -394,12 +394,10 @@ impl NetworkBehaviourEventProcess<KademliaEvent> for Discovery {
                 }
             }
             KademliaEvent::QueryResult {
-                result: KadQueryResult::StartProviding(result),
+                result: KadQueryResult::StartProviding(Err(error)),
                 ..
             } => {
-                if let Err(error) = result {
-                    error!("Failed to announce role. Error: {:?}", error);
-                }
+                error!("Failed to announce role. Error: {:?}", error);
             }
             _ => {}
         }
