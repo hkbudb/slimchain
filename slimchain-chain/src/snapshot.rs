@@ -208,7 +208,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, StorageTxTri
     }
 }
 
-fn load_recent_blocks<Block: BlockTrait + for<'de> Deserialize<'de>>(
+pub fn load_recent_blocks<Block: BlockTrait + for<'de> Deserialize<'de>>(
     db: &DBPtr,
     block_height: BlockHeight,
     state_len: usize,
