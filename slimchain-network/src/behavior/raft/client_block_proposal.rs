@@ -122,13 +122,8 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
 
                         let mut txs = Vec::with_capacity(tx_rx.size_hint().0);
 
-                        while let Some(tx) = tx_rx.next().now_or_never() {
-                            match tx {
-                                Some(tx) => {
-                                    txs.push(tx);
-                                }
-                                None => break,
-                            }
+                        while let Some(Some(tx)) = tx_rx.next().now_or_never() {
+                            txs.push(tx);
                         }
 
                         if let Err(e) = raft_network.forward_tx_proposal_to_leader(&txs).await {
@@ -151,14 +146,9 @@ impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposa
                             record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error", "detail": std::format!("{}", e));
                         }
 
-                        while let Some(tx) = tx_rx.next().now_or_never() {
-                            match tx {
-                                Some(tx) => {
-                                    let tx_id = tx.tx.id();
-                                    record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error_buffered_tx");
-                                }
-                                None => break,
-                            }
+                        while let Some(Some(tx)) = tx_rx.next().now_or_never() {
+                            let tx_id = tx.tx.id();
+                            record_event!("discard_tx", "tx_id": tx_id, "reason": "raft_write_error_buffered_tx");
                         }
 
                         continue;

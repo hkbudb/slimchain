@@ -18,15 +18,15 @@ impl From<usize> for U4 {
     }
 }
 
-impl Into<u8> for U4 {
-    fn into(self) -> u8 {
-        self.0
+impl From<U4> for u8 {
+    fn from(value: U4) -> Self {
+        value.0
     }
 }
 
-impl Into<usize> for U4 {
-    fn into(self) -> usize {
-        self.0 as usize
+impl From<U4> for usize {
+    fn from(value: U4) -> Self {
+        value.0 as usize
     }
 }
 

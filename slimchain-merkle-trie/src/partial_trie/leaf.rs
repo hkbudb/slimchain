@@ -47,9 +47,9 @@ impl From<crate::proof::LeafNode> for LeafNode {
     }
 }
 
-impl Into<crate::proof::LeafNode> for LeafNode {
-    fn into(self) -> crate::proof::LeafNode {
-        crate::proof::LeafNode::new(self.nibbles, self.value_hash)
+impl From<LeafNode> for crate::proof::LeafNode {
+    fn from(input: LeafNode) -> Self {
+        crate::proof::LeafNode::new(input.nibbles, input.value_hash)
     }
 }
 

@@ -31,10 +31,10 @@ impl From<crate::proof::Proof> for PartialTrie {
     }
 }
 
-impl Into<crate::proof::Proof> for PartialTrie {
-    fn into(self) -> crate::proof::Proof {
+impl From<PartialTrie> for crate::proof::Proof {
+    fn from(input: PartialTrie) -> Self {
         use crate::proof::Proof;
-        match self.root {
+        match input.root {
             Some(root) => Proof::from_subproof((*root).clone().into()),
             None => Proof::default(),
         }

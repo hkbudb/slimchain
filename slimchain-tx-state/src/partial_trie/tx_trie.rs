@@ -331,9 +331,10 @@ impl TxTrieTrait for TxTrie {
         }
         self.main_trie = main_ctx.finish();
 
-        let mut update = TxStateUpdate::default();
-        update.root = self.root_hash();
-        Ok(update)
+        Ok(TxStateUpdate {
+            root: self.root_hash(),
+            ..TxStateUpdate::default()
+        })
     }
 
     fn prune_account(&mut self, acc_addr: Address, kept_prefix_len: usize) -> Result<()> {

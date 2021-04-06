@@ -41,8 +41,10 @@ where
     let last_block: Block = db
         .get_block(last_block_height)
         .context("Failed to get the last block.")?;
-    let mut update = TxStateUpdate::default();
-    update.root = last_block.state_root();
+    let mut update = TxStateUpdate {
+        root: last_block.state_root(),
+        ..TxStateUpdate::default()
+    };
 
     while txs.len() < miner_cfg.max_txs {
         let tx_req = if txs.len() < miner_cfg.min_txs {

@@ -32,8 +32,10 @@ where
     new_block.verify_block_header(&last_block)?;
     verify_consensus_fn(new_block, &last_block)?;
 
-    let mut update = TxStateUpdate::default();
-    update.root = last_block.state_root();
+    let mut update = TxStateUpdate {
+        root: last_block.state_root(),
+        ..TxStateUpdate::default()
+    };
 
     for tx_req in new_block.tx_list().iter() {
         let new_update = exec_tx(db, &update, tx_req).await?;

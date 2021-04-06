@@ -401,37 +401,37 @@ impl<'a> From<&'a StateKey> for Nibbles<'a> {
     }
 }
 
-impl Into<H160> for NibbleBuf {
-    fn into(self) -> H160 {
-        assert_eq!(40, self.len());
-        H160::from_slice(&self.data)
+impl From<NibbleBuf> for H160 {
+    fn from(input: NibbleBuf) -> Self {
+        assert_eq!(40, input.len());
+        H160::from_slice(&input.data)
     }
 }
 
-impl Into<H256> for NibbleBuf {
-    fn into(self) -> H256 {
-        assert_eq!(64, self.len());
-        H256::from_slice(&self.data)
+impl From<NibbleBuf> for H256 {
+    fn from(input: NibbleBuf) -> Self {
+        assert_eq!(64, input.len());
+        H256::from_slice(&input.data)
     }
 }
 
-impl Into<H512> for NibbleBuf {
-    fn into(self) -> H512 {
-        assert_eq!(128, self.len());
-        H512::from_slice(&self.data)
+impl From<NibbleBuf> for H512 {
+    fn from(input: NibbleBuf) -> Self {
+        assert_eq!(128, input.len());
+        H512::from_slice(&input.data)
     }
 }
 
-impl Into<Address> for NibbleBuf {
-    fn into(self) -> Address {
-        let out: H160 = self.into();
+impl From<NibbleBuf> for Address {
+    fn from(input: NibbleBuf) -> Self {
+        let out: H160 = input.into();
         Address::from(out)
     }
 }
 
-impl Into<StateKey> for NibbleBuf {
-    fn into(self) -> StateKey {
-        let out: H256 = self.into();
+impl From<NibbleBuf> for StateKey {
+    fn from(input: NibbleBuf) -> Self {
+        let out: H256 = input.into();
         StateKey::from(out)
     }
 }

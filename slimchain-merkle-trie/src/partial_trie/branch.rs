@@ -58,10 +58,10 @@ impl From<crate::proof::BranchNode> for BranchNode {
     }
 }
 
-impl Into<crate::proof::BranchNode> for BranchNode {
-    fn into(self) -> crate::proof::BranchNode {
+impl From<BranchNode> for crate::proof::BranchNode {
+    fn from(input: BranchNode) -> Self {
         let mut node = crate::proof::BranchNode::default();
-        for (i, child) in self.children.iter().enumerate() {
+        for (i, child) in input.children.iter().enumerate() {
             if let Some(c) = child {
                 unsafe {
                     *node.children.get_unchecked_mut(i) = Some(Box::new((**c).clone().into()));

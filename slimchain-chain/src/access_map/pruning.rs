@@ -43,7 +43,7 @@ impl PruningData {
             let max_common_len = [prev_common_len, next_common_len]
                 .iter()
                 .copied()
-                .filter_map(|x| x)
+                .flatten()
                 .max()
                 .unwrap_or(0);
             let kept_prefix_len = if max_common_len == 0 {
@@ -73,7 +73,7 @@ impl PruningData {
                 let max_common_len = [prev_common_len, next_common_len]
                     .iter()
                     .copied()
-                    .filter_map(|x| x)
+                    .flatten()
                     .max()
                     .unwrap_or(0);
                 let kept_prefix_len = if max_common_len == 0 {

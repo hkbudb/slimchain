@@ -49,9 +49,9 @@ impl From<crate::proof::ExtensionNode> for ExtensionNode {
     }
 }
 
-impl Into<crate::proof::ExtensionNode> for ExtensionNode {
-    fn into(self) -> crate::proof::ExtensionNode {
-        crate::proof::ExtensionNode::new(self.nibbles, Box::new((*self.child).clone().into()))
+impl From<ExtensionNode> for crate::proof::ExtensionNode {
+    fn from(input: ExtensionNode) -> Self {
+        crate::proof::ExtensionNode::new(input.nibbles, Box::new((*input.child).clone().into()))
     }
 }
 

@@ -42,14 +42,14 @@ impl From<crate::proof::SubProof> for SubTree {
     }
 }
 
-impl Into<crate::proof::SubProof> for SubTree {
-    fn into(self) -> crate::proof::SubProof {
+impl From<SubTree> for crate::proof::SubProof {
+    fn from(input: SubTree) -> Self {
         use crate::proof::SubProof;
-        match self {
-            Self::Hash(h) => SubProof::from_hash(h),
-            Self::Extension(n) => SubProof::from_extension((*n).into()),
-            Self::Branch(n) => SubProof::from_branch((*n).into()),
-            Self::Leaf(n) => SubProof::from_leaf((*n).into()),
+        match input {
+            SubTree::Hash(h) => SubProof::from_hash(h),
+            SubTree::Extension(n) => SubProof::from_extension((*n).into()),
+            SubTree::Branch(n) => SubProof::from_branch((*n).into()),
+            SubTree::Leaf(n) => SubProof::from_leaf((*n).into()),
         }
     }
 }

@@ -260,7 +260,7 @@ impl Discovery {
             }
         }
 
-        while let Poll::Ready(_) = Pin::new(&mut self.next_kad_query).poll(cx) {
+        while Pin::new(&mut self.next_kad_query).poll(cx).is_ready() {
             self.kad.get_closest_peers(PeerId::random());
 
             self.next_kad_query = Delay::new(self.duration_to_next_kad);

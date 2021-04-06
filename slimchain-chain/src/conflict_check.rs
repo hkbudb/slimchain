@@ -5,6 +5,7 @@ use slimchain_common::{
     rw_set::{TxReadSet, TxWriteData},
 };
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ConflictCheck {
