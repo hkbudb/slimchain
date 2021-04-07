@@ -1,0 +1,59 @@
+[package]
+name = "baseline-stateful"
+version = "0.1.0"
+authors = ["Cheng XU <rust@xuc.me>"]
+edition = "2018"
+publish = false
+
+[[bin]]
+name = "baseline-stateful-node-simple"
+required-features = ["simple"]
+
+[[bin]]
+name = "baseline-stateful-node-tee"
+required-features = ["tee"]
+
+[features]
+default = [
+    "simple",
+    "tee",
+]
+simple = [
+    "slimchain-tx-engine-simple",
+]
+tee = [
+    "slimchain-tee-sig",
+    "slimchain-tx-engine-tee",
+]
+
+[dependencies]
+async-raft = "0.6.0"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+color-backtrace = "0.5"
+futures = "0.3"
+git-version = "0.3"
+#im = { version = "15.0", features = ["serde"] }
+im = { git = "https://github.com/arthurprs/im-rs/", branch = "fix", features = ["serde"] }
+itertools = "0.10"
+rand = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+slimchain-chain = { path = "../slimchain-chain" }
+slimchain-common = { path = "../slimchain-common" }
+slimchain-merkle-trie = { path = "../slimchain-merkle-trie" }
+slimchain-network = { path = "../slimchain-network" }
+slimchain-tee-sig = { path = "../slimchain-tee-sig", optional = true }
+slimchain-tx-engine = { path = "../slimchain-tx-engine" }
+slimchain-tx-engine-simple = { path = "../slimchain-tx-engine-simple", optional = true }
+slimchain-tx-state = { path = "../slimchain-tx-state" }
+slimchain-utils = { path = "../slimchain-utils" }
+structopt = "0.3"
+thiserror = "1.0"
+tokio = { version = "1.4", features = ["full", "parking_lot"] }
+tracing = "0.1"
+tracing-futures = "0.2"
+tracing-subscriber = "0.2"
+warp = "0.3"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+slimchain-tx-engine-tee = { path = "../slimchain-tx-engine-tee", optional = true }

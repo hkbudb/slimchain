@@ -1,0 +1,97 @@
+# vim: set ft=toml:
+
+# The role of the node.
+[role]
+# Possible values: client, storage.
+role = "client"
+
+# Chain configure.
+[chain]
+# Possible values: ssi, occ.
+conflict_check = "ssi"
+# The number of blocks in the temp state.
+state_len = 16
+# Consensus method. Possible values: pow, raft.
+consensus = "raft"
+
+# Configure for miners.
+[miner]
+# Whether to compress partial tries. Default true.
+compress_trie = true
+# The following three configures control when to create a new block.
+# A block is created if:
+#   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs
+
+# Max number of txs in one block. If missing, default to 512.
+max_txs = 256
+# Min number of txs in one block. It should be greater than 0.
+min_txs = 1
+# Max time span used in collecting txs in milliseconds.
+max_block_interval = 2000
+
+# Configure used in TEE. Used by storage nodes with TEE only.
+# Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
+[tee]
+# Subscription Key that provides access to the Intel API
+api_key = "YOUR_API_KEY"
+# Service Provider ID (SPID)
+spid = "YOUR_SPID"
+# Whether to sign linkable quote
+linkable = false
+
+# Network configure.
+[network]
+# The peer id of this node.
+peer_id = 0
+# Listen address for HTTP server
+http_listen = "127.0.0.1:8000"
+
+# Known peers
+[[network.peers]]
+peer_id = 1
+address = "a.b.c.d:8000"
+# Possible values: client, storage.
+role = "client"
+
+# Configure used in Raft
+# https://docs.rs/async-raft/0.6.0/async_raft/config/struct.Config.html
+# The values list in below are default values from async-raft.
+# You need to change them to proper ones based on the network condition.
+[raft]
+# The minimum election timeout in milliseconds.
+election_timeout_min = 150
+# The maximum election timeout in milliseconds.
+election_timeout_max = 300
+# The heartbeat interval in milliseconds at which leaders will send heartbeats to followers.
+#
+# Defaults to 50 milliseconds.
+#
+# **NOTE WELL:** it is very important that this value be greater than the amount if time
+# it will take on average for heartbeat frames to be sent between nodes. No data processing
+# is performed for heartbeats, so the main item of concern here is network latency. This
+# value is also used as the default timeout for sending heartbeats.
+heartbeat_interval = 50
+# The maximum number of entries per payload allowed to be transmitted during replication.
+#
+# When configuring this value, it is important to note that setting this value too low could
+# cause sub-optimal performance. This will primarily impact the speed at which slow nodes,
+# nodes which have been offline, or nodes which are new to the cluster, are brought
+# up-to-speed. If this is too low, it will take longer for the nodes to be brought up to
+# consistency with the rest of the cluster.
+max_payload_entries = 300
+# The distance behind in log replication a follower must fall before it is considered "lagging".
+#
+# This configuration parameter controls replication streams from the leader to followers in
+# the cluster. Once a replication stream is considered lagging, it will stop buffering
+# entries being replicated, and instead will fetch entries directly from the log until it is
+# up-to-speed, at which time it will transition out of "lagging" state back into "line-rate" state.
+replication_lag_threshold = 1000
+# The snapshot policy to use for a Raft node.
+# A snapshot will be generated once the log has grown the specified number of logs since the last snapshot.
+snapshot_policy_logs_since_last = 5000
+# The maximum snapshot chunk size allowed when transmitting snapshots (in bytes).
+#
+# Defaults to 3Mib.
+snapshot_max_chunk_size = 3145728
+# How to broadcast the block to storage node
+async_broadcast_storage = true

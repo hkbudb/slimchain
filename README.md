@@ -41,6 +41,7 @@ make test-release
 ./target/release/slimchain-node-tee --help # run slimchain nodes
 ./target/release/slimchain-send-tx --help # send tx
 ./target/release/baseline-classic-node --help # run baseline (classic) nodes
+./target/release/baseline-stateful-node-tee --help # run baseline (stateful) nodes
 ./target/release/slimchain-inspect-db --help # check storage size
 ```
 

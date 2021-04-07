@@ -1,0 +1,65 @@
+# vim: set ft=toml:
+
+# The role of the node.
+[role]
+# Possible values: client, miner, storage.
+role = "client"
+
+# Chain configure.
+[chain]
+# Possible values: ssi, occ.
+conflict_check = "ssi"
+# The number of blocks in the temp state.
+state_len = 64
+# Consensus method. Possible values: pow, raft.
+consensus = "pow"
+
+# Configure for miners.
+[miner]
+# Whether to compress partial tries. Default true.
+compress_trie = true
+# The following three configures control when to create a new block.
+# A block is created if:
+#   (len(txs) >= min_tx && tx_collecting_time >= max_block_interval) || len(txs) == max_txs
+
+# Max number of txs in one block. If missing, default to 512.
+max_txs = 256
+# Min number of txs in one block. It should be greater than 0.
+min_txs = 1
+# Max time span used in collecting txs in milliseconds.
+max_block_interval = 2000
+
+# Configure used in TEE. Used by storage nodes with TEE only.
+# Obtain keys from https://api.portal.trustedservices.intel.com/EPID-attestation
+[tee]
+# Subscription Key that provides access to the Intel API
+api_key = "YOUR_API_KEY"
+# Service Provider ID (SPID)
+spid = "YOUR_SPID"
+# Whether to sign linkable quote
+linkable = false
+
+# Network configure.
+[network]
+# Listen address for node
+listen = "/ip4/0.0.0.0/tcp/6000"
+
+# Listen address for HTTP server (Client only)
+http_listen = "127.0.0.1:8000"
+
+# Ed25519 key. If missing, a new key will be generated.
+keypair = "Ed25519_KEY"
+
+# Whether to enable mDNS
+mdns = true
+
+# Known peers
+[[network.peers]]
+peer_id = "PEER_ID"
+address = "/ip4/127.0.0.1/tcp/6000"
+
+# Configure used in Proof-of-Work.
+[pow]
+# The initial difficulty used by PoW.
+# The default value is 5_000_000.
+init_diff = 5000000

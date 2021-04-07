@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "baseline-classic",
+    "baseline-stateful",
     "slimchain",
     "slimchain-chain",
     "slimchain-common",
