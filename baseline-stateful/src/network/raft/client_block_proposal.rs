@@ -37,6 +37,7 @@ pub struct BlockProposalWorker<Tx: TxTrait + Serialize + for<'de> Deserialize<'d
 }
 
 impl<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static> BlockProposalWorker<Tx> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: DBPtr,
         chain_cfg: &ChainConfig,
