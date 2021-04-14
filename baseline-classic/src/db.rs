@@ -7,7 +7,10 @@ use slimchain_common::{
     error::{bail, Context as _, Error, Result},
 };
 use slimchain_tx_state::{TrieNode, TxStateUpdate, TxStateView};
-use slimchain_utils::serde::{binary_decode, binary_encode};
+use slimchain_utils::{
+    record_event,
+    serde::{binary_decode, binary_encode},
+};
 use std::{path::Path, sync::Arc};
 
 pub use slimchain_chain::db::{
@@ -80,6 +83,22 @@ impl DB {
         tokio::task::spawn_blocking(move || this.db.write(tx.inner))
             .await?
             .map_err(Error::msg)
+    }
+}
+
+impl Drop for DB {
+    fn drop(&mut self) {
+        let stats = self.db.io_stats(kvdb::IoStatsKind::Overall);
+        record_event!("db-io-stats",
+            "transactions": stats.transactions,
+            "reads": stats.reads,
+            "cache_reads": stats.cache_reads,
+            "writes": stats.writes,
+            "bytes_read": stats.bytes_read,
+            "cache_read_bytes": stats.cache_read_bytes,
+            "bytes_written": stats.bytes_written,
+            "span": stats.span,
+        );
     }
 }
 
