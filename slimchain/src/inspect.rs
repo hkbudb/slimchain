@@ -53,7 +53,7 @@ where
     if !opts.db_path.exists() {
         bail!("DB {:?} not existed.", opts.db_path);
     }
-    let db = DB::open_or_create(&opts.db_path)?;
+    let db = DB::open_or_create(&opts.db_path, false)?;
 
     let start = opts.start;
     let end = match opts.end {

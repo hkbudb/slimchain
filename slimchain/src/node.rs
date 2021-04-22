@@ -37,6 +37,10 @@ struct Opts {
     /// Change log level.
     #[structopt(long)]
     log_level: Option<String>,
+
+    /// Enable RocksDB statistics.
+    #[structopt(long)]
+    db_statistics: bool,
 }
 
 pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'static>(
@@ -64,7 +68,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
     let chain_cfg: ChainConfig = cfg.get("chain")?;
     info!("Chain Cfg: {:#?}", chain_cfg);
 
-    let db = DB::open_or_create_in_dir(&opts.data.unwrap_or(bin_dir), role)?;
+    let db = DB::open_or_create_in_dir(&opts.data.unwrap_or(bin_dir), role, opts.db_statistics)?;
 
     match chain_cfg.consensus {
         Consensus::PoW => {

@@ -35,7 +35,7 @@ fn main() -> Result<()> {
     if !opts.db_path.exists() {
         bail!("DB {:?} not existed.", opts.db_path);
     }
-    let db = DB::open_or_create(&opts.db_path)?;
+    let db = DB::open_or_create(&opts.db_path, false)?;
 
     let height: BlockHeight = db
         .get_existing_meta_object("height")

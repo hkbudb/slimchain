@@ -25,20 +25,25 @@ pub struct DB {
 pub type DBPtr = Arc<DB>;
 
 impl DB {
-    pub fn open_or_create(path: &Path) -> Result<Arc<Self>> {
+    pub fn open_or_create(path: &Path, enable_statistics: bool) -> Result<Arc<Self>> {
         info!("Open database at {}", path.display());
-        let cfg = kvdb_rocksdb::DatabaseConfig::with_columns(TOTAL_COLS);
+        let mut cfg = kvdb_rocksdb::DatabaseConfig::with_columns(TOTAL_COLS);
+        cfg.enable_statistics = enable_statistics;
         let db = kvdb_rocksdb::Database::open(&cfg, &path.to_string_lossy())?;
         Ok(Arc::new(Self { db: Box::new(db) }))
     }
 
-    pub fn open_or_create_in_dir(dir: &Path, role: Role) -> Result<Arc<Self>> {
+    pub fn open_or_create_in_dir(
+        dir: &Path,
+        role: Role,
+        enable_statistics: bool,
+    ) -> Result<Arc<Self>> {
         let db_file = match role {
             Role::Client => "client.db",
             Role::Miner => "miner.db",
             _ => bail!("Role can only be client or miner."),
         };
-        Self::open_or_create(&dir.join(db_file))
+        Self::open_or_create(&dir.join(db_file), enable_statistics)
     }
 
     pub fn get_object<T: for<'de> Deserialize<'de>>(
