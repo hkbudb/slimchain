@@ -57,12 +57,16 @@ async fn test() {
     let mut ctrl2 = swarmer2.spawn();
 
     ctrl2
-        .call(move |swarm| swarm.add_address(&peer_id1, address))
+        .call(move |swarm| swarm.behaviour_mut().add_address(&peer_id1, address))
         .await
         .unwrap();
 
     let resp = ctrl2
-        .call_with_sender(move |swarm, ret| swarm.send_request(&peer_id1, "World".to_string(), ret))
+        .call_with_sender(move |swarm, ret| {
+            swarm
+                .behaviour_mut()
+                .send_request(&peer_id1, "World".to_string(), ret)
+        })
         .await
         .unwrap()
         .unwrap();

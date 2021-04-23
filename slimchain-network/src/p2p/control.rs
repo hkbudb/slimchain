@@ -194,7 +194,7 @@ where
             .next()
             .await
             .expect("Failed to get the swarm.");
-        swarm.shutdown().await
+        swarm.behaviour_mut().shutdown().await
     }
 
     pub async fn call<T: Send + 'static>(

@@ -89,7 +89,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {
-                            swarm.discv_mut().find_random_peer_with_ret(
+                            swarm.behaviour_mut().discv_mut().find_random_peer_with_ret(
                                 Role::Miner,
                                 Duration::from_secs(60),
                                 ret,
@@ -119,7 +119,7 @@ pub async fn node_main<Tx: TxTrait + Serialize + for<'de> Deserialize<'de> + 'st
                     let mut ctrl = swarmer.spawn_app(&net_cfg.listen).await?;
                     let _miner_peer_id = ctrl
                         .call_with_sender(|swarm, ret| {
-                            swarm.discv_mut().find_random_peer_with_ret(
+                            swarm.behaviour_mut().discv_mut().find_random_peer_with_ret(
                                 Role::Miner,
                                 Duration::from_secs(60),
                                 ret,

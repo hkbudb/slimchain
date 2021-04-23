@@ -80,7 +80,9 @@ async fn test_with_mdns() {
 
     let res = ctrl1
         .call_with_sender(|swarm, ret| {
-            swarm.try_find_peer(Role::Client, Duration::from_millis(100), ret)
+            swarm
+                .behaviour_mut()
+                .try_find_peer(Role::Client, Duration::from_millis(100), ret)
         })
         .await
         .unwrap();
@@ -88,7 +90,9 @@ async fn test_with_mdns() {
 
     let res = ctrl1
         .call_with_sender(|swarm, ret| {
-            swarm.try_find_peer(Role::Miner, Duration::from_secs(5), ret)
+            swarm
+                .behaviour_mut()
+                .try_find_peer(Role::Miner, Duration::from_secs(5), ret)
         })
         .await
         .unwrap()
@@ -97,14 +101,14 @@ async fn test_with_mdns() {
     assert_eq!(
         Some(peer2),
         ctrl1
-            .call(|swarm| swarm.random_known_peer(&Role::Miner))
+            .call(|swarm| swarm.behaviour().random_known_peer(&Role::Miner))
             .await
             .unwrap()
     );
 
     let res = ctrl1
         .call_with_sender(|swarm, ret| {
-            swarm.try_find_peer(
+            swarm.behaviour_mut().try_find_peer(
                 Role::Storage(ShardId::new(0, 1)),
                 Duration::from_secs(5),
                 ret,
@@ -116,7 +120,11 @@ async fn test_with_mdns() {
     assert!(res == peer3 || res == peer4);
 
     let res = ctrl1
-        .call(|swarm| swarm.random_known_peers(&Role::Storage(ShardId::new(0, 1)), 1))
+        .call(|swarm| {
+            swarm
+                .behaviour()
+                .random_known_peers(&Role::Storage(ShardId::new(0, 1)), 1)
+        })
         .await
         .unwrap();
     assert!(res[0] == peer3 || res[0] == peer4);
@@ -140,28 +148,30 @@ async fn test_without_mdns() {
 
     let addr = addr0.clone();
     ctrl1
-        .call(move |swarm| swarm.add_address(peer0, addr))
+        .call(move |swarm| swarm.behaviour_mut().add_address(peer0, addr))
         .await
         .unwrap();
     let addr = addr0.clone();
     ctrl2
-        .call(move |swarm| swarm.add_address(peer0, addr))
+        .call(move |swarm| swarm.behaviour_mut().add_address(peer0, addr))
         .await
         .unwrap();
     let addr = addr0.clone();
     ctrl3
-        .call(move |swarm| swarm.add_address(peer0, addr))
+        .call(move |swarm| swarm.behaviour_mut().add_address(peer0, addr))
         .await
         .unwrap();
     let addr = addr0.clone();
     ctrl4
-        .call(move |swarm| swarm.add_address(peer0, addr))
+        .call(move |swarm| swarm.behaviour_mut().add_address(peer0, addr))
         .await
         .unwrap();
 
     let res = ctrl1
         .call_with_sender(|swarm, ret| {
-            swarm.try_find_peer(Role::Miner, Duration::from_secs(5), ret)
+            swarm
+                .behaviour_mut()
+                .try_find_peer(Role::Miner, Duration::from_secs(5), ret)
         })
         .await
         .unwrap()
@@ -170,14 +180,14 @@ async fn test_without_mdns() {
     assert_eq!(
         Some(peer2),
         ctrl1
-            .call(|swarm| swarm.random_known_peer(&Role::Miner))
+            .call(|swarm| swarm.behaviour().random_known_peer(&Role::Miner))
             .await
             .unwrap()
     );
 
     let res = ctrl1
         .call_with_sender(|swarm, ret| {
-            swarm.try_find_peer(
+            swarm.behaviour_mut().try_find_peer(
                 Role::Storage(ShardId::new(0, 1)),
                 Duration::from_secs(5),
                 ret,
@@ -190,7 +200,7 @@ async fn test_without_mdns() {
 
     let res = ctrl1
         .call_with_sender(|swarm, ret| {
-            swarm.try_find_peer(
+            swarm.behaviour_mut().try_find_peer(
                 Role::Storage(ShardId::new(0, 1)),
                 Duration::from_secs(5),
                 ret,
@@ -202,7 +212,11 @@ async fn test_without_mdns() {
     assert!(res == peer3 || res == peer4);
 
     let res = ctrl1
-        .call(|swarm| swarm.random_known_peers(&Role::Storage(ShardId::new(0, 1)), 1))
+        .call(|swarm| {
+            swarm
+                .behaviour()
+                .random_known_peers(&Role::Storage(ShardId::new(0, 1)), 1)
+        })
         .await
         .unwrap();
     assert!(res[0] == peer3 || res[0] == peer4);

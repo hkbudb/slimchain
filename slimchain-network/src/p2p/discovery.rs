@@ -2,7 +2,7 @@ use crate::p2p::config::NetworkConfig;
 use futures::{channel::oneshot, prelude::*};
 use futures_timer::Delay;
 use libp2p::{
-    identify::{Identify, IdentifyEvent},
+    identify::{Identify, IdentifyConfig, IdentifyEvent},
     identity::PublicKey,
     kad::{
         record::store::MemoryStore as KadMemoryStore, record::Key as KadKey, GetProvidersOk,
@@ -89,11 +89,9 @@ impl Discovery {
         kad.start_providing(role_to_kad_key(role))
             .map_err(|e| anyhow!("Failed to announce role. Error:{:?}", e))?;
 
-        let identify = Identify::new(
-            "/slimchain/discv/identify/1".to_string(),
-            role.to_user_agent(),
-            pk,
-        );
+        let identify_cfg = IdentifyConfig::new("/slimchain/discv/identify/1".to_string(), pk)
+            .with_agent_version(role.to_user_agent());
+        let identify = Identify::new(identify_cfg);
 
         let ping_cfg = PingConfig::new()
             .with_interval(PING_INTERVAL)
