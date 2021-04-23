@@ -1,13 +1,14 @@
 use chrono::NaiveDateTime;
+use core::convert::TryFrom;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sgx_types::sgx_quote_t;
 use slimchain_common::{
     basic::H256,
     digest::{blake2b_hash_to_h256, default_blake2, Digestible},
-    error::{bail, ensure, Context as _, Error, Result},
+    error::{anyhow, bail, ensure, Context as _, Error, Result},
 };
-use webpki::{EndEntityCert, TLSClientTrustAnchors, TrustAnchor};
+use webpki::{EndEntityCert, TlsClientTrustAnchors, TrustAnchor};
 use x509_parser::parse_x509_certificate;
 
 include!(concat!(env!("OUT_DIR"), "/root_ca.rs"));
@@ -85,17 +86,22 @@ impl AttestationReport {
             .split_first()
             .context("No cert is found.")?;
 
-        let end_cert = EndEntityCert::from(&end_cert_der)?;
+        let end_cert = EndEntityCert::try_from(&end_cert_der[..])
+            .map_err(|e| anyhow!("Failed to parse cert. Reason: {}", e))?;
         let intermediate_certs: Vec<_> = intermediate_certs_der.iter().map(|c| &c[..]).collect();
 
-        end_cert.verify_is_valid_tls_client_cert(
-            &[&webpki::RSA_PKCS1_2048_8192_SHA256],
-            &TLSClientTrustAnchors(&INTEL_SGX_ROOT_CA),
-            &intermediate_certs[..],
-            webpki::Time::from_seconds_since_unix_epoch(report_time.timestamp() as u64),
-        )?;
+        end_cert
+            .verify_is_valid_tls_client_cert(
+                &[&webpki::RSA_PKCS1_2048_8192_SHA256],
+                &TlsClientTrustAnchors(&INTEL_SGX_ROOT_CA),
+                &intermediate_certs[..],
+                webpki::Time::from_seconds_since_unix_epoch(report_time.timestamp() as u64),
+            )
+            .map_err(|e| anyhow!("Failed to verify cert. Reason: {}", e))?;
 
-        end_cert.verify_signature(&webpki::RSA_PKCS1_2048_8192_SHA256, &self.report, &self.sig)?;
+        end_cert
+            .verify_signature(&webpki::RSA_PKCS1_2048_8192_SHA256, &self.report, &self.sig)
+            .map_err(|e| anyhow!("Failed to verify sig. Reason: {}", e))?;
 
         let quote_status = report["isvEnclaveQuoteStatus"]
             .as_str()

@@ -1,7 +1,19 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use webpki::trust_anchor_util::*;
+use webpki::TrustAnchor;
+
+fn generate_code_for_trust_anchors(name: &str, trust_anchors: &[TrustAnchor]) -> String {
+    let decl = format!(
+        "static {}: [TrustAnchor<'static>; {}] = ",
+        name,
+        trust_anchors.len()
+    );
+
+    let value = str::replace(&format!("{:?};\n", trust_anchors), ": [", ": &[");
+
+    decl + &value
+}
 
 fn gen_root_ca_rs() {
     // Obtain cert from https://api.portal.trustedservices.intel.com/EPID-attestation
@@ -15,7 +27,7 @@ fn gen_root_ca_rs() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let root_cert_data = fs::read(root_cert_path).expect("Failed to read SGX root CA cert.");
     let trust_root =
-        cert_der_as_trust_anchor(&root_cert_data[..]).expect("Failed to load trust root.");
+        TrustAnchor::try_from_cert_der(&root_cert_data[..]).expect("Failed to load trust root.");
     let code = generate_code_for_trust_anchors("INTEL_SGX_ROOT_CA", &[trust_root]);
     fs::write(out_dir.join("root_ca.rs"), code).expect("Failed to write root_ca.rs.");
 }
