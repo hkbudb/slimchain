@@ -30,5 +30,5 @@ ureq = { version = "2.1", features = ["json"] }
 tokio = { version = "1.5", features = ["rt", "macros", "parking_lot"] }
 
 [build-dependencies]
-bindgen = "0.54"
+bindgen = "0.58"
 cc = "1.0"
