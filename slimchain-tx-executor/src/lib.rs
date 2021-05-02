@@ -177,7 +177,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
 
     let execute_result = match &tx_req {
         TxRequest::Create { code, .. } => executor.transact_create(
-            caller.clone().into(),
+            caller.into(),
             U256::zero(),
             code.clone().into(),
             u64::max_value(),
@@ -185,8 +185,8 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
         TxRequest::Call { address, data, .. } => {
             executor
                 .transact_call(
-                    caller.clone().into(),
-                    address.clone().into(),
+                    caller.into(),
+                    (*address).into(),
                     U256::zero(),
                     data.clone(),
                     u64::max_value(),

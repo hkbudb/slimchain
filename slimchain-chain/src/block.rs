@@ -92,7 +92,7 @@ impl Digestible for BlockTxList {
 
 impl FromIterator<H256> for BlockTxList {
     fn from_iter<T: IntoIterator<Item = H256>>(iter: T) -> Self {
-        Self(Vec::from_iter(iter))
+        Self(iter.into_iter().collect())
     }
 }
 

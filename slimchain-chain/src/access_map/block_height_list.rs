@@ -65,12 +65,12 @@ mod tests {
         let list1 = BlockHeightList::default();
         assert!(!list1.conflicts_with(1));
 
-        let list2 = BlockHeightList::from_iter([2].iter().copied());
+        let list2: BlockHeightList = [2].iter().copied().collect();
         assert!(list2.conflicts_with(1));
         assert!(!list2.conflicts_with(2));
         assert!(!list2.conflicts_with(3));
 
-        let list3 = BlockHeightList::from_iter([3, 5].iter().copied());
+        let list3: BlockHeightList = [3, 5].iter().copied().collect();
         assert!(list3.conflicts_with(1));
         assert!(list3.conflicts_with(4));
         assert!(!list3.conflicts_with(5));

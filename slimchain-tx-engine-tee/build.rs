@@ -79,9 +79,9 @@ fn main() {
             "-I{}",
             rust_sgx_sdk_dir.join("edl").to_string_lossy()
         ))
-        .whitelist_recursively(false)
-        .whitelist_function(".*_ecall")
-        .whitelist_function("ecall_.*")
+        .allowlist_recursively(false)
+        .allowlist_function(".*_ecall")
+        .allowlist_function("ecall_.*")
         .generate()
         .expect("Failed to generate bindings for enclave_u.h.");
     bindings

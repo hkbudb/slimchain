@@ -1,5 +1,5 @@
 use crate::{
-    block::{BlockTrait, BlockTxList},
+    block::BlockTrait,
     db::DBPtr,
     loader::{BlockLoaderTrait, TxLoaderTrait},
 };
@@ -15,7 +15,7 @@ use slimchain_common::{
     tx::TxTrait,
 };
 use slimchain_tx_state::{TxStateView, TxTrieDiff, TxWriteSetTrie};
-use std::{fmt, iter::FromIterator, marker::PhantomData};
+use std::{fmt, marker::PhantomData};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BlockProposal<Block: BlockTrait, Tx: TxTrait> {
@@ -157,7 +157,7 @@ impl<'de, Block: BlockTrait + Deserialize<'de>, Tx: TxTrait + Deserialize<'de>> 
                 let trie: BlockProposalTrie = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-                *block.tx_list_mut() = BlockTxList::from_iter(txs.iter());
+                *block.tx_list_mut() = txs.iter().collect();
                 Ok(BlockProposal::new(block, txs, trie))
             }
 
@@ -193,7 +193,7 @@ impl<'de, Block: BlockTrait + Deserialize<'de>, Tx: TxTrait + Deserialize<'de>> 
                 let mut block = block.ok_or_else(|| de::Error::missing_field("block"))?;
                 let txs = txs.ok_or_else(|| de::Error::missing_field("txs"))?;
                 let trie = trie.ok_or_else(|| de::Error::missing_field("trie"))?;
-                *block.tx_list_mut() = BlockTxList::from_iter(txs.iter());
+                *block.tx_list_mut() = txs.iter().collect();
                 Ok(BlockProposal::new(block, txs, trie))
             }
         }
@@ -217,7 +217,7 @@ pub enum BlockProposalTrie {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::block::BlockHeader;
+    use crate::block::{BlockHeader, BlockTxList};
     use slimchain_common::{
         basic::{Address, BlockHeight, H256},
         digest::Digestible,
@@ -292,7 +292,7 @@ mod tests {
         }
 
         let tx = DummyTx::default();
-        let tx_list = BlockTxList::from_iter(std::iter::once(&tx));
+        let tx_list: BlockTxList = std::iter::once(&tx).collect();
         let block = DummyBlock { tx_list };
         let proposal =
             BlockProposal::new(block, vec![tx], BlockProposalTrie::Diff(Default::default()));
