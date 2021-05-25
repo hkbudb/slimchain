@@ -16,7 +16,7 @@ panic = "abort"
 
 [dependencies]
 once_cell = { version = "1.7", default-features = false, features = ["alloc", "race"] }
-postcard = { version = "0.7", features = ["alloc"] }
+postcard = { version = "0.6", features = ["alloc"] }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 sgx_rand = { path = "../rust-sgx-sdk/sgx_rand" }

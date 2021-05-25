@@ -36,5 +36,5 @@ primitive-types = { version = "0.9", default-features = false, features = ["serd
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 
 [dev-dependencies]
-postcard = { version = "0.7", features = ["alloc"] }
+postcard = { version = "0.6", features = ["alloc"] }
 rand = "0.7"
