@@ -36,7 +36,7 @@ git-version = "0.3"
 #im = { version = "15.0", features = ["serde"] }
 im = { git = "https://github.com/arthurprs/im-rs/", branch = "fix", features = ["serde"] }
 itertools = "0.10"
-libp2p = { version = "0.37", default-features = false }
+libp2p = { version = "0.38", default-features = false }
 rand = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 slimchain-chain = { path = "../slimchain-chain" }
