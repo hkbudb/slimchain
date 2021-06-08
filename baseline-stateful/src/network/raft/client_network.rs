@@ -281,7 +281,7 @@ where
         let (block_proposal_shutdown_tx, mut block_proposal_shutdown_rx) = oneshot::channel();
 
         let block_proposal_handle = if async_broadcast_storage {
-            tokio::spawn(async move {
+            Some(tokio::spawn(async move {
                 loop {
                     tokio::select! {
                         _ = &mut block_proposal_shutdown_rx => break,
@@ -290,16 +290,16 @@ where
                         }
                     }
                 }
-            })
+            }))
         } else {
-            tokio::spawn(async {})
+            None
         };
 
         Self {
             req_handle: Some(req_handle),
             req_tx,
             req_shutdown_tx: Some(req_shutdown_tx),
-            block_proposal_handle: Some(block_proposal_handle),
+            block_proposal_handle,
             block_proposal_tx,
             block_proposal_shutdown_tx: Some(block_proposal_shutdown_tx),
         }
