@@ -16,4 +16,4 @@ slimchain-tx-state = { path = "../slimchain-tx-state" }
 [dev-dependencies]
 rand = "0.7"
 slimchain-utils = { path = "../slimchain-utils" }
-tokio = { version = "1.6", features = ["rt", "macros", "parking_lot"] }
+tokio = { version = "1.7", features = ["rt", "macros", "parking_lot"] }
