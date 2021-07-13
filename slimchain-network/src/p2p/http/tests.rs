@@ -1,5 +1,6 @@
 use super::*;
 use crate::{http::client_rpc::*, p2p::control::build_transport};
+use libp2p::swarm::SwarmEvent;
 use rand::SeedableRng;
 use serial_test::serial;
 use slimchain_common::{ed25519::Keypair, tx_req::TxRequest};
@@ -32,7 +33,14 @@ async fn test() {
         tx_req.sign(&keypair)
     };
 
-    let handler = tokio::spawn(async move { swarm.next().await });
+    let handler = tokio::spawn(async move {
+        loop {
+            match swarm.select_next_some().await {
+                SwarmEvent::Behaviour(event) => break event,
+                _ => {}
+            }
+        }
+    });
     tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
     send_tx_request(endpoint, signed_tx_req.clone())
         .await

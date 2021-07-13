@@ -86,9 +86,9 @@ where
     pub async fn listen_on(&mut self, address: Multiaddr) -> Result<Multiaddr> {
         Swarm::listen_on(&mut self.swarm, address).map_err(Error::msg)?;
         let address = loop {
-            match self.swarm.next_event().await {
-                SwarmEvent::NewListenAddr(address) => break address,
-                SwarmEvent::ListenerError { error } => {
+            match self.swarm.select_next_some().await {
+                SwarmEvent::NewListenAddr{address ,..} => break address,
+                SwarmEvent::ListenerError { error, .. } => {
                     bail!("Error during listen. Error: {:?}", error);
                 }
                 SwarmEvent::ListenerClosed { reason, .. } => {

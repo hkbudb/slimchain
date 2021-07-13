@@ -30,7 +30,7 @@ tracing-futures = "0.2"
 warp = "0.3"
 
 [dependencies.libp2p]
-version = "0.38"
+version = "0.39"
 default-features = false
 features = [
     "dns-async-std",

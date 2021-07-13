@@ -357,7 +357,7 @@ impl NetworkBehaviourEventProcess<MdnsEvent> for Discovery {
 impl NetworkBehaviourEventProcess<KademliaEvent> for Discovery {
     fn inject_event(&mut self, event: KademliaEvent) {
         match event {
-            KademliaEvent::QueryResult {
+            KademliaEvent::OutboundQueryCompleted {
                 id,
                 result: KadQueryResult::GetProviders(result),
                 ..
@@ -391,7 +391,7 @@ impl NetworkBehaviourEventProcess<KademliaEvent> for Discovery {
                         .insert((query_id, role, deadline), RETRY_WAIT_INTERVAL);
                 }
             }
-            KademliaEvent::QueryResult {
+            KademliaEvent::OutboundQueryCompleted {
                 result: KadQueryResult::StartProviding(Err(error)),
                 ..
             } => {
