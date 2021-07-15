@@ -2,6 +2,20 @@
 
 **WARNING**: This is an academic proof-of-concept prototype, and in particular has not received careful code review. This implementation is NOT ready for production use.
 
+If you find the code here useful, please consider to cite our paper:
+
+```bibtex
+@article{PVLDB:slimchain,
+  author = {Xu, Cheng and Zhang, Ce and Xu, Jianliang and Pei, Jian},
+  title = {{SlimChain}: Scaling Blockchain Transactions through Off-Chain Storage and Parallel Processing},
+  journal = {Proceedings of the VLDB Endowment},
+  year = {2021},
+  month = jul,
+  volume = {14},
+  number = {11},
+}
+```
+
 ## Install Dependencies
 
 * OS: Ubuntu 18.04 LTS or Ubuntu 20.04 LTS.
