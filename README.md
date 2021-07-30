@@ -13,6 +13,9 @@ If you find the code here useful, please consider to cite our paper:
   month = jul,
   volume = {14},
   number = {11},
+  pages = {2314--2326},
+  issn = {2150-8097},
+  doi = {10.14778/3476249.3476283}
 }
 ```
 
