@@ -29,5 +29,9 @@ slimchain-merkle-trie = { path = "../slimchain-merkle-trie", default-features = 
 slimchain-tx-executor = { path = "../slimchain-tx-executor", default-features = false }
 slimchain-tx-state = { path = "../slimchain-tx-state", default-features = false }
 
+# Fix: feature `resolver` is required
+rlp = "=0.5.0"
+zeroize = "=1.3.0"
+
 [patch.'https://github.com/apache/teaclave-sgx-sdk.git']
 sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }
