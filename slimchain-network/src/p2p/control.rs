@@ -87,7 +87,7 @@ where
         Swarm::listen_on(&mut self.swarm, address).map_err(Error::msg)?;
         let address = loop {
             match self.swarm.select_next_some().await {
-                SwarmEvent::NewListenAddr{address ,..} => break address,
+                SwarmEvent::NewListenAddr { address, .. } => break address,
                 SwarmEvent::ListenerError { error, .. } => {
                     bail!("Error during listen. Error: {:?}", error);
                 }
