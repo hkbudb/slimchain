@@ -29,7 +29,7 @@ impl DB {
         info!("Open database at {}", path.display());
         let mut cfg = kvdb_rocksdb::DatabaseConfig::with_columns(TOTAL_COLS);
         cfg.enable_statistics = enable_statistics;
-        let db = kvdb_rocksdb::Database::open(&cfg, &path.to_string_lossy())?;
+        let db = kvdb_rocksdb::Database::open(&cfg, &path)?;
         Ok(Arc::new(Self { db: Box::new(db) }))
     }
 
