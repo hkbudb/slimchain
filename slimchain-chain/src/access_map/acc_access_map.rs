@@ -8,7 +8,7 @@ use slimchain_common::{
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AccountReadAccess {
     flags: ReadAccessFlags,
-    values: im::HashSet<StateKey>,
+    values: imbl::HashSet<StateKey>,
 }
 
 impl AccountReadAccess {
@@ -40,7 +40,7 @@ impl AccountReadAccess {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct AccountWriteAccess {
     flags: WriteAccessFlags,
-    values: im::HashSet<StateKey>,
+    values: imbl::HashSet<StateKey>,
 }
 
 impl AccountWriteAccess {
@@ -78,7 +78,7 @@ impl AccountWriteAccess {
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut)]
-pub struct ReadAccessItem(pub im::HashMap<Address, AccountReadAccess>);
+pub struct ReadAccessItem(pub imbl::HashMap<Address, AccountReadAccess>);
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut)]
-pub struct WriteAccessItem(pub im::HashMap<Address, AccountWriteAccess>);
+pub struct WriteAccessItem(pub imbl::HashMap<Address, AccountWriteAccess>);

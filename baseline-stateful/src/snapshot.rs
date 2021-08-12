@@ -13,12 +13,12 @@ use slimchain_common::{
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Snapshot<Block: BlockTrait> {
-    pub(crate) recent_blocks: im::Vector<Block>,
+    pub(crate) recent_blocks: imbl::Vector<Block>,
     pub(crate) access_map: AccessMap,
 }
 
 impl<Block: BlockTrait> Snapshot<Block> {
-    pub fn new(recent_blocks: im::Vector<Block>, access_map: AccessMap) -> Self {
+    pub fn new(recent_blocks: imbl::Vector<Block>, access_map: AccessMap) -> Self {
         Self {
             recent_blocks,
             access_map,
@@ -27,7 +27,7 @@ impl<Block: BlockTrait> Snapshot<Block> {
 
     pub fn genesis_snapshot(genesis_block: Block, state_len: usize) -> Self {
         Self {
-            recent_blocks: im::vector![genesis_block],
+            recent_blocks: imbl::vector![genesis_block],
             access_map: AccessMap::new(state_len),
         }
     }

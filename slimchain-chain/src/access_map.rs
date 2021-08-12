@@ -20,10 +20,10 @@ pub use pruning::*;
 pub struct AccessMap {
     max_blocks: usize,
     block_height: BlockHeight,
-    read_map: im::Vector<ReadAccessItem>,
-    write_map: im::Vector<WriteAccessItem>,
-    read_rev_map: im::HashMap<Address, ReadRevAccessItem>,
-    write_rev_map: im::OrdMap<Address, WriteRevAccessItem>,
+    read_map: imbl::Vector<ReadAccessItem>,
+    write_map: imbl::Vector<WriteAccessItem>,
+    read_rev_map: imbl::HashMap<Address, ReadRevAccessItem>,
+    write_rev_map: imbl::OrdMap<Address, WriteRevAccessItem>,
 }
 
 impl AccessMap {
@@ -31,10 +31,10 @@ impl AccessMap {
         Self {
             max_blocks,
             block_height: 0.into(),
-            read_map: im::vector![ReadAccessItem::default()],
-            write_map: im::vector![WriteAccessItem::default()],
-            read_rev_map: im::HashMap::new(),
-            write_rev_map: im::OrdMap::new(),
+            read_map: imbl::vector![ReadAccessItem::default()],
+            write_map: imbl::vector![WriteAccessItem::default()],
+            read_rev_map: imbl::HashMap::new(),
+            write_rev_map: imbl::OrdMap::new(),
         }
     }
 
@@ -136,8 +136,8 @@ impl AccessMap {
             .expect("AccessMap: Failed to access read_map.");
         for (&acc_addr, read) in read_entry.iter() {
             let mut read_rev_entry = match self.read_rev_map.entry(acc_addr) {
-                im::hashmap::Entry::Occupied(o) => o,
-                im::hashmap::Entry::Vacant(_) => unreachable!(),
+                imbl::hashmap::Entry::Occupied(o) => o,
+                imbl::hashmap::Entry::Vacant(_) => unreachable!(),
             };
 
             let entry = read_rev_entry.get_mut();
@@ -165,8 +165,8 @@ impl AccessMap {
             .expect("AccessMap: Failed to access write_map.");
         for (&acc_addr, write) in write_entry.iter() {
             let mut write_rev_entry = match self.write_rev_map.entry(acc_addr) {
-                im::ordmap::Entry::Occupied(o) => o,
-                im::ordmap::Entry::Vacant(_) => unreachable!(),
+                imbl::ordmap::Entry::Occupied(o) => o,
+                imbl::ordmap::Entry::Vacant(_) => unreachable!(),
             };
 
             let entry = write_rev_entry.get_mut();
@@ -198,7 +198,7 @@ impl AccessMap {
         pruning
     }
 
-    pub(crate) fn write_rev_map(&self) -> &'_ im::OrdMap<Address, WriteRevAccessItem> {
+    pub(crate) fn write_rev_map(&self) -> &'_ imbl::OrdMap<Address, WriteRevAccessItem> {
         &self.write_rev_map
     }
 }

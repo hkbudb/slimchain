@@ -64,7 +64,7 @@ pub trait RevAccessItem {
 pub struct ReadRevAccessItem {
     nonce: BlockHeightList,
     code: BlockHeightList,
-    values: im::HashMap<StateKey, BlockHeightList>,
+    values: imbl::HashMap<StateKey, BlockHeightList>,
 }
 
 impl ReadRevAccessItem {
@@ -97,13 +97,13 @@ impl ReadRevAccessItem {
 
     pub fn remove_value(&mut self, key: StateKey, block_height: BlockHeight) {
         match self.values.entry(key) {
-            im::hashmap::Entry::Occupied(mut o) => {
+            imbl::hashmap::Entry::Occupied(mut o) => {
                 o.get_mut().remove_block_height(block_height);
                 if o.get().is_empty() {
                     o.remove();
                 }
             }
-            im::hashmap::Entry::Vacant(_) => unreachable!(),
+            imbl::hashmap::Entry::Vacant(_) => unreachable!(),
         }
     }
 }
@@ -133,7 +133,7 @@ pub struct WriteRevAccessItem {
     nonce: BlockHeightList,
     code: BlockHeightList,
     reset_values: BlockHeightList,
-    values: im::OrdMap<StateKey, BlockHeightList>,
+    values: imbl::OrdMap<StateKey, BlockHeightList>,
 }
 
 impl WriteRevAccessItem {
@@ -178,7 +178,7 @@ impl WriteRevAccessItem {
     pub fn remove_value(&mut self, key: StateKey, block_height: BlockHeight) -> bool {
         let mut should_prune = false;
         match self.values.entry(key) {
-            im::ordmap::Entry::Occupied(mut o) => {
+            imbl::ordmap::Entry::Occupied(mut o) => {
                 o.get_mut().remove_block_height(block_height);
                 if o.get().is_empty() {
                     // only prune the state key if it is not reset in a later block
@@ -189,13 +189,13 @@ impl WriteRevAccessItem {
                     o.remove();
                 }
             }
-            im::ordmap::Entry::Vacant(_) => unreachable!(),
+            imbl::ordmap::Entry::Vacant(_) => unreachable!(),
         }
 
         should_prune
     }
 
-    pub(crate) fn state_values(&self) -> &'_ im::OrdMap<StateKey, BlockHeightList> {
+    pub(crate) fn state_values(&self) -> &'_ imbl::OrdMap<StateKey, BlockHeightList> {
         &self.values
     }
 }

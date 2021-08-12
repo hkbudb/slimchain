@@ -20,7 +20,7 @@ std = [
     "slimchain-merkle-trie/std",
 ]
 partial_trie = [
-    "im",
+    "imbl",
     "read",
     "slimchain-merkle-trie/partial_trie",
     "std",
@@ -43,8 +43,7 @@ draw = [
 
 [dependencies]
 crossbeam-utils = { version = "0.8", optional = true }
-#im = { version = "15.0", features = ["serde"], optional = true }
-im = { git = "https://github.com/arthurprs/im-rs/", branch = "fix", features = ["serde"], optional = true }
+imbl = { version = "1.0", features = ["serde"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 slimchain-common = { path = "../slimchain-common", default-features = false }
 slimchain-merkle-trie = { path = "../slimchain-merkle-trie", default-features = false }

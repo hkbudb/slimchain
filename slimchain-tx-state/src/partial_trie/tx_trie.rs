@@ -194,7 +194,7 @@ impl AccountTrie {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TxTrie {
     pub(crate) main_trie: PartialTrie,
-    pub(crate) acc_tries: im::HashMap<Address, AccountTrie>,
+    pub(crate) acc_tries: imbl::HashMap<Address, AccountTrie>,
 }
 
 impl TxTrie {
@@ -262,10 +262,10 @@ impl TxTrieTrait for TxTrie {
 
         for (acc_addr, fork_acc_trie) in fork.acc_tries.iter() {
             match self.acc_tries.entry(*acc_addr) {
-                im::hashmap::Entry::Occupied(mut o) => {
+                imbl::hashmap::Entry::Occupied(mut o) => {
                     o.get_mut().update_missing_branches(fork_acc_trie)?;
                 }
-                im::hashmap::Entry::Vacant(v) => {
+                imbl::hashmap::Entry::Vacant(v) => {
                     let acc_trie = AccountTrie::create_from_empty(fork_acc_trie);
                     debug_assert_eq!(
                         self.main_trie.value_hash(acc_addr),
@@ -286,10 +286,10 @@ impl TxTrieTrait for TxTrie {
 
         for (acc_addr, acc_trie_diff) in diff.acc_trie_diffs.iter() {
             match self.acc_tries.entry(*acc_addr) {
-                im::hashmap::Entry::Occupied(mut o) => {
+                imbl::hashmap::Entry::Occupied(mut o) => {
                     o.get_mut().apply_diff(acc_trie_diff, check_hash)?;
                 }
-                im::hashmap::Entry::Vacant(v) => {
+                imbl::hashmap::Entry::Vacant(v) => {
                     let acc_trie = AccountTrie::create_from_diff(acc_trie_diff)?;
                     if check_hash {
                         ensure!(

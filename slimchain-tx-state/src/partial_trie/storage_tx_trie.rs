@@ -41,7 +41,7 @@ impl StorageAccountTrie {
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut)]
-pub struct OutShardData(pub im::HashMap<Address, StorageAccountTrie>);
+pub struct OutShardData(pub imbl::HashMap<Address, StorageAccountTrie>);
 
 #[derive(Clone)]
 pub struct InShardData {
@@ -117,14 +117,14 @@ impl TxTrieTrait for StorageTxTrie {
             }
 
             match self.out_shard.entry(acc_addr) {
-                im::hashmap::Entry::Occupied(mut o) => {
+                imbl::hashmap::Entry::Occupied(mut o) => {
                     let acc_state_trie = update_missing_branches(
                         o.get().get_state_trie(),
                         &fork_acc_trie.state_trie,
                     )?;
                     o.get_mut().set_state_trie(acc_state_trie);
                 }
-                im::hashmap::Entry::Vacant(v) => {
+                imbl::hashmap::Entry::Vacant(v) => {
                     let acc_state_trie = fork_acc_trie.state_trie.clone();
                     debug_assert_eq!(
                         self.in_shard.get_acc_state_root(acc_addr)?,
@@ -147,7 +147,7 @@ impl TxTrieTrait for StorageTxTrie {
             }
 
             match self.out_shard.entry(acc_addr) {
-                im::hashmap::Entry::Occupied(mut o) => {
+                imbl::hashmap::Entry::Occupied(mut o) => {
                     let acc_state_trie = apply_diff(
                         o.get().get_state_trie(),
                         &acc_trie_diff.state_trie_diff,
@@ -155,7 +155,7 @@ impl TxTrieTrait for StorageTxTrie {
                     )?;
                     o.get_mut().set_state_trie(acc_state_trie);
                 }
-                im::hashmap::Entry::Vacant(v) => {
+                imbl::hashmap::Entry::Vacant(v) => {
                     let acc_state_trie = acc_trie_diff.state_trie_diff.to_standalone_trie()?;
                     if check_hash {
                         ensure!(

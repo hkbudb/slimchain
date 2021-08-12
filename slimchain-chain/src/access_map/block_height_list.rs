@@ -6,7 +6,7 @@ use slimchain_common::{
 use std::iter::FromIterator;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize, Deref, DerefMut)]
-pub struct BlockHeightList(im::Vector<BlockHeight>);
+pub struct BlockHeightList(imbl::Vector<BlockHeight>);
 
 impl<V: Into<BlockHeight>> FromIterator<V> for BlockHeightList {
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {

@@ -14,13 +14,13 @@ use slimchain_tx_state::{InShardData, OutShardData, StorageTxTrie, TxTrie, TxTri
 
 #[derive(Clone)]
 pub struct Snapshot<Block: BlockTrait, TxTrie: TxTrieTrait> {
-    pub(crate) recent_blocks: im::Vector<Block>,
+    pub(crate) recent_blocks: imbl::Vector<Block>,
     pub(crate) tx_trie: TxTrie,
     pub(crate) access_map: AccessMap,
 }
 
 impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
-    pub fn new(recent_blocks: im::Vector<Block>, tx_trie: TxTrie, access_map: AccessMap) -> Self {
+    pub fn new(recent_blocks: imbl::Vector<Block>, tx_trie: TxTrie, access_map: AccessMap) -> Self {
         Self {
             recent_blocks,
             tx_trie,
@@ -30,7 +30,7 @@ impl<Block: BlockTrait, TxTrie: TxTrieTrait> Snapshot<Block, TxTrie> {
 
     pub fn genesis_snapshot(tx_trie: TxTrie, genesis_block: Block, state_len: usize) -> Self {
         Self {
-            recent_blocks: im::vector![genesis_block],
+            recent_blocks: imbl::vector![genesis_block],
             tx_trie,
             access_map: AccessMap::new(state_len),
         }
@@ -122,7 +122,7 @@ impl<Block: BlockTrait + for<'de> Deserialize<'de>> Snapshot<Block, TxTrie> {
 
 #[derive(Serialize, Deserialize)]
 struct SnapshotData<Block: BlockTrait> {
-    recent_blocks: im::Vector<Block>,
+    recent_blocks: imbl::Vector<Block>,
     tx_trie: TxTrie,
     access_map: AccessMap,
 }
@@ -212,9 +212,9 @@ pub fn load_recent_blocks<Block: BlockTrait + for<'de> Deserialize<'de>>(
     db: &DBPtr,
     block_height: BlockHeight,
     state_len: usize,
-) -> Result<im::Vector<Block>> {
+) -> Result<imbl::Vector<Block>> {
     let mut height = block_height;
-    let mut out = im::Vector::new();
+    let mut out = imbl::Vector::new();
     while height.0 > 0 && out.len() < state_len {
         let blk = db.get_block(height)?;
         out.push_front(blk);

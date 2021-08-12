@@ -33,8 +33,7 @@ chrono = { version = "0.4", features = ["serde"] }
 color-backtrace = "0.5"
 futures = "0.3"
 git-version = "0.3"
-#im = { version = "15.0", features = ["serde"] }
-im = { git = "https://github.com/arthurprs/im-rs/", branch = "fix", features = ["serde"] }
+imbl = { version = "1.0", features = ["serde"] }
 itertools = "0.10"
 libp2p = { version = "0.39", default-features = false }
 rand = "0.7"
