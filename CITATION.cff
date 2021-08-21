@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Xu
+    given-names: Cheng
+    affiliation: "Simon Fraser University"
+  - family-names: Zhang
+    given-names: Ce
+    affiliation: "Hong Kong Baptist University"
+  - family-names: Xu
+    given-names: Jianliang
+    affiliation: "Hong Kong Baptist University"
+  - family-names: Pei
+    given-names: Jian
+    affiliation: "Simon Fraser University"
+title: "SlimChain: Scaling Blockchain Transactions through Off-Chain Storage and Parallel Processing"
+url: https://github.com/hkbudb/slimchain
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Xu
+      given-names: Cheng
+      affiliation: "Simon Fraser University"
+    - family-names: Zhang
+      given-names: Ce
+      affiliation: "Hong Kong Baptist University"
+    - family-names: Xu
+      given-names: Jianliang
+      affiliation: "Hong Kong Baptist University"
+    - family-names: Pei
+      given-names: Jian
+      affiliation: "Simon Fraser University"
+  title: "SlimChain: Scaling Blockchain Transactions through Off-Chain Storage and Parallel Processing"
+  journal: Proceedings of the VLDB Endowment
+  year: 2021
+  month: 7
+  volume: 14
+  issue: 11
+  start: 2314
+  end: 2326
+  doi: 10.14778/3476249.3476283
