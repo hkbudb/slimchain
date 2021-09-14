@@ -21,7 +21,7 @@ slimchain-common = { path = "../slimchain-common" }
 slimchain-tx-engine = { path = "../slimchain-tx-engine" }
 slimchain-tx-state = { path = "../slimchain-tx-state" }
 slimchain-utils = { path = "../slimchain-utils" }
-surf = "2.2"
+surf = "2.3"
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full", "parking_lot"] }
 tokio-util = { version = "0.6", features = ["time"] }
