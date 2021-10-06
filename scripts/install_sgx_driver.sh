@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 DCAP_SGX_DRIVER_VERSION="1.41"
-OOT_SGX_DRIVER_VERSION="2.11.0_0373e2e"
+OOT_SGX_DRIVER_VERSION="2.11.0_2d2b795"
 
 set -eo pipefail
 
