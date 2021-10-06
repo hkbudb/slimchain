@@ -54,5 +54,5 @@ pub(crate) fn get_intel_report(quote: &[u8], api_key: &str) -> Result<Attestatio
     let mut body = Vec::new();
     reader.read_to_end(&mut body)?;
 
-    Ok(AttestationReport::new(sig, &cert, body))
+    AttestationReport::new(sig, &cert, body)
 }

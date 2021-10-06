@@ -16,8 +16,8 @@ include!(concat!(env!("OUT_DIR"), "/root_ca.rs"));
 const ROOT_CA_NAME: &str =
     "C=US, ST=CA, L=Santa Clara, O=Intel Corporation, CN=Intel SGX Attestation Report Signing CA";
 
-fn remove_root_ca_from_cert_chain(input: &str) -> Vec<Vec<u8>> {
-    pem::parse_many(input.as_bytes())
+fn remove_root_ca_from_cert_chain(input: &str) -> Result<Vec<Vec<u8>>> {
+    let certs = pem::parse_many(input.as_bytes())?
         .into_iter()
         .filter(|cert| {
             parse_x509_certificate(&cert.contents)
@@ -25,7 +25,8 @@ fn remove_root_ca_from_cert_chain(input: &str) -> Vec<Vec<u8>> {
                 .unwrap_or(true)
         })
         .map(|cert| cert.contents)
-        .collect()
+        .collect();
+    Ok(certs)
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -56,12 +57,12 @@ impl Digestible for AttestationReport {
 }
 
 impl AttestationReport {
-    pub fn new(sig: Vec<u8>, pem_cert: &str, report: Vec<u8>) -> Self {
-        Self {
+    pub fn new(sig: Vec<u8>, pem_cert: &str, report: Vec<u8>) -> Result<Self> {
+        Ok(Self {
             sig,
-            cert: remove_root_ca_from_cert_chain(pem_cert),
+            cert: remove_root_ca_from_cert_chain(pem_cert)?,
             report,
-        }
+        })
     }
 
     pub fn verify(&self, msg: &[u8]) -> Result<()> {
