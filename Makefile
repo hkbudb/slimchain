@@ -26,7 +26,6 @@ test-release:
 .PHONY: test-release
 
 clean:
-	-rm ./Cargo.lock
 	-rm -rf target
 	-$(MAKE) -C contracts clean
 	-$(MAKE) -C slimchain-tx-engine-tee-enclave clean

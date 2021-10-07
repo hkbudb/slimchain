@@ -111,7 +111,7 @@ RUST_SRC := \
 		../slimchain-merkle-trie \
 		../slimchain-tx-executor \
 		../slimchain-tx-state \
-		-type f -name "Cargo.toml")
+		-type f -name "Cargo.toml" -o -name "Cargo.lock")
 
 rust_lib: $(RUST_LIB_FILE)
 .PHONY: rust_lib
@@ -122,7 +122,6 @@ $(RUST_LIB_FILE): $(RUST_SRC)
 ## clean
 
 clean:
-	-rm ./Cargo.lock
 	-rm -rf target
 	-rm -f ../target/*/lib$(ENCLAVE_NAME)*.signed.so
 .PHONY: clean
