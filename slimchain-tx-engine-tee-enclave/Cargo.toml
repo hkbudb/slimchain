@@ -2,8 +2,7 @@
 name = "slimchain-tx-engine-tee-enclave"
 version = "0.1.0"
 authors = ["Cheng XU <rust@xuc.me>"]
-edition = "2018"
-resolver = "2"
+edition = "2021"
 publish = false
 
 [lib]

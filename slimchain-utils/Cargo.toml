@@ -2,7 +2,7 @@
 name = "slimchain-utils"
 version = "0.1.0"
 authors = ["Cheng XU <rust@xuc.me>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]
