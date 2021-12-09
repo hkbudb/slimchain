@@ -4,7 +4,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-use alloc::{format, vec::Vec};
+use alloc::vec::Vec;
 use core::cell::{Cell, RefCell};
 use evm::backend::Backend as _;
 use serde::{Deserialize, Serialize};
@@ -116,6 +116,9 @@ impl<'a, B: Backend> evm::backend::Backend for EVMBackend<'a, B> {
     fn block_gas_limit(&self) -> U256 {
         U256::max_value()
     }
+    fn block_base_fee_per_gas(&self) -> U256 {
+        U256::zero()
+    }
     fn chain_id(&self) -> U256 {
         unimplemented!();
     }
@@ -153,6 +156,8 @@ pub struct ExecuteOutput {
 }
 
 pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Result<ExecuteOutput> {
+    use evm::executor::stack::*;
+
     signed_tx_req.verify().context("Invalid signature.")?;
 
     let caller = signed_tx_req.caller_address();
@@ -160,9 +165,9 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
 
     let evm_backend = EVMBackend::new(backend);
     let evm_config = evm::Config::istanbul();
-    let evm_metadata = evm::executor::StackSubstateMetadata::new(u64::max_value(), &&evm_config);
-    let evm_state = evm::executor::MemoryStackState::new(evm_metadata, &evm_backend);
-    let mut executor = evm::executor::StackExecutor::new(evm_state, &evm_config);
+    let evm_metadata = StackSubstateMetadata::new(u64::max_value(), &&evm_config);
+    let evm_state = MemoryStackState::new(evm_metadata, &evm_backend);
+    let mut executor = StackExecutor::new_with_precompiles(evm_state, &evm_config, &());
 
     let _caller_nonce = Nonce::from(evm_backend.basic(caller.into()).nonce);
 
@@ -181,6 +186,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
             U256::zero(),
             code.clone().into(),
             u64::max_value(),
+            Vec::new(),
         ),
         TxRequest::Call { address, data, .. } => {
             executor
@@ -190,6 +196,7 @@ pub fn execute_tx(signed_tx_req: SignedTxRequest, backend: &impl Backend) -> Res
                     U256::zero(),
                     data.clone(),
                     u64::max_value(),
+                    Vec::new(),
                 )
                 .0
         }

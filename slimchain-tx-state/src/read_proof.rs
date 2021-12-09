@@ -1,4 +1,3 @@
-use alloc::format;
 use serde::{Deserialize, Serialize};
 use slimchain_common::{
     basic::{account_data_to_digest, Address, Nonce, StateValue, H256},
